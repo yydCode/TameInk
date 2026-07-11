@@ -118,6 +118,36 @@ def test_first_transaction_recovery_log_has_baseline_old_ref(
     assert captured[0]["old_ref"] == baseline
 
 
+@pytest.mark.parametrize("entry", ["confirm", "rollback", "current", "history"])
+def test_recovery_log_blocks_every_baseline_creating_entry(tmp_path: Path, entry: str) -> None:
+    workspace = WorkspaceRepository(tmp_path)
+    project = workspace.create_project("story-01")
+    (project / "canon/outline.md").write_text("partial\n")
+    repo = Repo.init(str(project))
+    repo.refs.set_symbolic_ref(b"HEAD", b"refs/heads/main")
+    log = project / ".tame-ink/recovery.json"
+    log.write_text("legacy recovery log")
+    revisions = RevisionRepository(workspace)
+
+    with pytest.raises(RecoveryIncompleteError):
+        if entry == "confirm":
+            revisions.confirm(
+                "story-01",
+                RevisionWrite(path="canon/outline.md", content="new\n", message="确认：内容"),
+                None,
+            )
+        elif entry == "rollback":
+            revisions.rollback("story-01", "f" * 40, "f" * 40)
+        elif entry == "current":
+            revisions.current_revision("story-01")
+        else:
+            revisions.history("story-01")
+
+    assert log.read_text() == "legacy recovery log"
+    assert (project / "canon/outline.md").read_text() == "partial\n"
+    assert b"refs/heads/main" not in repo.refs
+
+
 def test_confirm_creates_chinese_commit_and_lists_history(tmp_path: Path) -> None:
     workspace, revisions = repository(tmp_path)
     revision = revisions.confirm(
@@ -619,6 +649,7 @@ def test_control_file_symlink_is_rejected_without_changing_target(
     target = project / "project.yaml"
     target.write_text("protected")
     control_path = project / ".tame-ink" / control
+    control_path.unlink(missing_ok=True)
     control_path.symlink_to(target)
 
     with pytest.raises(WorkspacePathViolationError):

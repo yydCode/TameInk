@@ -37,6 +37,7 @@ class RevisionRepository:
         self, project_id: str, write: RevisionWrite, expected_revision: str | None
     ) -> Revision:
         with self._locked(project_id):
+            self._gate_recovery(project_id)
             return self._confirm_locked(project_id, write, expected_revision)
 
     def _confirm_locked(
@@ -44,9 +45,7 @@ class RevisionRepository:
     ) -> Revision:
         project, repo = self._repo(project_id)
         log = self._log_path(project_id)
-        if log.exists():
-            raise RecoveryIncompleteError(str(log))
-        current = self.current_revision(project_id)
+        current = self._current_revision_from_repo(repo)
         if current != expected_revision:
             raise CanonVersionConflictError(f"expected {expected_revision}, found {current}")
         if current is None:
@@ -98,24 +97,33 @@ class RevisionRepository:
         self._remove_log(log)
 
     def current_revision(self, project_id: str) -> str | None:
-        _, repo = self._repo(project_id)
+        with self._locked(project_id):
+            self._gate_recovery(project_id)
+            _, repo = self._repo(project_id)
+            return self._current_revision_from_repo(repo)
+
+    @staticmethod
+    def _current_revision_from_repo(repo: Repo) -> str | None:
         try:
             return repo.refs[REF].decode()
         except KeyError:
             return None
 
     def history(self, project_id: str) -> list[Revision]:
-        _, repo = self._repo(project_id)
-        current = self.current_revision(project_id)
-        if current is None:
-            return []
-        return [
-            Revision(id=entry.commit.id.decode(), message=entry.commit.message.decode())
-            for entry in repo.get_walker(include=[current.encode()])
-        ]
+        with self._locked(project_id):
+            self._gate_recovery(project_id)
+            _, repo = self._repo(project_id)
+            current = self._current_revision_from_repo(repo)
+            if current is None:
+                return []
+            return [
+                Revision(id=entry.commit.id.decode(), message=entry.commit.message.decode())
+                for entry in repo.get_walker(include=[current.encode()])
+            ]
 
     def rollback(self, project_id: str, revision_id: str, expected_revision: str) -> Revision:
         with self._locked(project_id):
+            self._gate_recovery(project_id)
             return self._rollback_locked(project_id, revision_id, expected_revision)
 
     def _rollback_locked(
@@ -123,9 +131,7 @@ class RevisionRepository:
     ) -> Revision:
         project, repo = self._repo(project_id)
         log = self._log_path(project_id)
-        if log.exists():
-            raise RecoveryIncompleteError(str(log))
-        if self.current_revision(project_id) != expected_revision:
+        if self._current_revision_from_repo(repo) != expected_revision:
             raise CanonVersionConflictError(expected_revision)
         self._assert_no_drift(repo, project, expected_revision)
         try:
@@ -362,6 +368,11 @@ class RevisionRepository:
             if candidate.is_symlink():
                 raise WorkspacePathViolationError(str(candidate))
         return control / name
+
+    def _gate_recovery(self, project_id: str) -> None:
+        log = self._log_path(project_id)
+        if log.exists():
+            raise RecoveryIncompleteError(str(log))
 
     @staticmethod
     def _write_log(path: Path, record: dict[str, Any]) -> None:
