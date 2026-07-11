@@ -1,7 +1,9 @@
+import json
+import time
 from pathlib import Path
 
 import pytest
-from dulwich.objects import Blob
+from dulwich.objects import Blob, Commit, Tree
 from pydantic import ValidationError
 
 from app.domain.errors import (
@@ -508,3 +510,130 @@ def test_revision_lock_timeout_is_stable_and_preserves_log(tmp_path: Path) -> No
 
     assert raised.value.code == "REVISION_LOCKED"
     assert log.read_text() == "first writer"
+
+
+@pytest.mark.parametrize("control", ["revision.lock", "recovery.json", "recovery.tmp"])
+def test_control_file_symlink_is_rejected_without_changing_target(
+    tmp_path: Path, control: str
+) -> None:
+    workspace, revisions = repository(tmp_path)
+    project = workspace.project_path("story-01")
+    target = project / "project.yaml"
+    target.write_text("protected")
+    control_path = project / ".tame-ink" / control
+    control_path.symlink_to(target)
+
+    with pytest.raises(WorkspacePathViolationError):
+        if control == "recovery.json":
+            revisions.recover("story-01")
+        else:
+            revisions.confirm(
+                "story-01",
+                RevisionWrite(path="canon/outline.md", content="内容\n", message="确认：内容"),
+                None,
+            )
+
+    assert target.read_text() == "protected"
+
+
+@pytest.mark.parametrize("damage", ["checksum", "base64", "snapshot", "old_ref"])
+def test_recover_rejects_tampered_snapshot_without_applying_files(
+    tmp_path: Path, damage: str
+) -> None:
+    workspace, revisions = repository(tmp_path)
+    _, _, log = prepare_crash_log(workspace, revisions)
+    project = workspace.project_path("story-01")
+    record = json.loads(log.read_text())
+    if damage == "checksum":
+        record["checksum"] = "0" * 64
+    elif damage == "base64":
+        record["old_files"]["canon/outline.md"] = "***"
+    elif damage == "snapshot":
+        record["old_files"]["canon/outline.md"] = revisions._encode("篡改内容\n".encode())
+    else:
+        record["old_ref"] = "f" * 40
+    if damage != "checksum":
+        critical = {key: record[key] for key in ("old_ref", "new_ref", "old_files")}
+        record["checksum"] = revisions._checksum(critical)
+    log.write_text(json.dumps(record, sort_keys=True))
+
+    with pytest.raises(RecoveryIncompleteError):
+        RevisionRepository(workspace).recover("story-01")
+
+    assert (project / "canon/outline.md").read_text() == "旧文件\n"
+    assert log.exists()
+
+
+def test_lock_symlink_switch_after_initial_validation_is_rejected(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, revisions = repository(tmp_path)
+    project = workspace.project_path("story-01")
+    target = project / "project.yaml"
+    target.write_text("protected")
+    class SwitchingLock:
+        def __init__(self, path: str, timeout: float) -> None:
+            self.path = Path(path)
+
+        def __enter__(self) -> None:
+            self.path.unlink(missing_ok=True)
+            self.path.symlink_to(target)
+
+        def __exit__(self, *args: object) -> None:
+            self.path.unlink(missing_ok=True)
+
+    monkeypatch.setattr("app.repositories.revisions.FileLock", SwitchingLock)
+
+    with pytest.raises(WorkspacePathViolationError):
+        revisions.confirm(
+            "story-01",
+            RevisionWrite(path="canon/outline.md", content="内容\n", message="确认：内容"),
+            None,
+        )
+
+    assert target.read_text() == "protected"
+
+
+def malformed_commit(repo: object, tree_id: bytes, message: bytes, parent: bytes | None) -> bytes:
+    commit = Commit()
+    commit.tree = tree_id
+    commit.parents = [] if parent is None else [parent]
+    commit.author = commit.committer = b"Tame Ink <tame-ink@localhost>"
+    commit.author_time = commit.commit_time = int(time.time())
+    commit.author_timezone = commit.commit_timezone = 0
+    commit.message = message
+    repo.object_store.add_object(commit)  # type: ignore[attr-defined]
+    return commit.id
+
+
+@pytest.mark.parametrize("damage", ["tree_name", "message", "missing_tree"])
+def test_rollback_maps_reachable_malformed_revision(tmp_path: Path, damage: str) -> None:
+    _, revisions = repository(tmp_path)
+    project, repo = revisions._repo("story-01")
+    if damage == "tree_name":
+        blob = Blob()
+        blob.data = b"bad"
+        repo.object_store.add_object(blob)
+        tree = Tree()
+        tree.add(b"\xff", 0o100644, blob.id)
+        repo.object_store.add_object(tree)
+        ancestor = malformed_commit(repo, tree.id, b"bad tree", None)
+    elif damage == "message":
+        tree = Tree()
+        repo.object_store.add_object(tree)
+        ancestor = malformed_commit(repo, tree.id, b"\xff", None)
+    else:
+        ancestor = malformed_commit(repo, b"f" * 40, b"missing tree", None)
+    repo.refs[b"refs/heads/main"] = ancestor
+    current = revisions._build_commit_from_files(
+        repo, {"canon/outline.md": b"safe\n"}, ancestor.decode(), "current"
+    )
+    repo.refs[b"refs/heads/main"] = current
+    (project / "canon/outline.md").write_text("safe\n")
+
+    with pytest.raises(InvalidRevisionError) as raised:
+        revisions.rollback("story-01", ancestor.decode(), expected_revision=current.decode())
+
+    assert raised.value.code == "INVALID_REVISION"
+    assert raised.value.__cause__ is not None
+    assert repo.refs[b"refs/heads/main"] == current

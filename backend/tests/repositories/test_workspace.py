@@ -90,3 +90,15 @@ def test_rejects_project_directory_alias_symlink(tmp_path: Path) -> None:
 
     with pytest.raises(WorkspacePathViolationError):
         workspace.project_path("story-01")
+
+
+def test_allows_workspace_beneath_symlinked_os_ancestor(tmp_path: Path) -> None:
+    actual = tmp_path / "actual"
+    root = actual / "workspace"
+    root.mkdir(parents=True)
+    alias = tmp_path / "alias"
+    alias.symlink_to(actual, target_is_directory=True)
+
+    workspace = WorkspaceRepository(alias / "workspace")
+
+    assert workspace.create_project("story-01").is_dir()

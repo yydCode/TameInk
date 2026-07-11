@@ -107,7 +107,7 @@ def test_rebuild_rejects_formal_directory_symlink_escape(tmp_path: Path) -> None
     assert database.search("story-01", "泄漏内容") == []
 
 
-@pytest.mark.parametrize("query", ["abc OR", '"abc'])
+@pytest.mark.parametrize("query", ["abc OR", '"abc', "abc:def"])
 def test_search_maps_only_invalid_match_syntax(tmp_path: Path, query: str) -> None:
     _, _, database = setup_project(tmp_path)
     database.rebuild("story-01")

@@ -22,7 +22,8 @@ PROJECT_DIRS = (
 
 class WorkspaceRepository:
     def __init__(self, root: Path) -> None:
-        self._reject_symlink_components(root.absolute())
+        if root.is_symlink():
+            raise WorkspacePathViolationError(str(root))
         self.root = root.resolve()
 
     def project_path(self, project_id: str) -> Path:

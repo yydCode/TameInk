@@ -1,4 +1,5 @@
 import base64
+import hashlib
 import json
 import os
 import time
@@ -18,6 +19,7 @@ from app.domain.errors import (
     RevisionLockError,
     StorageWriteError,
     TameInkError,
+    WorkspacePathViolationError,
 )
 from app.domain.paths import iter_formal_files, resolve_formal_path
 from app.domain.revision import Revision, RevisionWrite
@@ -134,11 +136,16 @@ class RevisionRepository:
         }
         if revision_id not in reachable:
             raise InvalidRevisionError(f"revision is not an ancestor of HEAD: {revision_id}")
-        target_tree = repo[commit.tree]
-        files = self._tree_files(repo, target_tree)
-        for relative in files:
-            resolve_formal_path(project, relative)
-        message = f"回滚：{commit.message.decode()}"
+        try:
+            target_tree = repo.object_store[commit.tree]
+            files = self._tree_files(repo, target_tree)
+            for relative in files:
+                resolve_formal_path(project, relative)
+            message = f"回滚：{commit.message.decode()}"
+        except WorkspacePathViolationError:
+            raise
+        except Exception as error:
+            raise InvalidRevisionError(f"revision objects are invalid: {revision_id}") from error
         try:
             rollback_id = self._build_commit_from_files(repo, files, expected_revision, message)
         except Exception as error:
@@ -153,7 +160,7 @@ class RevisionRepository:
             if not log.exists():
                 return
             try:
-                record = self._read_log(log, project)
+                record = self._read_log(log, project, repo)
                 self._restore(repo, project, record)
                 self._remove_log(log)
             except RecoveryIncompleteError:
@@ -163,7 +170,7 @@ class RevisionRepository:
 
     @contextmanager
     def _locked(self, project_id: str) -> Iterator[None]:
-        lock_path = self.workspace.resolve_project_path(project_id, ".tame-ink/revision.lock")
+        lock_path = self._control_path(project_id, "revision.lock")
         try:
             with FileLock(str(lock_path), timeout=self.lock_timeout):
                 yield
@@ -298,13 +305,33 @@ class RevisionRepository:
             writer(resolve_formal_path(project, relative), content)
 
     def _log_path(self, project_id: str) -> Path:
-        return self.workspace.resolve_project_path(project_id, ".tame-ink/recovery.json")
+        return self._control_path(project_id, "recovery.json")
+
+    def _control_path(self, project_id: str, name: str) -> Path:
+        if name not in {"revision.lock", "recovery.json", "recovery.tmp"}:
+            raise WorkspacePathViolationError(name)
+        project = self.workspace.project_path(project_id)
+        control = project / ".tame-ink"
+        if control.is_symlink() or not control.is_dir():
+            raise WorkspacePathViolationError(str(control))
+        for control_name in ("revision.lock", "recovery.json", "recovery.tmp"):
+            candidate = control / control_name
+            if candidate.is_symlink():
+                raise WorkspacePathViolationError(str(candidate))
+        return control / name
 
     @staticmethod
     def _write_log(path: Path, record: dict[str, Any]) -> None:
         temporary = path.with_suffix(".tmp")
+        RevisionRepository._reject_control_symlink(path, temporary)
+        critical = {key: record[key] for key in ("old_ref", "new_ref", "old_files")}
+        envelope = {
+            "version": 1,
+            **critical,
+            "checksum": RevisionRepository._checksum(critical),
+        }
         with temporary.open("w") as stream:
-            json.dump(record, stream, sort_keys=True)
+            json.dump(envelope, stream, sort_keys=True, separators=(",", ":"))
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(temporary, path)
@@ -314,15 +341,23 @@ class RevisionRepository:
         finally:
             os.close(directory)
 
-    def _read_log(self, path: Path, project: Path) -> dict[str, Any]:
+    def _read_log(self, path: Path, project: Path, repo: Repo) -> dict[str, Any]:
         try:
+            self._reject_control_symlink(path, path.with_suffix(".tmp"))
             record = json.loads(path.read_text())
             if not isinstance(record, dict) or set(record) != {
+                "version",
+                "checksum",
                 "old_ref",
                 "new_ref",
                 "old_files",
             }:
                 raise ValueError("invalid recovery log fields")
+            if record["version"] != 1 or not isinstance(record["checksum"], str):
+                raise ValueError("invalid recovery log version")
+            critical = {key: record[key] for key in ("old_ref", "new_ref", "old_files")}
+            if record["checksum"] != self._checksum(critical):
+                raise ValueError("invalid recovery log checksum")
             old_ref = record["old_ref"]
             new_ref = record["new_ref"]
             old_files = record["old_files"]
@@ -335,6 +370,17 @@ class RevisionRepository:
                     raise ValueError("invalid recovery file snapshot")
                 resolve_formal_path(project, relative)
                 base64.b64decode(content, validate=True)
+            if old_ref is not None:
+                old_commit = repo.object_store[old_ref.encode()]
+                if not isinstance(old_commit, Commit):
+                    raise ValueError("old_ref is not a commit")
+                old_tree = repo.object_store[old_commit.tree]
+                expected = {
+                    relative: self._encode(content)
+                    for relative, content in self._tree_files(repo, old_tree).items()
+                }
+                if old_files != expected:
+                    raise ValueError("recovery snapshot does not match old_ref")
             return record
         except RecoveryIncompleteError:
             raise
@@ -342,8 +388,22 @@ class RevisionRepository:
             raise RecoveryIncompleteError(f"invalid recovery log: {path}") from error
 
     def _remove_log(self, path: Path) -> None:
+        self._reject_control_symlink(path, path.with_suffix(".tmp"))
         path.unlink()
         self._sync_directory(path.parent)
+
+    @staticmethod
+    def _checksum(critical: dict[str, Any]) -> str:
+        payload = json.dumps(
+            critical, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode()
+        return hashlib.sha256(payload).hexdigest()
+
+    @staticmethod
+    def _reject_control_symlink(*paths: Path) -> None:
+        for path in paths:
+            if path.parent.is_symlink() or path.is_symlink():
+                raise WorkspacePathViolationError(str(path))
 
     @staticmethod
     def _replace_file_direct(path: Path, payload: bytes) -> None:

@@ -46,7 +46,11 @@ class DatabaseRepository:
                 ).fetchall()
         except sqlite3.OperationalError as error:
             message = str(error)
-            if "fts5: syntax error" in message or "unterminated string" in message:
+            if (
+                "fts5: syntax error" in message
+                or "unterminated string" in message
+                or "no such column:" in message
+            ):
                 raise SearchQueryError(query) from error
             raise
         return [str(row[0]) for row in rows]
