@@ -1,1 +1,24 @@
 .worktrees/
+
+# Local configuration and operating-system files
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node and Vite
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Local writing data
+workspace/*
+!workspace/.gitkeep
