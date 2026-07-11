@@ -1,0 +1,81 @@
+from pathlib import Path
+
+import pytest
+
+from app.domain.errors import SearchQueryError
+from app.domain.project import ConfirmedContent, MemoryRecord, Project
+from app.repositories.canon import CanonRepository
+from app.repositories.database import DatabaseRepository
+from app.repositories.workspace import WorkspaceRepository
+
+
+def setup_project(
+    tmp_path: Path,
+) -> tuple[WorkspaceRepository, CanonRepository, DatabaseRepository]:
+    workspace = WorkspaceRepository(tmp_path)
+    workspace.create_project("story-01")
+    canon = CanonRepository(workspace)
+    canon.write_project(Project(id="story-01", title="长夜", language="zh-CN"))
+    canon.write_markdown(
+        "story-01", "canon/chapters/0001.md", ConfirmedContent(markdown="# 雨夜\n\n长街落雨。\n")
+    )
+    canon.write_memory(
+        "story-01",
+        "memory/facts/weather.yaml",
+        MemoryRecord(
+            id="weather",
+            kind="fact",
+            status="active",
+            source="canon/chapters/0001.md",
+            quote="长街落雨",
+        ),
+    )
+    return workspace, canon, DatabaseRepository(workspace)
+
+
+def test_initialization_is_repeatable_and_records_schema_version(tmp_path: Path) -> None:
+    _, _, database = setup_project(tmp_path)
+    database.initialize("story-01")
+    database.initialize("story-01")
+
+    with database.connect("story-01") as connection:
+        assert (
+            connection.execute(
+                "SELECT value FROM metadata WHERE key = 'schema_version'"
+            ).fetchone()[0]
+            == "1"
+        )
+        assert (
+            connection.execute(
+                "SELECT name FROM sqlite_master WHERE name = 'content_fts'"
+            ).fetchone()[0]
+            == "content_fts"
+        )
+
+
+def test_rebuild_restores_core_fts_index_from_formal_files(tmp_path: Path) -> None:
+    workspace, _, database = setup_project(tmp_path)
+    database.rebuild("story-01")
+    assert database.search("story-01", "长街落雨") == [
+        "canon/chapters/0001.md",
+        "memory/facts/weather.yaml",
+    ]
+
+    database.path("story-01").unlink()
+    database.rebuild("story-01")
+
+    assert database.search("story-01", "长街落雨") == [
+        "canon/chapters/0001.md",
+        "memory/facts/weather.yaml",
+    ]
+    assert workspace.resolve_project_path("story-01", ".tame-ink/state.db").is_file()
+
+
+def test_search_rejects_queries_shorter_than_trigram_contract(tmp_path: Path) -> None:
+    _, _, database = setup_project(tmp_path)
+    database.rebuild("story-01")
+
+    with pytest.raises(SearchQueryError) as raised:
+        database.search("story-01", "落雨")
+
+    assert raised.value.code == "SEARCH_QUERY_INVALID"

@@ -1,0 +1,48 @@
+import sqlite3
+from pathlib import Path
+
+from app.domain.errors import SearchQueryError
+from app.repositories.workspace import WorkspaceRepository
+
+
+class DatabaseRepository:
+    def __init__(self, workspace: WorkspaceRepository) -> None:
+        self.workspace = workspace
+
+    def path(self, project_id: str) -> Path:
+        return self.workspace.resolve_project_path(project_id, ".tame-ink/state.db")
+
+    def connect(self, project_id: str) -> sqlite3.Connection:
+        return sqlite3.connect(self.path(project_id))
+
+    def initialize(self, project_id: str) -> None:
+        schema = Path(__file__).with_name("schema.sql").read_text()
+        with self.connect(project_id) as connection:
+            connection.executescript(schema)
+
+    def rebuild(self, project_id: str) -> None:
+        self.initialize(project_id)
+        project = self.workspace.project_path(project_id)
+        formal = [project / "project.yaml"]
+        formal.extend((project / "canon").rglob("*.md"))
+        formal.extend((project / "memory").rglob("*.md"))
+        formal.extend((project / "memory").rglob("*.yaml"))
+        with self.connect(project_id) as connection:
+            connection.execute("DELETE FROM content_fts")
+            connection.executemany(
+                "INSERT INTO content_fts(path, content) VALUES (?, ?)",
+                (
+                    (str(path.relative_to(project)), path.read_text())
+                    for path in sorted(formal)
+                    if path.is_file()
+                ),
+            )
+
+    def search(self, project_id: str, query: str) -> list[str]:
+        if len(query.strip()) < 3:
+            raise SearchQueryError("FTS query must contain at least three characters")
+        with self.connect(project_id) as connection:
+            rows = connection.execute(
+                "SELECT path FROM content_fts WHERE content_fts MATCH ? ORDER BY path", (query,)
+            ).fetchall()
+        return [str(row[0]) for row in rows]
