@@ -35,7 +35,18 @@ class DatabaseRepository:
                     raise DatabaseSchemaError("schema version is missing")
                 version = str(row[0])
             if version is None or version == "1":
-                connection.executescript(schema)
+                migration = f"""BEGIN IMMEDIATE;
+{schema}
+INSERT INTO metadata(key, value) VALUES ('schema_version', '2')
+ON CONFLICT(key) DO UPDATE SET value = excluded.value;
+COMMIT;
+"""
+                try:
+                    connection.executescript(migration)
+                except sqlite3.Error:
+                    if connection.in_transaction:
+                        connection.rollback()
+                    raise
             elif version != "2":
                 raise DatabaseSchemaError(f"unsupported schema version: {version}")
 

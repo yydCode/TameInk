@@ -1,8 +1,9 @@
+import sqlite3
 from pathlib import Path
 
 import pytest
 
-from app.domain.errors import SearchQueryError, WorkspacePathViolationError
+from app.domain.errors import DatabaseSchemaError, SearchQueryError, WorkspacePathViolationError
 from app.domain.project import ConfirmedContent, MemoryRecord, Project
 from app.repositories.canon import CanonRepository
 from app.repositories.database import DatabaseRepository
@@ -99,7 +100,7 @@ def test_initialization_rejects_unknown_schema_versions(tmp_path: Path, version:
             "INSERT INTO metadata(key, value) VALUES ('schema_version', ?)", (version,)
         )
 
-    with pytest.raises(Exception, match="schema version"):
+    with pytest.raises(DatabaseSchemaError, match="schema version"):
         database.initialize("story-01")
 
 
@@ -108,14 +109,66 @@ def test_initialization_rejects_metadata_without_schema_version(tmp_path: Path) 
     with database.connect("story-01") as connection:
         connection.execute("CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
 
-    with pytest.raises(Exception, match="schema version"):
+    with pytest.raises(DatabaseSchemaError, match="schema version"):
         database.initialize("story-01")
-        assert (
-            connection.execute(
-                "SELECT name FROM sqlite_master WHERE name = 'content_fts'"
-            ).fetchone()[0]
-            == "content_fts"
+
+
+def test_v1_migration_rolls_back_all_ddl_and_can_retry_after_failure(tmp_path: Path) -> None:
+    _, _, database = setup_project(tmp_path)
+    with database.connect("story-01") as connection:
+        connection.executescript(
+            """
+            CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+            INSERT INTO metadata(key, value) VALUES ('schema_version', '1');
+            CREATE VIRTUAL TABLE content_fts USING fts5(
+                path UNINDEXED, content, tokenize = 'trigram'
+            );
+            INSERT INTO content_fts(path, content) VALUES ('canon/outline.md', '原子迁移保留');
+            CREATE TABLE tasks (id TEXT PRIMARY KEY);
+            """
         )
+
+    with pytest.raises(sqlite3.OperationalError):
+        database.initialize("story-01")
+
+    with database.connect("story-01") as connection:
+        assert connection.execute(
+            "SELECT value FROM metadata WHERE key = 'schema_version'"
+        ).fetchone()[0] == "1"
+        objects = {
+            row[0]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type IN ('table', 'index', 'trigger')"
+            )
+        }
+        assert {
+            "task_events",
+            "one_active_write_task_per_project",
+            "enforce_task_status_transition",
+        }.isdisjoint(objects)
+        assert connection.execute(
+            "SELECT path FROM content_fts WHERE content_fts MATCH '原子迁移'"
+        ).fetchone()[0] == "canon/outline.md"
+        connection.execute("DROP TABLE tasks")
+
+    database.initialize("story-01")
+
+    with database.connect("story-01") as connection:
+        assert connection.execute(
+            "SELECT value FROM metadata WHERE key = 'schema_version'"
+        ).fetchone()[0] == "2"
+        objects = {
+            row[0]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type IN ('table', 'index', 'trigger')"
+            )
+        }
+    assert {
+        "tasks",
+        "task_events",
+        "one_active_write_task_per_project",
+        "enforce_task_status_transition",
+    } <= objects
 
 
 def test_rebuild_restores_core_fts_index_from_formal_files(tmp_path: Path) -> None:
