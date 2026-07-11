@@ -1,17 +1,23 @@
 import json
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
+from app.domain.task import TaskKind
 from app.main import create_app
+from app.repositories.database import DatabaseRepository
+from app.repositories.tasks import TasksRepository
 from app.repositories.workspace import WorkspaceRepository
+from app.workflows.task_service import TaskService
 
 
 @pytest.fixture
-def client(tmp_path: Path) -> TestClient:
+def client(tmp_path: Path) -> Iterator[TestClient]:
     WorkspaceRepository(tmp_path).create_project("story-01")
-    return TestClient(create_app(tmp_path))
+    with TestClient(create_app(tmp_path)) as test_client:
+        yield test_client
 
 
 def create_task(client: TestClient, kind: str = "write") -> dict[str, object]:
@@ -132,3 +138,48 @@ def test_sse_with_current_id_returns_an_empty_backlog(client: TestClient) -> Non
 
     assert response.status_code == 200
     assert response.text == ""
+
+
+def test_lifespan_initializes_once_and_get_dependencies_do_not_write_schema(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = WorkspaceRepository(tmp_path)
+    workspace.create_project("story-01")
+    database = DatabaseRepository(workspace)
+    database.initialize("story-01")
+    task = TaskService(TasksRepository(database, "story-01")).create(TaskKind.READ)
+    calls: list[str] = []
+    real_initialize = DatabaseRepository.initialize
+
+    def record_initialize(self: DatabaseRepository, project_id: str) -> None:
+        calls.append(project_id)
+        real_initialize(self, project_id)
+
+    monkeypatch.setattr(DatabaseRepository, "initialize", record_initialize)
+
+    with TestClient(create_app(tmp_path)) as lifespan_client:
+        for _ in range(2):
+            assert lifespan_client.get(f"/api/projects/story-01/tasks/{task.id}").status_code == 200
+            assert (
+                lifespan_client.get(
+                    f"/api/projects/story-01/tasks/{task.id}/events?follow=false"
+                ).status_code
+                == 200
+            )
+
+    assert calls == ["story-01"]
+
+
+def test_lifespan_surfaces_initialization_failure_before_serving_requests(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    WorkspaceRepository(tmp_path).create_project("story-01")
+    monkeypatch.setattr(
+        DatabaseRepository,
+        "initialize",
+        lambda _self, _project_id: (_ for _ in ()).throw(RuntimeError("migration failed")),
+    )
+
+    with pytest.raises(RuntimeError, match="migration failed"):
+        with TestClient(create_app(tmp_path)):
+            pass

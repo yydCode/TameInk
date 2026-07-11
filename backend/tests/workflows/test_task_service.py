@@ -1,4 +1,6 @@
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Barrier
 
 import pytest
 
@@ -99,3 +101,51 @@ def test_startup_recovery_interrupts_only_running_tasks_and_is_idempotent(tmp_pa
     assert tasks.get(pending.id).status is TaskStatus.PENDING
     assert tasks.get(approval.id).status is TaskStatus.AWAITING_APPROVAL
     assert [event.type for event in tasks.events(running.id)].count("task.recovered") == 1
+
+
+def test_concurrent_recovery_counts_only_its_own_transition_and_writes_one_event(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    first = service(tmp_path)
+    running = first.create(TaskKind.READ)
+    first.start(running.id)
+    second = TaskService(TasksRepository(first.repository.database, "story-01"))
+    barrier = Barrier(2)
+    real_list = TasksRepository.list_by_status
+
+    def synchronized_list(repository: TasksRepository, status: TaskStatus) -> list[object]:
+        result = real_list(repository, status)
+        barrier.wait()
+        return result
+
+    monkeypatch.setattr(TasksRepository, "list_by_status", synchronized_list)
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        outcomes = list(executor.map(lambda item: item.recover_interrupted(), [first, second]))
+
+    assert sorted(outcomes) == [0, 1]
+    assert first.get(running.id).status is TaskStatus.INTERRUPTED
+    assert [event.type for event in first.events(running.id)].count("task.recovered") == 1
+
+
+def test_recovery_does_not_swallow_cas_miss_to_an_unexpected_state(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tasks = service(tmp_path)
+    running = tasks.create(TaskKind.READ)
+    tasks.start(running.id)
+    real_transition = tasks.repository.transition
+
+    def cancelled_by_other_writer(*_args: object, **_kwargs: object) -> object:
+        real_transition(
+            running.id,
+            TaskStatus.RUNNING,
+            TaskStatus.CANCELLED,
+            "task.cancelled",
+        )
+        raise InvalidTaskTransitionError("task status changed concurrently")
+
+    monkeypatch.setattr(tasks.repository, "transition", cancelled_by_other_writer)
+
+    with pytest.raises(InvalidTaskTransitionError):
+        tasks.recover_interrupted()

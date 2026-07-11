@@ -22,7 +22,6 @@ class CreateTaskRequest(BaseModel):
 def task_service(request: Request, project_id: str) -> TaskService:
     workspace: WorkspaceRepository = request.app.state.workspace
     database = DatabaseRepository(workspace)
-    database.initialize(project_id)
     return TaskService(TasksRepository(database, project_id))
 
 

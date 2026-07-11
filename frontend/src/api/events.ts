@@ -30,6 +30,7 @@ interface SubscribeOptions {
   onConnectionChange: (connection: EventConnection) => void;
   fetcher?: typeof fetch;
   reconnectDelayMs?: number;
+  lastEventId?: number;
 }
 
 export interface EventSubscription {
@@ -91,22 +92,30 @@ function parseTaskEvent(value: unknown): TaskEvent {
 }
 
 export function parseSseMessages(input: string): SseMessage[] {
-  if (!input.endsWith("\n\n")) {
+  const normalized = input.replace(/\r\n|\r/g, "\n");
+  if (!normalized.endsWith("\n\n")) {
     throw new Error("EVENT_STREAM_INVALID: incomplete event frame");
   }
-  return input
+  return normalized
     .slice(0, -2)
     .split("\n\n")
     .map((block) => {
       const fields = new Map<string, string>();
+      const dataLines: string[] = [];
       for (const line of block.split("\n")) {
-        const separator = line.indexOf(": ");
+        const separator = line.indexOf(":");
         if (separator <= 0) throw new Error("EVENT_STREAM_INVALID: malformed SSE field");
         const key = line.slice(0, separator);
-        if (fields.has(key)) throw new Error("EVENT_STREAM_INVALID: duplicate SSE field");
-        fields.set(key, line.slice(separator + 2));
+        const rawValue = line.slice(separator + 1);
+        const value = rawValue.startsWith(" ") ? rawValue.slice(1) : rawValue;
+        if (key === "data") {
+          dataLines.push(value);
+        } else {
+          if (fields.has(key)) throw new Error("EVENT_STREAM_INVALID: duplicate SSE field");
+          fields.set(key, value);
+        }
       }
-      if (fields.size !== 3 || !fields.has("id") || !fields.has("event") || !fields.has("data")) {
+      if (fields.size !== 2 || !fields.has("id") || !fields.has("event") || dataLines.length === 0) {
         throw new Error("EVENT_STREAM_INVALID: required SSE fields are missing");
       }
       const rawId = fields.get("id") ?? "";
@@ -115,7 +124,7 @@ export function parseSseMessages(input: string): SseMessage[] {
       if (!Number.isSafeInteger(id)) throw new Error("EVENT_STREAM_INVALID: invalid event id");
       let decoded: unknown;
       try {
-        decoded = JSON.parse(fields.get("data") ?? "");
+        decoded = JSON.parse(dataLines.join("\n"));
       } catch (cause) {
         throw new Error("EVENT_STREAM_INVALID: invalid event JSON", { cause });
       }
@@ -129,12 +138,16 @@ export function parseSseMessages(input: string): SseMessage[] {
 }
 
 function delay(milliseconds: number, signal: AbortSignal): Promise<void> {
+  if (signal.aborted) return Promise.resolve();
   return new Promise((resolve) => {
-    const timeout = setTimeout(resolve, milliseconds);
-    signal.addEventListener("abort", () => {
+    const finish = () => {
       clearTimeout(timeout);
+      signal.removeEventListener("abort", onAbort);
       resolve();
-    }, { once: true });
+    };
+    const onAbort = () => finish();
+    const timeout = setTimeout(finish, milliseconds);
+    signal.addEventListener("abort", onAbort, { once: true });
   });
 }
 
@@ -170,6 +183,11 @@ async function responseError(response: Response): Promise<EventStreamError> {
   );
 }
 
+function frameBoundary(input: string): { index: number; length: number } | undefined {
+  const match = /\r\n\r\n|\n\n|\r\r/.exec(input);
+  return match ? { index: match.index, length: match[0].length } : undefined;
+}
+
 export function subscribeTaskEvents(
   projectId: string,
   taskId: string,
@@ -178,15 +196,22 @@ export function subscribeTaskEvents(
   const controller = new AbortController();
   const fetcher = options.fetcher ?? fetch;
   const reconnectDelayMs = options.reconnectDelayMs ?? 1_000;
-  let lastId = 0;
+  const initialLastId = options.lastEventId ?? 0;
+  if (!Number.isSafeInteger(initialLastId) || initialLastId < 0) {
+    throw new Error("lastEventId must be a non-negative safe integer");
+  }
+  let lastId = initialLastId;
 
   const done = (async () => {
     options.onConnectionChange("connecting");
     while (!controller.signal.aborted) {
+      let response: Response | undefined;
+      let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+      let stop = false;
       try {
         const headers: Record<string, string> = { Accept: "text/event-stream" };
         if (lastId > 0) headers["Last-Event-ID"] = String(lastId);
-        const response = await fetcher(
+        response = await fetcher(
           `/api/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(taskId)}/events`,
           { method: "GET", headers, signal: controller.signal },
         );
@@ -197,23 +222,35 @@ export function subscribeTaskEvents(
           throw new Error("EVENT_STREAM_UNAVAILABLE: response body is missing");
         }
         options.onConnectionChange("connected");
-        const reader = response.body.getReader();
+        reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
         while (!controller.signal.aborted) {
           const result = await reader.read();
           buffer += decoder.decode(result.value, { stream: !result.done });
-          let boundary = buffer.indexOf("\n\n");
-          while (boundary >= 0) {
-            const frame = buffer.slice(0, boundary + 2);
-            buffer = buffer.slice(boundary + 2);
+          let boundary = frameBoundary(buffer);
+          while (boundary) {
+            const frame = buffer.slice(0, boundary.index + boundary.length);
+            buffer = buffer.slice(boundary.index + boundary.length);
             for (const message of parseSseMessages(frame)) {
-              if (message.id > lastId) {
-                lastId = message.id;
+              if (message.id <= lastId) continue;
+              if (message.id !== lastId + 1) {
+                throw new Error("EVENT_STREAM_INVALID: event sequence contains a gap");
+              }
+              lastId = message.id;
+              try {
                 options.onEvent(message);
+              } catch (cause) {
+                throw new EventStreamError(
+                  "EVENT_STREAM_CONSUMER_ERROR",
+                  "Event stream consumer rejected an event",
+                  0,
+                  cause,
+                  false,
+                );
               }
             }
-            boundary = buffer.indexOf("\n\n");
+            boundary = frameBoundary(buffer);
           }
           if (result.done) {
             if (buffer.length > 0) throw new Error("EVENT_STREAM_INVALID: incomplete event frame");
@@ -229,9 +266,29 @@ export function subscribeTaskEvents(
           normalized.message.startsWith("EVENT_STREAM_INVALID") ||
           (normalized instanceof EventStreamError && !normalized.retryable)
         ) {
-          break;
+          stop = true;
+        }
+      } finally {
+        if (reader) {
+          try {
+            await reader.cancel();
+          } catch {
+            // Cleanup failure must not replace the stream error.
+          }
+          try {
+            reader.releaseLock();
+          } catch {
+            // A reader may already have released its lock.
+          }
+        } else if (response?.body) {
+          try {
+            await response.body.cancel();
+          } catch {
+            // Cleanup failure must not replace the response error.
+          }
         }
       }
+      if (stop) break;
       if (!controller.signal.aborted) {
         options.onConnectionChange("reconnecting");
         await delay(reconnectDelayMs, controller.signal);

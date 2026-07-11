@@ -59,9 +59,15 @@ class TaskService:
 
     def recover_interrupted(self) -> int:
         running = self.repository.list_by_status(TaskStatus.RUNNING)
+        recovered = 0
         for task in running:
-            self._transition(task.id, TaskStatus.INTERRUPTED, "task.recovered")
-        return len(running)
+            try:
+                self._transition(task.id, TaskStatus.INTERRUPTED, "task.recovered")
+                recovered += 1
+            except InvalidTaskTransitionError:
+                if self.get(task.id).status is not TaskStatus.INTERRUPTED:
+                    raise
+        return recovered
 
     def _transition(self, task_id: str, target: TaskStatus, event_type: str) -> Task:
         current = self.get(task_id)

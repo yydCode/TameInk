@@ -2,7 +2,7 @@ import re
 import sqlite3
 from pathlib import Path
 
-from app.domain.errors import SearchQueryError
+from app.domain.errors import DatabaseSchemaError, SearchQueryError
 from app.domain.paths import iter_formal_files
 from app.repositories.workspace import WorkspaceRepository
 
@@ -22,7 +22,22 @@ class DatabaseRepository:
     def initialize(self, project_id: str) -> None:
         schema = Path(__file__).with_name("schema.sql").read_text()
         with self.connect(project_id) as connection:
-            connection.executescript(schema)
+            metadata = connection.execute(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'metadata'"
+            ).fetchone()
+            if metadata is None:
+                version = None
+            else:
+                row = connection.execute(
+                    "SELECT value FROM metadata WHERE key = 'schema_version'"
+                ).fetchone()
+                if row is None:
+                    raise DatabaseSchemaError("schema version is missing")
+                version = str(row[0])
+            if version is None or version == "1":
+                connection.executescript(schema)
+            elif version != "2":
+                raise DatabaseSchemaError(f"unsupported schema version: {version}")
 
     def rebuild(self, project_id: str) -> None:
         self.initialize(project_id)

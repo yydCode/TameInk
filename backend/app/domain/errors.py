@@ -52,3 +52,7 @@ class TaskNotFoundError(TameInkError):
 
 class ActiveTaskConflictError(TameInkError):
     code = "ACTIVE_TASK_CONFLICT"
+
+
+class DatabaseSchemaError(TameInkError):
+    code = "DATABASE_SCHEMA_INVALID"

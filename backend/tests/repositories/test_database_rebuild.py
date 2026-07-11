@@ -45,6 +45,71 @@ def test_initialization_is_repeatable_and_records_schema_version(tmp_path: Path)
             ).fetchone()[0]
             == "2"
         )
+
+
+def test_initialization_migrates_real_v1_database_without_losing_fts_data(tmp_path: Path) -> None:
+    _, _, database = setup_project(tmp_path)
+    with database.connect("story-01") as connection:
+        connection.executescript(
+            """
+            CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+            INSERT INTO metadata(key, value) VALUES ('schema_version', '1');
+            CREATE VIRTUAL TABLE content_fts USING fts5(
+                path UNINDEXED, content, tokenize = 'trigram'
+            );
+            INSERT INTO content_fts(path, content) VALUES ('canon/outline.md', '保留迁移内容');
+            """
+        )
+
+    database.initialize("story-01")
+
+    with database.connect("story-01") as connection:
+        assert (
+            connection.execute(
+                "SELECT value FROM metadata WHERE key = 'schema_version'"
+            ).fetchone()[0]
+            == "2"
+        )
+        assert (
+            connection.execute(
+                "SELECT path FROM content_fts WHERE content_fts MATCH '迁移内容'"
+            ).fetchone()[0]
+            == "canon/outline.md"
+        )
+        objects = {
+            row[0]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type IN ('table', 'index', 'trigger')"
+            )
+        }
+    assert {
+        "tasks",
+        "task_events",
+        "one_active_write_task_per_project",
+        "enforce_task_status_transition",
+    } <= objects
+
+
+@pytest.mark.parametrize("version", ["0", "3", "future"])
+def test_initialization_rejects_unknown_schema_versions(tmp_path: Path, version: str) -> None:
+    _, _, database = setup_project(tmp_path)
+    with database.connect("story-01") as connection:
+        connection.execute("CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+        connection.execute(
+            "INSERT INTO metadata(key, value) VALUES ('schema_version', ?)", (version,)
+        )
+
+    with pytest.raises(Exception, match="schema version"):
+        database.initialize("story-01")
+
+
+def test_initialization_rejects_metadata_without_schema_version(tmp_path: Path) -> None:
+    _, _, database = setup_project(tmp_path)
+    with database.connect("story-01") as connection:
+        connection.execute("CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+
+    with pytest.raises(Exception, match="schema version"):
+        database.initialize("story-01")
         assert (
             connection.execute(
                 "SELECT name FROM sqlite_master WHERE name = 'content_fts'"
