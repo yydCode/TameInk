@@ -129,3 +129,16 @@ def test_search_does_not_mask_unrelated_database_errors(tmp_path: Path) -> None:
         database.search("story-01", "valid query")
 
     assert not isinstance(raised.value, SearchQueryError)
+
+
+def test_search_does_not_treat_missing_fixed_path_column_as_query_error(tmp_path: Path) -> None:
+    _, _, database = setup_project(tmp_path)
+    database.initialize("story-01")
+    with database.connect("story-01") as connection:
+        connection.execute("DROP TABLE content_fts")
+        connection.execute("CREATE VIRTUAL TABLE content_fts USING fts5(content)")
+
+    with pytest.raises(Exception) as raised:
+        database.search("story-01", "valid query")
+
+    assert not isinstance(raised.value, SearchQueryError)

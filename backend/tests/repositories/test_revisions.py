@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 from dulwich.objects import Blob, Commit, Tree
+from dulwich.repo import Repo
 from pydantic import ValidationError
 
 from app.domain.errors import (
@@ -14,7 +15,7 @@ from app.domain.errors import (
     StorageWriteError,
     WorkspacePathViolationError,
 )
-from app.domain.revision import RevisionWrite
+from app.domain.revision import Revision, RevisionWrite
 from app.repositories.revisions import RevisionRepository
 from app.repositories.workspace import WorkspaceRepository
 
@@ -25,6 +26,98 @@ def repository(tmp_path: Path) -> tuple[WorkspaceRepository, RevisionRepository]
     return workspace, RevisionRepository(workspace)
 
 
+def baseline(revisions: RevisionRepository) -> str:
+    revision = revisions.current_revision("story-01")
+    assert revision is not None
+    return revision
+
+
+def test_initialization_creates_reachable_baseline_from_existing_formal_files(
+    tmp_path: Path,
+) -> None:
+    workspace = WorkspaceRepository(tmp_path)
+    project = workspace.create_project("story-01")
+    (project / "project.yaml").write_text("id: story-01\ntitle: 书\nlanguage: zh-CN\n")
+    (project / "canon/outline.md").write_text("已有大纲\n")
+    revisions = RevisionRepository(workspace)
+
+    baseline = revisions.current_revision("story-01")
+
+    assert baseline is not None
+    assert revisions.history("story-01")[0].message == "初始化：建立作品版本基线"
+    _, repo = revisions._repo("story-01")
+    commit = repo.object_store[baseline.encode()]
+    assert revisions._tree_files(repo, repo.object_store[commit.tree]) == {
+        "canon/outline.md": "已有大纲\n".encode(),
+        "project.yaml": "id: story-01\ntitle: 书\nlanguage: zh-CN\n".encode(),
+    }
+
+
+@pytest.mark.parametrize("drift", ["add", "modify", "delete"])
+def test_confirm_rejects_formal_worktree_drift_without_log(tmp_path: Path, drift: str) -> None:
+    workspace = WorkspaceRepository(tmp_path)
+    project = workspace.create_project("story-01")
+    (project / "canon/outline.md").write_text("基线\n")
+    revisions = RevisionRepository(workspace)
+    baseline = revisions.current_revision("story-01")
+    assert baseline is not None
+    if drift == "add":
+        (project / "canon/chapters/0001.md").write_text("外部新增\n")
+    elif drift == "modify":
+        (project / "canon/outline.md").write_text("外部修改\n")
+    else:
+        (project / "canon/outline.md").unlink()
+
+    with pytest.raises(CanonVersionConflictError):
+        revisions.confirm(
+            "story-01",
+            RevisionWrite(path="canon/premise.md", content="内容\n", message="确认：内容"),
+            baseline,
+        )
+
+    assert revisions.current_revision("story-01") == baseline
+    assert not (project / ".tame-ink/recovery.json").exists()
+
+
+def test_recover_rejects_legacy_none_old_ref_log(tmp_path: Path) -> None:
+    workspace = WorkspaceRepository(tmp_path)
+    project = workspace.create_project("story-01")
+    repo = Repo.init(str(project))
+    repo.refs.set_symbolic_ref(b"HEAD", b"refs/heads/main")
+    revisions = RevisionRepository(workspace)
+    log = workspace.resolve_project_path("story-01", ".tame-ink/recovery.json")
+    revisions._write_log(log, {"old_ref": None, "new_ref": "f" * 40, "old_files": {}})
+
+    with pytest.raises(RecoveryIncompleteError):
+        revisions.recover("story-01")
+
+    assert log.exists()
+    assert b"refs/heads/main" not in repo.refs
+
+
+def test_first_transaction_recovery_log_has_baseline_old_ref(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, revisions = repository(tmp_path)
+    baseline = revisions.current_revision("story-01")
+    captured: list[dict[str, object]] = []
+    real_write_log = revisions._write_log
+
+    def capture(path: Path, record: dict[str, object]) -> None:
+        captured.append(record.copy())
+        real_write_log(path, record)
+
+    monkeypatch.setattr(revisions, "_write_log", capture)
+    revisions.confirm(
+        "story-01",
+        RevisionWrite(path="canon/outline.md", content="内容\n", message="确认：内容"),
+        baseline,
+    )
+
+    assert baseline is not None
+    assert captured[0]["old_ref"] == baseline
+
+
 def test_confirm_creates_chinese_commit_and_lists_history(tmp_path: Path) -> None:
     workspace, revisions = repository(tmp_path)
     revision = revisions.confirm(
@@ -32,7 +125,7 @@ def test_confirm_creates_chinese_commit_and_lists_history(tmp_path: Path) -> Non
         RevisionWrite(
             path="canon/chapters/0001.md", content="# 第一章\n\n初稿。\n", message="确认：第一章"
         ),
-        expected_revision=None,
+        expected_revision=baseline(revisions),
     )
 
     assert (
@@ -40,9 +133,9 @@ def test_confirm_creates_chinese_commit_and_lists_history(tmp_path: Path) -> Non
         == "# 第一章\n\n初稿。\n"
     )
     assert revisions.current_revision("story-01") == revision.id
-    assert [(item.id, item.message) for item in revisions.history("story-01")] == [
-        (revision.id, "确认：第一章")
-    ]
+    history = revisions.history("story-01")
+    assert (history[0].id, history[0].message) == (revision.id, "确认：第一章")
+    assert history[1].message == "初始化：建立作品版本基线"
 
 
 def test_compare_and_swap_rejects_stale_revision(tmp_path: Path) -> None:
@@ -50,7 +143,7 @@ def test_compare_and_swap_rejects_stale_revision(tmp_path: Path) -> None:
     revisions.confirm(
         "story-01",
         RevisionWrite(path="canon/outline.md", content="# 大纲\n", message="确认：大纲"),
-        None,
+        baseline(revisions),
     )
 
     with pytest.raises(CanonVersionConflictError) as raised:
@@ -68,7 +161,7 @@ def test_rollback_restores_file_and_ref(tmp_path: Path) -> None:
     first = revisions.confirm(
         "story-01",
         RevisionWrite(path="canon/outline.md", content="第一版\n", message="确认：第一版"),
-        None,
+        baseline(revisions),
     )
     second = revisions.confirm(
         "story-01",
@@ -82,11 +175,13 @@ def test_rollback_restores_file_and_ref(tmp_path: Path) -> None:
     assert rollback.message.startswith("回滚：")
     assert revisions.current_revision("story-01") == rollback.id
     assert workspace.resolve_project_path("story-01", "canon/outline.md").read_text() == "第一版\n"
-    assert [item.id for item in revisions.history("story-01")] == [
+    history = revisions.history("story-01")
+    assert [item.id for item in history[:3]] == [
         rollback.id,
         second.id,
         first.id,
     ]
+    assert history[3].message == "初始化：建立作品版本基线"
 
 
 def test_rollback_removes_files_added_after_target_revision(tmp_path: Path) -> None:
@@ -94,7 +189,7 @@ def test_rollback_removes_files_added_after_target_revision(tmp_path: Path) -> N
     first = revisions.confirm(
         "story-01",
         RevisionWrite(path="canon/outline.md", content="第一版\n", message="确认：第一版"),
-        None,
+        baseline(revisions),
     )
     second = revisions.confirm(
         "story-01",
@@ -116,7 +211,7 @@ def test_rollback_fsyncs_directory_after_deleting_file(
     first = revisions.confirm(
         "story-01",
         RevisionWrite(path="canon/outline.md", content="第一版\n", message="确认：第一版"),
-        None,
+        baseline(revisions),
     )
     second = revisions.confirm(
         "story-01",
@@ -140,7 +235,7 @@ def test_rollback_concurrent_cas_failure_keeps_files_and_external_ref(
     first = revisions.confirm(
         "story-01",
         RevisionWrite(path="canon/outline.md", content="第一版\n", message="确认：第一版"),
-        None,
+        baseline(revisions),
     )
     second = revisions.confirm(
         "story-01",
@@ -176,7 +271,7 @@ def test_confirm_rejects_path_escape_before_creating_recovery_log(tmp_path: Path
         revisions.confirm(
             "story-01",
             RevisionWrite(path="canon/../escape.md", content="越界\n", message="确认：越界"),
-            None,
+            baseline(revisions),
         )
 
     assert not workspace.resolve_project_path("story-01", ".tame-ink/recovery.json").exists()
@@ -190,12 +285,13 @@ def test_confirm_rejects_paths_outside_exact_formal_whitelist(tmp_path: Path, pa
         revisions.confirm(
             "story-01",
             RevisionWrite(path=path, content="内容\n", message="确认：内容"),
-            None,
+            baseline(revisions),
         )
 
 
 def test_confirm_rejects_formal_directory_symlink_escape(tmp_path: Path) -> None:
     workspace, revisions = repository(tmp_path)
+    current = baseline(revisions)
     chapters = workspace.resolve_project_path("story-01", "canon/chapters")
     chapters.rmdir()
     outside = tmp_path / "outside"
@@ -207,11 +303,11 @@ def test_confirm_rejects_formal_directory_symlink_escape(tmp_path: Path) -> None
         revisions.confirm(
             "story-01",
             RevisionWrite(path="canon/outline.md", content="大纲\n", message="确认：大纲"),
-            None,
+            current,
         )
 
     assert raised.value.code == "WORKSPACE_PATH_VIOLATION"
-    assert revisions.history("story-01") == []
+    assert [item.id for item in revisions.history("story-01")] == [current]
 
 
 def test_git_ref_failure_restores_original_file(
@@ -221,7 +317,7 @@ def test_git_ref_failure_restores_original_file(
     first = revisions.confirm(
         "story-01",
         RevisionWrite(path="canon/outline.md", content="旧版\n", message="确认：旧版"),
-        None,
+        baseline(revisions),
     )
     monkeypatch.setattr(
         revisions, "_update_ref", lambda *args: (_ for _ in ()).throw(OSError("ref failed"))
@@ -245,7 +341,7 @@ def test_concurrent_ref_change_remains_version_conflict(
     first = revisions.confirm(
         "story-01",
         RevisionWrite(path="canon/outline.md", content="旧版\n", message="确认：旧版"),
-        None,
+        baseline(revisions),
     )
     monkeypatch.setattr(
         revisions,
@@ -268,7 +364,7 @@ def test_commit_construction_failure_clears_recovery_log(
     first = revisions.confirm(
         "story-01",
         RevisionWrite(path="canon/outline.md", content="旧版\n", message="确认：旧版"),
-        None,
+        baseline(revisions),
     )
     monkeypatch.setattr(
         revisions, "_build_commit", lambda *args: (_ for _ in ()).throw(OSError("commit failed"))
@@ -292,7 +388,7 @@ def test_file_replace_failure_restores_git_ref(
     first = revisions.confirm(
         "story-01",
         RevisionWrite(path="canon/outline.md", content="旧版\n", message="确认：旧版"),
-        None,
+        baseline(revisions),
     )
     monkeypatch.setattr(
         revisions, "_replace_file", lambda *args: (_ for _ in ()).throw(OSError("replace failed"))
@@ -316,7 +412,7 @@ def test_incomplete_recovery_blocks_later_writes(
     first = revisions.confirm(
         "story-01",
         RevisionWrite(path="canon/outline.md", content="旧版\n", message="确认：旧版"),
-        None,
+        baseline(revisions),
     )
     monkeypatch.setattr(
         revisions, "_replace_file", lambda *args: (_ for _ in ()).throw(OSError("replace failed"))
@@ -346,7 +442,7 @@ def test_recovery_does_not_overwrite_an_unexpected_ref(
     first = revisions.confirm(
         "story-01",
         RevisionWrite(path="canon/outline.md", content="旧版\n", message="确认：旧版"),
-        None,
+        baseline(revisions),
     )
     _, repo = revisions._repo("story-01")
     competing = b"1" * 40
@@ -374,7 +470,7 @@ def test_rollback_maps_invalid_or_unreachable_revision(tmp_path: Path, kind: str
     current = revisions.confirm(
         "story-01",
         RevisionWrite(path="canon/outline.md", content="当前版本\n", message="确认：当前版本"),
-        None,
+        baseline(revisions),
     )
     project, repo = revisions._repo("story-01")
     if kind == "random":
@@ -407,12 +503,12 @@ def test_rollback_rejects_unsafe_paths_in_ancestor_tree(tmp_path: Path, injected
     ancestor = revisions._build_commit_from_files(
         repo, {injected_path: b"injected"}, None, "malicious ancestor"
     )
-    repo.refs[b"refs/heads/main"] = ancestor
-    current = revisions.confirm(
-        "story-01",
-        RevisionWrite(path="canon/outline.md", content="安全内容\n", message="确认：安全内容"),
-        ancestor.decode(),
+    current_id = revisions._build_commit_from_files(
+        repo, {"canon/outline.md": "安全内容\n".encode()}, ancestor.decode(), "current"
     )
+    repo.refs[b"refs/heads/main"] = current_id
+    (project / "canon/outline.md").write_text("安全内容\n")
+    current = Revision(id=current_id.decode(), message="current")
     original_ref = repo.refs[b"refs/heads/main"]
 
     with pytest.raises(WorkspacePathViolationError):
@@ -431,7 +527,7 @@ def prepare_crash_log(
     first = revisions.confirm(
         "story-01",
         RevisionWrite(path="canon/outline.md", content="旧文件\n", message="确认：旧文件"),
-        None,
+        baseline(revisions),
     )
     project, repo = revisions._repo("story-01")
     write = RevisionWrite(path="canon/outline.md", content="新文件\n", message="确认：新文件")
@@ -498,6 +594,7 @@ def test_recover_maps_corrupt_log_to_stable_error(tmp_path: Path) -> None:
 
 def test_revision_lock_timeout_is_stable_and_preserves_log(tmp_path: Path) -> None:
     workspace, first_writer = repository(tmp_path)
+    current = baseline(first_writer)
     log = workspace.resolve_project_path("story-01", ".tame-ink/recovery.json")
     with first_writer._locked("story-01"):
         log.write_text("first writer")
@@ -505,7 +602,7 @@ def test_revision_lock_timeout_is_stable_and_preserves_log(tmp_path: Path) -> No
             RevisionRepository(workspace, lock_timeout=0).confirm(
                 "story-01",
                 RevisionWrite(path="canon/outline.md", content="内容\n", message="确认：内容"),
-                None,
+                current,
             )
 
     assert raised.value.code == "REVISION_LOCKED"
@@ -517,6 +614,7 @@ def test_control_file_symlink_is_rejected_without_changing_target(
     tmp_path: Path, control: str
 ) -> None:
     workspace, revisions = repository(tmp_path)
+    current = baseline(revisions)
     project = workspace.project_path("story-01")
     target = project / "project.yaml"
     target.write_text("protected")
@@ -530,7 +628,7 @@ def test_control_file_symlink_is_rejected_without_changing_target(
             revisions.confirm(
                 "story-01",
                 RevisionWrite(path="canon/outline.md", content="内容\n", message="确认：内容"),
-                None,
+                current,
             )
 
     assert target.read_text() == "protected"
@@ -568,9 +666,11 @@ def test_lock_symlink_switch_after_initial_validation_is_rejected(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     workspace, revisions = repository(tmp_path)
+    current = baseline(revisions)
     project = workspace.project_path("story-01")
     target = project / "project.yaml"
     target.write_text("protected")
+
     class SwitchingLock:
         def __init__(self, path: str, timeout: float) -> None:
             self.path = Path(path)
@@ -588,7 +688,7 @@ def test_lock_symlink_switch_after_initial_validation_is_rejected(
         revisions.confirm(
             "story-01",
             RevisionWrite(path="canon/outline.md", content="内容\n", message="确认：内容"),
-            None,
+            current,
         )
 
     assert target.read_text() == "protected"

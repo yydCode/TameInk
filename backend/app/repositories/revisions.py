@@ -49,6 +49,9 @@ class RevisionRepository:
         current = self.current_revision(project_id)
         if current != expected_revision:
             raise CanonVersionConflictError(f"expected {expected_revision}, found {current}")
+        if current is None:
+            raise StorageWriteError("project baseline is missing")
+        self._assert_no_drift(repo, project, current)
         self._formal_target(project_id, write.path)
         try:
             commit_id = self._build_commit(repo, project, write, current)
@@ -66,7 +69,7 @@ class RevisionRepository:
         repo: Repo,
         project: Path,
         log: Path,
-        old_ref: str | None,
+        old_ref: str,
         new_ref: bytes,
         files: dict[str, bytes],
     ) -> None:
@@ -124,6 +127,7 @@ class RevisionRepository:
             raise RecoveryIncompleteError(str(log))
         if self.current_revision(project_id) != expected_revision:
             raise CanonVersionConflictError(expected_revision)
+        self._assert_no_drift(repo, project, expected_revision)
         try:
             commit = repo.object_store[revision_id.encode()]
         except (KeyError, ValueError) as error:
@@ -155,7 +159,7 @@ class RevisionRepository:
 
     def recover(self, project_id: str) -> None:
         with self._locked(project_id):
-            project, repo = self._repo(project_id)
+            project, repo = self._open_repo(project_id, ensure_baseline=False)
             log = self._log_path(project_id)
             if not log.exists():
                 return
@@ -178,6 +182,9 @@ class RevisionRepository:
             raise RevisionLockError(project_id) from error
 
     def _repo(self, project_id: str) -> tuple[Path, Repo]:
+        return self._open_repo(project_id, ensure_baseline=True)
+
+    def _open_repo(self, project_id: str, *, ensure_baseline: bool) -> tuple[Path, Repo]:
         project = self.workspace.project_path(project_id)
         git_dir = project / ".git"
         if not git_dir.exists():
@@ -185,7 +192,43 @@ class RevisionRepository:
             repo.refs.set_symbolic_ref(b"HEAD", REF)
         else:
             repo = Repo(str(project))
+        if ensure_baseline:
+            self._ensure_baseline(project, repo)
         return project, repo
+
+    def _ensure_baseline(self, project: Path, repo: Repo) -> None:
+        try:
+            repo.refs[REF]
+            return
+        except KeyError:
+            pass
+        try:
+            baseline = self._build_commit_from_files(
+                repo,
+                self._current_files(project),
+                None,
+                "初始化：建立作品版本基线",
+            )
+            if not repo.refs.set_if_equals(REF, None, baseline):
+                if REF not in repo.refs:
+                    raise OSError("baseline ref compare-and-swap failed")
+        except WorkspacePathViolationError:
+            raise
+        except Exception as error:
+            raise StorageWriteError("cannot create project baseline") from error
+
+    def _assert_no_drift(self, repo: Repo, project: Path, revision_id: str) -> None:
+        try:
+            commit = repo.object_store[revision_id.encode()]
+            if not isinstance(commit, Commit):
+                raise ValueError("HEAD is not a commit")
+            tree_files = self._tree_files(repo, repo.object_store[commit.tree])
+            for relative in tree_files:
+                resolve_formal_path(project, relative)
+        except Exception as error:
+            raise CanonVersionConflictError("current revision cannot be verified") from error
+        if self._current_files(project) != tree_files:
+            raise CanonVersionConflictError("formal worktree differs from current revision")
 
     def _formal_target(self, project_id: str, relative: str) -> Path:
         return resolve_formal_path(self.workspace.project_path(project_id), relative)
@@ -363,6 +406,8 @@ class RevisionRepository:
             old_files = record["old_files"]
             if old_ref is not None and not isinstance(old_ref, str):
                 raise ValueError("invalid old_ref")
+            if old_ref is None:
+                raise ValueError("legacy recovery log without baseline")
             if not isinstance(new_ref, str) or not isinstance(old_files, dict):
                 raise ValueError("invalid recovery log types")
             for relative, content in old_files.items():

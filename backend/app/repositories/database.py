@@ -1,3 +1,4 @@
+import re
 import sqlite3
 from pathlib import Path
 
@@ -49,8 +50,16 @@ class DatabaseRepository:
             if (
                 "fts5: syntax error" in message
                 or "unterminated string" in message
-                or "no such column:" in message
+                or self._query_references_missing_column(query, message)
             ):
                 raise SearchQueryError(query) from error
             raise
         return [str(row[0]) for row in rows]
+
+    @staticmethod
+    def _query_references_missing_column(query: str, message: str) -> bool:
+        prefix = "no such column: "
+        if not message.startswith(prefix):
+            return False
+        column = message.removeprefix(prefix)
+        return re.search(rf"(?:^|\s){re.escape(column)}\s*:", query) is not None
