@@ -165,6 +165,26 @@ def test_confirm_rejects_paths_outside_exact_formal_whitelist(tmp_path: Path, pa
         )
 
 
+def test_confirm_rejects_formal_directory_symlink_escape(tmp_path: Path) -> None:
+    workspace, revisions = repository(tmp_path)
+    chapters = workspace.resolve_project_path("story-01", "canon/chapters")
+    chapters.rmdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "leak.md").write_text("外部泄漏内容")
+    chapters.symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(WorkspacePathViolationError) as raised:
+        revisions.confirm(
+            "story-01",
+            RevisionWrite(path="canon/outline.md", content="大纲\n", message="确认：大纲"),
+            None,
+        )
+
+    assert raised.value.code == "WORKSPACE_PATH_VIOLATION"
+    assert revisions.history("story-01") == []
+
+
 def test_git_ref_failure_restores_original_file(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

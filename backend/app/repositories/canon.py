@@ -11,7 +11,7 @@ from app.domain.errors import (
     StorageWriteError,
     WorkspacePathViolationError,
 )
-from app.domain.paths import validate_formal_path
+from app.domain.paths import resolve_formal_path, validate_formal_path
 from app.domain.project import ConfirmedContent, MemoryRecord, Project
 from app.repositories.workspace import WorkspaceRepository
 
@@ -51,7 +51,7 @@ class CanonRepository:
         pure = validate_formal_path(relative)
         if pure.suffix != suffix:
             raise WorkspacePathViolationError(relative)
-        return self.workspace.resolve_project_path(project_id, relative)
+        return resolve_formal_path(self.workspace.project_path(project_id), relative)
 
     def _write_yaml(self, path: Path, data: dict[str, Any]) -> None:
         try:

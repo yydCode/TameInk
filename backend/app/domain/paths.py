@@ -1,3 +1,4 @@
+import os
 import re
 from collections.abc import Iterator
 from pathlib import Path, PurePosixPath
@@ -48,15 +49,55 @@ def validate_formal_path(value: str) -> PurePosixPath:
     return pure
 
 
+def resolve_formal_path(project: Path, value: str) -> Path:
+    pure = validate_formal_path(value)
+    return _resolve_within_project(project, pure.parts, value)
+
+
+def _resolve_within_project(project: Path, parts: tuple[str, ...], display: str) -> Path:
+    try:
+        root = project.resolve(strict=True)
+    except (OSError, RuntimeError) as error:
+        raise WorkspacePathViolationError(display) from error
+    candidate = project
+    for part in parts:
+        candidate /= part
+        if candidate.is_symlink():
+            raise WorkspacePathViolationError(display)
+        try:
+            candidate.resolve(strict=False).relative_to(root)
+        except (OSError, RuntimeError, ValueError) as error:
+            raise WorkspacePathViolationError(display) from error
+    return candidate
+
+
 def iter_formal_files(project: Path) -> Iterator[Path]:
+    _reject_formal_tree_symlinks(project)
     for exact in sorted(EXACT_FILES):
-        path = project.joinpath(*exact)
+        relative = "/".join(exact)
+        path = resolve_formal_path(project, relative)
         if path.is_file():
             yield path
     for parent, suffix in sorted(LEAF_DIRECTORIES.items()):
-        directory = project.joinpath(*parent)
+        display = "/".join(parent)
+        directory = _resolve_within_project(project, parent, display)
         if directory.is_dir():
             for path in sorted(directory.glob(f"*{suffix}")):
                 if path.is_file():
-                    validate_formal_path(path.relative_to(project).as_posix())
-                    yield path
+                    relative = path.relative_to(project).as_posix()
+                    yield resolve_formal_path(project, relative)
+
+
+def _reject_formal_tree_symlinks(project: Path) -> None:
+    for root_name in ("canon", "memory"):
+        root = project / root_name
+        if root.is_symlink():
+            raise WorkspacePathViolationError(root_name)
+        if not root.exists():
+            continue
+        for current, directories, files in os.walk(root, followlinks=False):
+            current_path = Path(current)
+            for name in directories + files:
+                candidate = current_path / name
+                if candidate.is_symlink():
+                    raise WorkspacePathViolationError(candidate.relative_to(project).as_posix())

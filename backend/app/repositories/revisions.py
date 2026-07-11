@@ -12,8 +12,9 @@ from app.domain.errors import (
     CanonVersionConflictError,
     RecoveryIncompleteError,
     StorageWriteError,
+    TameInkError,
 )
-from app.domain.paths import iter_formal_files, validate_formal_path
+from app.domain.paths import iter_formal_files, resolve_formal_path
 from app.domain.revision import Revision, RevisionWrite
 from app.repositories.workspace import WorkspaceRepository
 
@@ -37,6 +38,8 @@ class RevisionRepository:
         self._formal_target(project_id, write.path)
         try:
             commit_id = self._build_commit(repo, project, write, current)
+        except TameInkError:
+            raise
         except Exception as error:
             raise StorageWriteError(str(error)) from error
         files = self._current_files(project)
@@ -125,8 +128,7 @@ class RevisionRepository:
         return project, repo
 
     def _formal_target(self, project_id: str, relative: str) -> Path:
-        validate_formal_path(relative)
-        return self.workspace.resolve_project_path(project_id, relative)
+        return resolve_formal_path(self.workspace.project_path(project_id), relative)
 
     def _build_commit(
         self, repo: Repo, project: Path, write: RevisionWrite, parent: str | None

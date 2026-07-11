@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from app.domain.errors import SearchQueryError
+from app.domain.errors import SearchQueryError, WorkspacePathViolationError
 from app.domain.project import ConfirmedContent, MemoryRecord, Project
 from app.repositories.canon import CanonRepository
 from app.repositories.database import DatabaseRepository
@@ -89,3 +89,19 @@ def test_rebuild_excludes_files_outside_formal_whitelist(tmp_path: Path) -> None
     database.rebuild("story-01")
 
     assert database.search("story-01", "秘密内容") == []
+
+
+def test_rebuild_rejects_formal_directory_symlink_escape(tmp_path: Path) -> None:
+    workspace, _, database = setup_project(tmp_path)
+    chapters = workspace.resolve_project_path("story-01", "canon/world")
+    chapters.rmdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "leak.md").write_text("外部泄漏内容")
+    chapters.symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(WorkspacePathViolationError) as raised:
+        database.rebuild("story-01")
+
+    assert raised.value.code == "WORKSPACE_PATH_VIOLATION"
+    assert database.search("story-01", "泄漏内容") == []
