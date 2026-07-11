@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { parseSseMessages, subscribeTaskEvents } from "./events";
+import { EventStreamError, parseSseMessages, subscribeTaskEvents } from "./events";
 
 const event = (sequence: number) => ({
   task_id: "00000000-0000-4000-8000-000000000001",
@@ -81,6 +81,66 @@ describe("task event stream", () => {
     await subscription.done;
 
     expect(signal?.aborted).toBe(true);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it("preserves a stable 416 error and stops reconnecting with the stale id", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(response(frame(1)))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            error: {
+              code: "LAST_EVENT_ID_OUT_OF_RANGE",
+              message: "Last-Event-ID exceeds current sequence",
+              details: { maximum: 0 },
+            },
+          }),
+          { status: 416, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+    const errors: Error[] = [];
+    const subscription = subscribeTaskEvents("story-01", event(1).task_id, {
+      fetcher,
+      reconnectDelayMs: 0,
+      onEvent: vi.fn(),
+      onError: (error) => errors.push(error),
+      onConnectionChange: vi.fn(),
+    });
+
+    await subscription.done;
+
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(fetcher.mock.calls[1][1]?.headers).toMatchObject({ "Last-Event-ID": "1" });
+    expect(errors).toEqual([
+      expect.objectContaining({
+        code: "LAST_EVENT_ID_OUT_OF_RANGE",
+        message: "Last-Event-ID exceeds current sequence",
+        details: { maximum: 0 },
+        status: 416,
+      }),
+    ]);
+    expect(errors[0]).toBeInstanceOf(EventStreamError);
+  });
+
+  it.each([400, 404, 409, 422])("does not retry an explicit stable %i client error", async (status) => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({ error: { code: "CLIENT_REQUEST_INVALID", message: "request rejected" } }),
+        { status, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const subscription = subscribeTaskEvents("story-01", event(1).task_id, {
+      fetcher,
+      reconnectDelayMs: 0,
+      onEvent: vi.fn(),
+      onError: vi.fn(),
+      onConnectionChange: vi.fn(),
+    });
+
+    await subscription.done;
+
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
 });

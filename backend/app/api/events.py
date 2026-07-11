@@ -1,4 +1,5 @@
 import asyncio
+import re
 from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, Header, Request
@@ -8,6 +9,7 @@ from app.api.tasks import Service
 from app.domain.task import TaskEvent
 
 router = APIRouter(prefix="/projects/{project_id}/tasks", tags=["task-events"])
+LAST_EVENT_ID_PATTERN = re.compile(r"(?:0|[1-9][0-9]*)\Z")
 
 
 def error_response(status_code: int, code: str, message: str) -> JSONResponse:
@@ -29,16 +31,11 @@ async def stream_events(
     last_event_id: str | None = Header(default=None, alias="Last-Event-ID"),
     follow: bool = True,
 ) -> StreamingResponse | JSONResponse:
-    try:
-        after = 0 if last_event_id is None else int(last_event_id)
-    except ValueError:
+    if last_event_id is not None and LAST_EVENT_ID_PATTERN.fullmatch(last_event_id) is None:
         return error_response(
             422, "LAST_EVENT_ID_INVALID", "Last-Event-ID must be a non-negative integer"
         )
-    if after < 0:
-        return error_response(
-            422, "LAST_EVENT_ID_INVALID", "Last-Event-ID must be a non-negative integer"
-        )
+    after = 0 if last_event_id is None else int(last_event_id)
 
     existing = service.events(task_id)
     maximum = existing[-1].sequence if existing else 0

@@ -37,6 +37,28 @@ export interface EventSubscription {
   done: Promise<void>;
 }
 
+export class EventStreamError extends Error {
+  readonly code: string;
+  readonly details: unknown;
+  readonly status: number;
+  readonly retryable: boolean;
+
+  constructor(
+    code: string,
+    message: string,
+    status: number,
+    details: unknown,
+    retryable: boolean,
+  ) {
+    super(message);
+    this.name = "EventStreamError";
+    this.code = code;
+    this.details = details;
+    this.status = status;
+    this.retryable = retryable;
+  }
+}
+
 const TASK_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const PROJECT_ID = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/;
 const EVENT_KEYS = ["data", "project_id", "sequence", "task_id", "timestamp", "type"];
@@ -116,6 +138,38 @@ function delay(milliseconds: number, signal: AbortSignal): Promise<void> {
   });
 }
 
+async function responseError(response: Response): Promise<EventStreamError> {
+  if (response.status >= 400 && response.status < 500) {
+    let payload: unknown;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = undefined;
+    }
+    if (isRecord(payload) && isRecord(payload.error)) {
+      const code = payload.error.code;
+      const message = payload.error.message;
+      if (typeof code === "string" && code.length > 0 && typeof message === "string") {
+        return new EventStreamError(code, message, response.status, payload.error.details, false);
+      }
+    }
+    return new EventStreamError(
+      "EVENT_STREAM_CLIENT_ERROR",
+      `Event stream request failed with status ${response.status}`,
+      response.status,
+      undefined,
+      false,
+    );
+  }
+  return new EventStreamError(
+    "EVENT_STREAM_UNAVAILABLE",
+    `Event stream request failed with status ${response.status}`,
+    response.status,
+    undefined,
+    true,
+  );
+}
+
 export function subscribeTaskEvents(
   projectId: string,
   taskId: string,
@@ -136,8 +190,11 @@ export function subscribeTaskEvents(
           `/api/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(taskId)}/events`,
           { method: "GET", headers, signal: controller.signal },
         );
-        if (!response.ok || !response.body) {
-          throw new Error(`EVENT_STREAM_UNAVAILABLE: status ${response.status}`);
+        if (!response.ok) {
+          throw await responseError(response);
+        }
+        if (!response.body) {
+          throw new Error("EVENT_STREAM_UNAVAILABLE: response body is missing");
         }
         options.onConnectionChange("connected");
         const reader = response.body.getReader();
@@ -168,7 +225,12 @@ export function subscribeTaskEvents(
         const normalized = error instanceof Error ? error : new Error("EVENT_STREAM_UNAVAILABLE");
         options.onConnectionChange("error");
         options.onError(normalized);
-        if (normalized.message.startsWith("EVENT_STREAM_INVALID")) break;
+        if (
+          normalized.message.startsWith("EVENT_STREAM_INVALID") ||
+          (normalized instanceof EventStreamError && !normalized.retryable)
+        ) {
+          break;
+        }
       }
       if (!controller.signal.aborted) {
         options.onConnectionChange("reconnecting");

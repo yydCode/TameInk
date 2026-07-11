@@ -87,7 +87,7 @@ def test_sse_replays_only_events_after_last_event_id_header(client: TestClient) 
     assert client.get(f"/api/projects/story-01/tasks/{task_id}").json()["status"] == "cancelled"
 
 
-@pytest.mark.parametrize("value", ["-1", "abc", "1.5"])
+@pytest.mark.parametrize("value", ["+1", " 1 ", "01", "", "-1", "abc", "1.5"])
 def test_sse_rejects_invalid_last_event_id(client: TestClient, value: str) -> None:
     task = create_task(client, "read")
     response = client.get(
@@ -97,6 +97,19 @@ def test_sse_rejects_invalid_last_event_id(client: TestClient, value: str) -> No
 
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "LAST_EVENT_ID_INVALID"
+
+
+@pytest.mark.parametrize("value", [None, "0", "1"])
+def test_sse_accepts_canonical_last_event_id(client: TestClient, value: str | None) -> None:
+    task = create_task(client, "read")
+    headers = {} if value is None else {"Last-Event-ID": value}
+
+    response = client.get(
+        f"/api/projects/story-01/tasks/{task['id']}/events?follow=false",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
 
 
 def test_sse_rejects_last_event_id_beyond_current_sequence(client: TestClient) -> None:
