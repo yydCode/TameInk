@@ -1,0 +1,181 @@
+export type TaskStatus =
+  | "pending"
+  | "running"
+  | "awaiting_approval"
+  | "completed"
+  | "failed"
+  | "cancelled"
+  | "interrupted";
+
+export interface TaskEvent {
+  task_id: string;
+  project_id: string;
+  sequence: number;
+  type: string;
+  timestamp: string;
+  data: Record<string, unknown>;
+}
+
+export interface SseMessage {
+  id: number;
+  event: string;
+  data: TaskEvent;
+}
+
+export type EventConnection = "connecting" | "connected" | "reconnecting" | "error";
+
+interface SubscribeOptions {
+  onEvent: (message: SseMessage) => void;
+  onError: (error: Error) => void;
+  onConnectionChange: (connection: EventConnection) => void;
+  fetcher?: typeof fetch;
+  reconnectDelayMs?: number;
+}
+
+export interface EventSubscription {
+  cancel: () => void;
+  done: Promise<void>;
+}
+
+const TASK_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const PROJECT_ID = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/;
+const EVENT_KEYS = ["data", "project_id", "sequence", "task_id", "timestamp", "type"];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function parseTaskEvent(value: unknown): TaskEvent {
+  if (!isRecord(value) || Object.keys(value).sort().join(",") !== EVENT_KEYS.join(",")) {
+    throw new Error("EVENT_STREAM_INVALID: event data fields are invalid");
+  }
+  if (
+    typeof value.task_id !== "string" ||
+    !TASK_ID.test(value.task_id) ||
+    typeof value.project_id !== "string" ||
+    !PROJECT_ID.test(value.project_id) ||
+    !Number.isSafeInteger(value.sequence) ||
+    (value.sequence as number) <= 0 ||
+    typeof value.type !== "string" ||
+    value.type.trim() !== value.type ||
+    value.type.length === 0 ||
+    typeof value.timestamp !== "string" ||
+    Number.isNaN(Date.parse(value.timestamp)) ||
+    !isRecord(value.data)
+  ) {
+    throw new Error("EVENT_STREAM_INVALID: event data schema is invalid");
+  }
+  return value as unknown as TaskEvent;
+}
+
+export function parseSseMessages(input: string): SseMessage[] {
+  if (!input.endsWith("\n\n")) {
+    throw new Error("EVENT_STREAM_INVALID: incomplete event frame");
+  }
+  return input
+    .slice(0, -2)
+    .split("\n\n")
+    .map((block) => {
+      const fields = new Map<string, string>();
+      for (const line of block.split("\n")) {
+        const separator = line.indexOf(": ");
+        if (separator <= 0) throw new Error("EVENT_STREAM_INVALID: malformed SSE field");
+        const key = line.slice(0, separator);
+        if (fields.has(key)) throw new Error("EVENT_STREAM_INVALID: duplicate SSE field");
+        fields.set(key, line.slice(separator + 2));
+      }
+      if (fields.size !== 3 || !fields.has("id") || !fields.has("event") || !fields.has("data")) {
+        throw new Error("EVENT_STREAM_INVALID: required SSE fields are missing");
+      }
+      const rawId = fields.get("id") ?? "";
+      if (!/^[1-9][0-9]*$/.test(rawId)) throw new Error("EVENT_STREAM_INVALID: invalid event id");
+      const id = Number(rawId);
+      if (!Number.isSafeInteger(id)) throw new Error("EVENT_STREAM_INVALID: invalid event id");
+      let decoded: unknown;
+      try {
+        decoded = JSON.parse(fields.get("data") ?? "");
+      } catch (cause) {
+        throw new Error("EVENT_STREAM_INVALID: invalid event JSON", { cause });
+      }
+      const data = parseTaskEvent(decoded);
+      const event = fields.get("event") ?? "";
+      if (data.sequence !== id || data.type !== event) {
+        throw new Error("EVENT_STREAM_INVALID: SSE metadata does not match event data");
+      }
+      return { id, event, data };
+    });
+}
+
+function delay(milliseconds: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    const timeout = setTimeout(resolve, milliseconds);
+    signal.addEventListener("abort", () => {
+      clearTimeout(timeout);
+      resolve();
+    }, { once: true });
+  });
+}
+
+export function subscribeTaskEvents(
+  projectId: string,
+  taskId: string,
+  options: SubscribeOptions,
+): EventSubscription {
+  const controller = new AbortController();
+  const fetcher = options.fetcher ?? fetch;
+  const reconnectDelayMs = options.reconnectDelayMs ?? 1_000;
+  let lastId = 0;
+
+  const done = (async () => {
+    options.onConnectionChange("connecting");
+    while (!controller.signal.aborted) {
+      try {
+        const headers: Record<string, string> = { Accept: "text/event-stream" };
+        if (lastId > 0) headers["Last-Event-ID"] = String(lastId);
+        const response = await fetcher(
+          `/api/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(taskId)}/events`,
+          { method: "GET", headers, signal: controller.signal },
+        );
+        if (!response.ok || !response.body) {
+          throw new Error(`EVENT_STREAM_UNAVAILABLE: status ${response.status}`);
+        }
+        options.onConnectionChange("connected");
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        while (!controller.signal.aborted) {
+          const result = await reader.read();
+          buffer += decoder.decode(result.value, { stream: !result.done });
+          let boundary = buffer.indexOf("\n\n");
+          while (boundary >= 0) {
+            const frame = buffer.slice(0, boundary + 2);
+            buffer = buffer.slice(boundary + 2);
+            for (const message of parseSseMessages(frame)) {
+              if (message.id > lastId) {
+                lastId = message.id;
+                options.onEvent(message);
+              }
+            }
+            boundary = buffer.indexOf("\n\n");
+          }
+          if (result.done) {
+            if (buffer.length > 0) throw new Error("EVENT_STREAM_INVALID: incomplete event frame");
+            break;
+          }
+        }
+      } catch (error) {
+        if (controller.signal.aborted) break;
+        const normalized = error instanceof Error ? error : new Error("EVENT_STREAM_UNAVAILABLE");
+        options.onConnectionChange("error");
+        options.onError(normalized);
+        if (normalized.message.startsWith("EVENT_STREAM_INVALID")) break;
+      }
+      if (!controller.signal.aborted) {
+        options.onConnectionChange("reconnecting");
+        await delay(reconnectDelayMs, controller.signal);
+      }
+    }
+  })();
+
+  return { cancel: () => controller.abort(), done };
+}

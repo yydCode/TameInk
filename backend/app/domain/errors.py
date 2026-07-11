@@ -40,3 +40,15 @@ class InvalidRevisionError(TameInkError):
 
 class RevisionLockError(TameInkError):
     code = "REVISION_LOCKED"
+
+
+class InvalidTaskTransitionError(TameInkError):
+    code = "TASK_TRANSITION_INVALID"
+
+
+class TaskNotFoundError(TameInkError):
+    code = "TASK_NOT_FOUND"
+
+
+class ActiveTaskConflictError(TameInkError):
+    code = "ACTIVE_TASK_CONFLICT"

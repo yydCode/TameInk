@@ -15,7 +15,9 @@ class DatabaseRepository:
         return self.workspace.resolve_project_path(project_id, ".tame-ink/state.db")
 
     def connect(self, project_id: str) -> sqlite3.Connection:
-        return sqlite3.connect(self.path(project_id))
+        connection = sqlite3.connect(self.path(project_id), timeout=5)
+        connection.execute("PRAGMA foreign_keys = ON")
+        return connection
 
     def initialize(self, project_id: str) -> None:
         schema = Path(__file__).with_name("schema.sql").read_text()

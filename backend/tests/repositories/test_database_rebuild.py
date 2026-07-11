@@ -43,7 +43,7 @@ def test_initialization_is_repeatable_and_records_schema_version(tmp_path: Path)
             connection.execute(
                 "SELECT value FROM metadata WHERE key = 'schema_version'"
             ).fetchone()[0]
-            == "1"
+            == "2"
         )
         assert (
             connection.execute(
