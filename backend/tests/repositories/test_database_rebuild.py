@@ -105,3 +105,27 @@ def test_rebuild_rejects_formal_directory_symlink_escape(tmp_path: Path) -> None
 
     assert raised.value.code == "WORKSPACE_PATH_VIOLATION"
     assert database.search("story-01", "泄漏内容") == []
+
+
+@pytest.mark.parametrize("query", ["abc OR", '"abc'])
+def test_search_maps_only_invalid_match_syntax(tmp_path: Path, query: str) -> None:
+    _, _, database = setup_project(tmp_path)
+    database.rebuild("story-01")
+
+    with pytest.raises(SearchQueryError) as raised:
+        database.search("story-01", query)
+
+    assert raised.value.code == "SEARCH_QUERY_INVALID"
+    assert raised.value.__cause__ is not None
+
+
+def test_search_does_not_mask_unrelated_database_errors(tmp_path: Path) -> None:
+    _, _, database = setup_project(tmp_path)
+    database.initialize("story-01")
+    with database.connect("story-01") as connection:
+        connection.execute("DROP TABLE content_fts")
+
+    with pytest.raises(Exception) as raised:
+        database.search("story-01", "valid query")
+
+    assert not isinstance(raised.value, SearchQueryError)

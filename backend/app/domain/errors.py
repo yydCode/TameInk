@@ -32,3 +32,11 @@ class StorageReadError(TameInkError):
 
 class RecoveryIncompleteError(TameInkError):
     code = "RECOVERY_INCOMPLETE"
+
+
+class InvalidRevisionError(TameInkError):
+    code = "INVALID_REVISION"
+
+
+class RevisionLockError(TameInkError):
+    code = "REVISION_LOCKED"

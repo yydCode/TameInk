@@ -90,5 +90,14 @@ class CanonRepository:
                 stream.flush()
                 os.fsync(stream.fileno())
             os.replace(temporary, path)
+            CanonRepository._sync_directory(path.parent)
         except OSError as error:
             raise StorageWriteError(str(path)) from error
+
+    @staticmethod
+    def _sync_directory(path: Path) -> None:
+        directory = os.open(path, os.O_RDONLY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)

@@ -58,3 +58,35 @@ def test_rejects_symlink_escape(tmp_path: Path) -> None:
 
     with pytest.raises(WorkspacePathViolationError):
         workspace.resolve_project_path("story-01", "canon/linked/file.md")
+
+
+def test_rejects_workspace_root_symlink(tmp_path: Path) -> None:
+    actual = tmp_path / "actual"
+    actual.mkdir()
+    linked = tmp_path / "linked"
+    linked.symlink_to(actual, target_is_directory=True)
+
+    with pytest.raises(WorkspacePathViolationError):
+        WorkspaceRepository(linked)
+
+
+def test_rejects_projects_directory_symlink(tmp_path: Path) -> None:
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (tmp_path / "projects").symlink_to(outside, target_is_directory=True)
+    workspace = WorkspaceRepository(tmp_path)
+
+    with pytest.raises(WorkspacePathViolationError):
+        workspace.project_path("story-01")
+
+
+def test_rejects_project_directory_alias_symlink(tmp_path: Path) -> None:
+    projects = tmp_path / "projects"
+    projects.mkdir()
+    target = projects / "story-02"
+    target.mkdir()
+    (projects / "story-01").symlink_to(target, target_is_directory=True)
+    workspace = WorkspaceRepository(tmp_path)
+
+    with pytest.raises(WorkspacePathViolationError):
+        workspace.project_path("story-01")

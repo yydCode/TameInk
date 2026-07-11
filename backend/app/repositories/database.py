@@ -39,8 +39,14 @@ class DatabaseRepository:
     def search(self, project_id: str, query: str) -> list[str]:
         if len(query.strip()) < 3:
             raise SearchQueryError("FTS query must contain at least three characters")
-        with self.connect(project_id) as connection:
-            rows = connection.execute(
-                "SELECT path FROM content_fts WHERE content_fts MATCH ? ORDER BY path", (query,)
-            ).fetchall()
+        try:
+            with self.connect(project_id) as connection:
+                rows = connection.execute(
+                    "SELECT path FROM content_fts WHERE content_fts MATCH ? ORDER BY path", (query,)
+                ).fetchall()
+        except sqlite3.OperationalError as error:
+            message = str(error)
+            if "fts5: syntax error" in message or "unterminated string" in message:
+                raise SearchQueryError(query) from error
+            raise
         return [str(row[0]) for row in rows]

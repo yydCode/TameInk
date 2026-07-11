@@ -1,11 +1,14 @@
 from pathlib import Path
 
 import pytest
+from dulwich.objects import Blob
 from pydantic import ValidationError
 
 from app.domain.errors import (
     CanonVersionConflictError,
+    InvalidRevisionError,
     RecoveryIncompleteError,
+    RevisionLockError,
     StorageWriteError,
     WorkspacePathViolationError,
 )
@@ -102,6 +105,30 @@ def test_rollback_removes_files_added_after_target_revision(tmp_path: Path) -> N
     revisions.rollback("story-01", first.id, expected_revision=second.id)
 
     assert not workspace.resolve_project_path("story-01", "canon/chapters/0001.md").exists()
+
+
+def test_rollback_fsyncs_directory_after_deleting_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, revisions = repository(tmp_path)
+    first = revisions.confirm(
+        "story-01",
+        RevisionWrite(path="canon/outline.md", content="第一版\n", message="确认：第一版"),
+        None,
+    )
+    second = revisions.confirm(
+        "story-01",
+        RevisionWrite(
+            path="canon/chapters/0001.md", content="新增章节\n", message="确认：新增章节"
+        ),
+        first.id,
+    )
+    synced: list[Path] = []
+    monkeypatch.setattr(revisions, "_sync_directory", synced.append)
+
+    revisions.rollback("story-01", first.id, expected_revision=second.id)
+
+    assert workspace.resolve_project_path("story-01", "canon/chapters") in synced
 
 
 def test_rollback_concurrent_cas_failure_keeps_files_and_external_ref(
@@ -337,3 +364,147 @@ def test_recovery_does_not_overwrite_an_unexpected_ref(
 
     assert repo.refs[b"refs/heads/main"] == competing
     assert workspace.resolve_project_path("story-01", ".tame-ink/recovery.json").exists()
+
+
+@pytest.mark.parametrize("kind", ["random", "blob", "dangling"])
+def test_rollback_maps_invalid_or_unreachable_revision(tmp_path: Path, kind: str) -> None:
+    _, revisions = repository(tmp_path)
+    current = revisions.confirm(
+        "story-01",
+        RevisionWrite(path="canon/outline.md", content="当前版本\n", message="确认：当前版本"),
+        None,
+    )
+    project, repo = revisions._repo("story-01")
+    if kind == "random":
+        target = "f" * 40
+    elif kind == "blob":
+        blob = Blob()
+        blob.data = b"not a commit"
+        repo.object_store.add_object(blob)
+        target = blob.id.decode()
+    else:
+        target = revisions._build_commit_from_files(
+            repo, {"canon/outline.md": b"dangling\n"}, None, "dangling"
+        ).decode()
+
+    with pytest.raises(InvalidRevisionError) as raised:
+        revisions.rollback("story-01", target, expected_revision=current.id)
+
+    assert raised.value.code == "INVALID_REVISION"
+    assert revisions.current_revision("story-01") == current.id
+    assert (project / "canon/outline.md").read_text() == "当前版本\n"
+
+
+@pytest.mark.parametrize(
+    "injected_path",
+    ["imports/originals/injected.txt", "../outside.txt", ".git/refs/heads/main"],
+)
+def test_rollback_rejects_unsafe_paths_in_ancestor_tree(tmp_path: Path, injected_path: str) -> None:
+    workspace, revisions = repository(tmp_path)
+    project, repo = revisions._repo("story-01")
+    ancestor = revisions._build_commit_from_files(
+        repo, {injected_path: b"injected"}, None, "malicious ancestor"
+    )
+    repo.refs[b"refs/heads/main"] = ancestor
+    current = revisions.confirm(
+        "story-01",
+        RevisionWrite(path="canon/outline.md", content="安全内容\n", message="确认：安全内容"),
+        ancestor.decode(),
+    )
+    original_ref = repo.refs[b"refs/heads/main"]
+
+    with pytest.raises(WorkspacePathViolationError):
+        revisions.rollback("story-01", ancestor.decode(), expected_revision=current.id)
+
+    assert repo.refs[b"refs/heads/main"] == original_ref
+    assert (
+        workspace.resolve_project_path("story-01", "canon/outline.md").read_text() == "安全内容\n"
+    )
+    assert not (tmp_path / "outside.txt").exists()
+
+
+def prepare_crash_log(
+    workspace: WorkspaceRepository, revisions: RevisionRepository
+) -> tuple[str, bytes, Path]:
+    first = revisions.confirm(
+        "story-01",
+        RevisionWrite(path="canon/outline.md", content="旧文件\n", message="确认：旧文件"),
+        None,
+    )
+    project, repo = revisions._repo("story-01")
+    write = RevisionWrite(path="canon/outline.md", content="新文件\n", message="确认：新文件")
+    new_ref = revisions._build_commit(repo, project, write, first.id)
+    record = {
+        "old_ref": first.id,
+        "new_ref": new_ref.decode(),
+        "old_files": {"canon/outline.md": revisions._encode("旧文件\n".encode())},
+    }
+    log = workspace.resolve_project_path("story-01", ".tame-ink/recovery.json")
+    revisions._write_log(log, record)
+    return first.id, new_ref, log
+
+
+@pytest.mark.parametrize("state", ["before_ref", "after_ref", "partial_file"])
+def test_recover_after_restart_restores_old_ref_and_files(
+    tmp_path: Path, state: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, revisions = repository(tmp_path)
+    old_ref, new_ref, log = prepare_crash_log(workspace, revisions)
+    project, repo = revisions._repo("story-01")
+    if state != "before_ref":
+        assert repo.refs.set_if_equals(b"refs/heads/main", old_ref.encode(), new_ref)
+    if state == "partial_file":
+        (project / "canon/outline.md").write_text("新文件\n")
+    synced: list[Path] = []
+    restarted = RevisionRepository(workspace)
+    monkeypatch.setattr(restarted, "_sync_directory", synced.append)
+
+    restarted.recover("story-01")
+
+    assert restarted.current_revision("story-01") == old_ref
+    assert (project / "canon/outline.md").read_text() == "旧文件\n"
+    assert not log.exists()
+    assert log.parent in synced
+
+
+def test_recover_keeps_log_and_external_ref_on_conflict(tmp_path: Path) -> None:
+    workspace, revisions = repository(tmp_path)
+    _, _, log = prepare_crash_log(workspace, revisions)
+    _, repo = revisions._repo("story-01")
+    competing = b"3" * 40
+    repo.refs[b"refs/heads/main"] = competing
+
+    with pytest.raises(RecoveryIncompleteError):
+        RevisionRepository(workspace).recover("story-01")
+
+    assert repo.refs[b"refs/heads/main"] == competing
+    assert log.exists()
+
+
+def test_recover_maps_corrupt_log_to_stable_error(tmp_path: Path) -> None:
+    workspace, _ = repository(tmp_path)
+    log = workspace.resolve_project_path("story-01", ".tame-ink/recovery.json")
+    log.write_text("{broken")
+
+    with pytest.raises(RecoveryIncompleteError) as raised:
+        RevisionRepository(workspace).recover("story-01")
+
+    assert raised.value.code == "RECOVERY_INCOMPLETE"
+    assert raised.value.__cause__ is not None
+    assert log.exists()
+
+
+def test_revision_lock_timeout_is_stable_and_preserves_log(tmp_path: Path) -> None:
+    workspace, first_writer = repository(tmp_path)
+    log = workspace.resolve_project_path("story-01", ".tame-ink/recovery.json")
+    with first_writer._locked("story-01"):
+        log.write_text("first writer")
+        with pytest.raises(RevisionLockError) as raised:
+            RevisionRepository(workspace, lock_timeout=0).confirm(
+                "story-01",
+                RevisionWrite(path="canon/outline.md", content="内容\n", message="确认：内容"),
+                None,
+            )
+
+    assert raised.value.code == "REVISION_LOCKED"
+    assert log.read_text() == "first writer"

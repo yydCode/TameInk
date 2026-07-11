@@ -22,12 +22,17 @@ PROJECT_DIRS = (
 
 class WorkspaceRepository:
     def __init__(self, root: Path) -> None:
+        self._reject_symlink_components(root.absolute())
         self.root = root.resolve()
 
     def project_path(self, project_id: str) -> Path:
         validate_project_id(project_id)
-        projects = (self.root / "projects").resolve()
-        result = (projects / project_id).resolve()
+        projects_path = self.root / "projects"
+        project_path = projects_path / project_id
+        self._reject_symlink_components(projects_path)
+        self._reject_symlink_components(project_path)
+        projects = projects_path.resolve()
+        result = project_path.resolve()
         try:
             result.relative_to(projects)
         except ValueError as error:
@@ -51,3 +56,11 @@ class WorkspaceRepository:
         except ValueError as error:
             raise WorkspacePathViolationError(str(relative)) from error
         return resolved
+
+    @staticmethod
+    def _reject_symlink_components(path: Path) -> None:
+        current = Path(path.anchor)
+        for part in path.parts[1:]:
+            current /= part
+            if current.is_symlink():
+                raise WorkspacePathViolationError(str(path))

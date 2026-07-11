@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import pytest
@@ -185,3 +186,18 @@ def test_write_io_failure_maps_to_stable_error_with_cause(
 
     assert raised.value.code == "STORAGE_WRITE_FAILED"
     assert isinstance(raised.value.__cause__, OSError)
+
+
+def test_replace_fsyncs_parent_directory(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    canon = repository(tmp_path)
+    opened: list[Path] = []
+    real_open = os.open
+
+    def record_open(path: str | bytes | Path, flags: int) -> int:
+        opened.append(Path(path))
+        return real_open(path, flags)
+
+    monkeypatch.setattr("app.repositories.canon.os.open", record_open)
+    canon.write_project(Project(id="story-01", title="长夜", language="zh-CN"))
+
+    assert canon.project_file("story-01").parent in opened

@@ -2,15 +2,20 @@ import base64
 import json
 import os
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
 from typing import Any, cast
 
 from dulwich.objects import Blob, Commit, Tree
 from dulwich.repo import Repo
+from filelock import FileLock, Timeout
 
 from app.domain.errors import (
     CanonVersionConflictError,
+    InvalidRevisionError,
     RecoveryIncompleteError,
+    RevisionLockError,
     StorageWriteError,
     TameInkError,
 )
@@ -22,10 +27,17 @@ REF = b"refs/heads/main"
 
 
 class RevisionRepository:
-    def __init__(self, workspace: WorkspaceRepository) -> None:
+    def __init__(self, workspace: WorkspaceRepository, lock_timeout: float = 1.0) -> None:
         self.workspace = workspace
+        self.lock_timeout = lock_timeout
 
     def confirm(
+        self, project_id: str, write: RevisionWrite, expected_revision: str | None
+    ) -> Revision:
+        with self._locked(project_id):
+            return self._confirm_locked(project_id, write, expected_revision)
+
+    def _confirm_locked(
         self, project_id: str, write: RevisionWrite, expected_revision: str | None
     ) -> Revision:
         project, repo = self._repo(project_id)
@@ -69,16 +81,16 @@ class RevisionRepository:
             self._update_ref(repo, old_ref, new_ref)
             self._apply_files(project, files, self._replace_file)
         except CanonVersionConflictError:
-            log.unlink()
+            self._remove_log(log)
             raise
         except Exception as error:
             try:
                 self._restore(repo, project, record)
-                log.unlink()
+                self._remove_log(log)
             except Exception as recovery_error:
                 raise RecoveryIncompleteError(str(recovery_error)) from error
             raise StorageWriteError(str(error)) from error
-        log.unlink()
+        self._remove_log(log)
 
     def current_revision(self, project_id: str) -> str | None:
         _, repo = self._repo(project_id)
@@ -98,17 +110,34 @@ class RevisionRepository:
         ]
 
     def rollback(self, project_id: str, revision_id: str, expected_revision: str) -> Revision:
+        with self._locked(project_id):
+            return self._rollback_locked(project_id, revision_id, expected_revision)
+
+    def _rollback_locked(
+        self, project_id: str, revision_id: str, expected_revision: str
+    ) -> Revision:
         project, repo = self._repo(project_id)
         log = self._log_path(project_id)
         if log.exists():
             raise RecoveryIncompleteError(str(log))
         if self.current_revision(project_id) != expected_revision:
             raise CanonVersionConflictError(expected_revision)
-        commit = repo[revision_id.encode()]
+        try:
+            commit = repo.object_store[revision_id.encode()]
+        except (KeyError, ValueError) as error:
+            raise InvalidRevisionError(f"revision does not exist: {revision_id}") from error
         if not isinstance(commit, Commit):
-            raise StorageWriteError("revision is not a commit")
+            raise InvalidRevisionError(f"revision is not a commit: {revision_id}")
+        reachable = {
+            entry.commit.id.decode()
+            for entry in repo.get_walker(include=[expected_revision.encode()])
+        }
+        if revision_id not in reachable:
+            raise InvalidRevisionError(f"revision is not an ancestor of HEAD: {revision_id}")
         target_tree = repo[commit.tree]
         files = self._tree_files(repo, target_tree)
+        for relative in files:
+            resolve_formal_path(project, relative)
         message = f"回滚：{commit.message.decode()}"
         try:
             rollback_id = self._build_commit_from_files(repo, files, expected_revision, message)
@@ -116,6 +145,30 @@ class RevisionRepository:
             raise StorageWriteError(str(error)) from error
         self._transaction(repo, project, log, expected_revision, rollback_id, files)
         return Revision(id=rollback_id.decode(), message=message)
+
+    def recover(self, project_id: str) -> None:
+        with self._locked(project_id):
+            project, repo = self._repo(project_id)
+            log = self._log_path(project_id)
+            if not log.exists():
+                return
+            try:
+                record = self._read_log(log, project)
+                self._restore(repo, project, record)
+                self._remove_log(log)
+            except RecoveryIncompleteError:
+                raise
+            except Exception as error:
+                raise RecoveryIncompleteError(f"cannot recover {project_id}") from error
+
+    @contextmanager
+    def _locked(self, project_id: str) -> Iterator[None]:
+        lock_path = self.workspace.resolve_project_path(project_id, ".tame-ink/revision.lock")
+        try:
+            with FileLock(str(lock_path), timeout=self.lock_timeout):
+                yield
+        except Timeout as error:
+            raise RevisionLockError(project_id) from error
 
     def _repo(self, project_id: str) -> tuple[Path, Repo]:
         project = self.workspace.project_path(project_id)
@@ -240,8 +293,9 @@ class RevisionRepository:
             relative = path.relative_to(project).as_posix()
             if relative not in files:
                 path.unlink()
+                self._sync_directory(path.parent)
         for relative, content in sorted(files.items()):
-            writer(project / relative, content)
+            writer(resolve_formal_path(project, relative), content)
 
     def _log_path(self, project_id: str) -> Path:
         return self.workspace.resolve_project_path(project_id, ".tame-ink/recovery.json")
@@ -259,6 +313,37 @@ class RevisionRepository:
             os.fsync(directory)
         finally:
             os.close(directory)
+
+    def _read_log(self, path: Path, project: Path) -> dict[str, Any]:
+        try:
+            record = json.loads(path.read_text())
+            if not isinstance(record, dict) or set(record) != {
+                "old_ref",
+                "new_ref",
+                "old_files",
+            }:
+                raise ValueError("invalid recovery log fields")
+            old_ref = record["old_ref"]
+            new_ref = record["new_ref"]
+            old_files = record["old_files"]
+            if old_ref is not None and not isinstance(old_ref, str):
+                raise ValueError("invalid old_ref")
+            if not isinstance(new_ref, str) or not isinstance(old_files, dict):
+                raise ValueError("invalid recovery log types")
+            for relative, content in old_files.items():
+                if not isinstance(relative, str) or not isinstance(content, str):
+                    raise ValueError("invalid recovery file snapshot")
+                resolve_formal_path(project, relative)
+                base64.b64decode(content, validate=True)
+            return record
+        except RecoveryIncompleteError:
+            raise
+        except Exception as error:
+            raise RecoveryIncompleteError(f"invalid recovery log: {path}") from error
+
+    def _remove_log(self, path: Path) -> None:
+        path.unlink()
+        self._sync_directory(path.parent)
 
     @staticmethod
     def _replace_file_direct(path: Path, payload: bytes) -> None:
