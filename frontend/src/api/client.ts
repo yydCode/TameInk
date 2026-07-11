@@ -4,6 +4,12 @@ export interface HealthResponse {
   version: string;
 }
 
+interface HealthRequestOptions {
+  signal?: AbortSignal;
+}
+
+const HEALTH_REQUEST_TIMEOUT_MS = 5_000;
+
 function isHealthResponse(value: unknown): value is HealthResponse {
   if (typeof value !== "object" || value === null) {
     return false;
@@ -17,19 +23,37 @@ function isHealthResponse(value: unknown): value is HealthResponse {
   );
 }
 
-export async function getHealth(): Promise<HealthResponse> {
-  const response = await fetch("/api/health", {
-    headers: { Accept: "application/json" },
-  });
+export async function getHealth(options: HealthRequestOptions = {}): Promise<HealthResponse> {
+  const controller = new AbortController();
+  const abortFromCaller = () => controller.abort(options.signal?.reason);
+  const timeoutId = setTimeout(() => {
+    controller.abort(new DOMException("Health request timed out", "TimeoutError"));
+  }, HEALTH_REQUEST_TIMEOUT_MS);
 
-  if (!response.ok) {
-    throw new Error(`Health request failed with status ${response.status}`);
+  if (options.signal?.aborted) {
+    abortFromCaller();
+  } else {
+    options.signal?.addEventListener("abort", abortFromCaller, { once: true });
   }
 
-  const payload: unknown = await response.json();
-  if (!isHealthResponse(payload)) {
-    throw new Error("Health response did not match the expected schema");
-  }
+  try {
+    const response = await fetch("/api/health", {
+      headers: { Accept: "application/json" },
+      signal: controller.signal,
+    });
 
-  return payload;
+    if (!response.ok) {
+      throw new Error(`Health request failed with status ${response.status}`);
+    }
+
+    const payload: unknown = await response.json();
+    if (!isHealthResponse(payload)) {
+      throw new Error("Health response did not match the expected schema");
+    }
+
+    return payload;
+  } finally {
+    clearTimeout(timeoutId);
+    options.signal?.removeEventListener("abort", abortFromCaller);
+  }
 }

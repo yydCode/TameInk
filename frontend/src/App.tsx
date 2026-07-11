@@ -14,19 +14,19 @@ function App() {
   const [backendStatus, setBackendStatus] = useState<BackendStatus>("checking");
 
   useEffect(() => {
-    let active = true;
+    const controller = new AbortController();
 
-    getHealth().then(
+    getHealth({ signal: controller.signal }).then(
       () => {
-        if (active) setBackendStatus("online");
+        if (!controller.signal.aborted) setBackendStatus("online");
       },
       () => {
-        if (active) setBackendStatus("offline");
+        if (!controller.signal.aborted) setBackendStatus("offline");
       },
     );
 
     return () => {
-      active = false;
+      controller.abort();
     };
   }, []);
 
