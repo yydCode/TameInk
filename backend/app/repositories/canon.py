@@ -1,12 +1,21 @@
 import os
-from pathlib import Path, PurePosixPath
-from typing import Any
+from pathlib import Path
+from typing import Any, TypeVar
 
 import yaml
+from pydantic import BaseModel, ValidationError
 
-from app.domain.errors import CanonContentError
+from app.domain.errors import (
+    CanonContentError,
+    StorageReadError,
+    StorageWriteError,
+    WorkspacePathViolationError,
+)
+from app.domain.paths import validate_formal_path
 from app.domain.project import ConfirmedContent, MemoryRecord, Project
 from app.repositories.workspace import WorkspaceRepository
+
+ModelT = TypeVar("ModelT", bound=BaseModel)
 
 
 class CanonRepository:
@@ -20,49 +29,66 @@ class CanonRepository:
         self._write_yaml(self.project_file(project.id), project.model_dump(mode="json"))
 
     def read_project(self, project_id: str) -> Project:
-        return Project.model_validate(self._read_yaml(self.project_file(project_id)))
+        return self._validate(Project, self._read_yaml(self.project_file(project_id)))
 
     def write_markdown(self, project_id: str, relative: str, content: ConfirmedContent) -> None:
-        path = self._formal_path(project_id, relative, "canon", ".md")
+        path = self._formal_path(project_id, relative, ".md")
         self._replace(path, content.markdown.encode())
 
     def read_markdown(self, project_id: str, relative: str) -> ConfirmedContent:
-        path = self._formal_path(project_id, relative, "canon", ".md")
-        return ConfirmedContent(markdown=path.read_text())
+        path = self._formal_path(project_id, relative, ".md")
+        return self._validate(ConfirmedContent, {"markdown": self._read_text(path)})
 
     def write_memory(self, project_id: str, relative: str, memory: MemoryRecord) -> None:
-        path = self._formal_path(project_id, relative, "memory", ".yaml")
+        path = self._formal_path(project_id, relative, ".yaml")
         self._write_yaml(path, memory.model_dump(mode="json"))
 
     def read_memory(self, project_id: str, relative: str) -> MemoryRecord:
-        path = self._formal_path(project_id, relative, "memory", ".yaml")
-        return MemoryRecord.model_validate(self._read_yaml(path))
+        path = self._formal_path(project_id, relative, ".yaml")
+        return self._validate(MemoryRecord, self._read_yaml(path))
 
-    def _formal_path(self, project_id: str, relative: str, root: str, suffix: str) -> Path:
-        pure = PurePosixPath(relative)
-        if (
-            pure.is_absolute()
-            or ".." in pure.parts
-            or pure.parts[:1] != (root,)
-            or pure.suffix != suffix
-        ):
-            raise CanonContentError(relative)
+    def _formal_path(self, project_id: str, relative: str, suffix: str) -> Path:
+        pure = validate_formal_path(relative)
+        if pure.suffix != suffix:
+            raise WorkspacePathViolationError(relative)
         return self.workspace.resolve_project_path(project_id, relative)
 
     def _write_yaml(self, path: Path, data: dict[str, Any]) -> None:
-        payload = yaml.safe_dump(data, allow_unicode=True, sort_keys=True).encode()
+        try:
+            payload = yaml.safe_dump(data, allow_unicode=True, sort_keys=True).encode()
+        except yaml.YAMLError as error:
+            raise CanonContentError(str(path)) from error
         self._replace(path, payload)
 
+    def _read_yaml(self, path: Path) -> Any:
+        try:
+            return yaml.safe_load(self._read_text(path))
+        except yaml.YAMLError as error:
+            raise CanonContentError(str(path)) from error
+
     @staticmethod
-    def _read_yaml(path: Path) -> Any:
-        return yaml.safe_load(path.read_text())
+    def _read_text(path: Path) -> str:
+        try:
+            return path.read_text()
+        except OSError as error:
+            raise StorageReadError(str(path)) from error
+
+    @staticmethod
+    def _validate(model: type[ModelT], data: Any) -> ModelT:
+        try:
+            return model.model_validate(data)
+        except ValidationError as error:
+            raise CanonContentError(model.__name__) from error
 
     @staticmethod
     def _replace(path: Path, payload: bytes) -> None:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = path.with_name(f".{path.name}.tmp")
-        with temporary.open("wb") as stream:
-            stream.write(payload)
-            stream.flush()
-            os.fsync(stream.fileno())
-        os.replace(temporary, path)
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            temporary = path.with_name(f".{path.name}.tmp")
+            with temporary.open("wb") as stream:
+                stream.write(payload)
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(temporary, path)
+        except OSError as error:
+            raise StorageWriteError(str(path)) from error

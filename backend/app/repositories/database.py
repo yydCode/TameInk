@@ -2,6 +2,7 @@ import sqlite3
 from pathlib import Path
 
 from app.domain.errors import SearchQueryError
+from app.domain.paths import iter_formal_files
 from app.repositories.workspace import WorkspaceRepository
 
 
@@ -23,10 +24,7 @@ class DatabaseRepository:
     def rebuild(self, project_id: str) -> None:
         self.initialize(project_id)
         project = self.workspace.project_path(project_id)
-        formal = [project / "project.yaml"]
-        formal.extend((project / "canon").rglob("*.md"))
-        formal.extend((project / "memory").rglob("*.md"))
-        formal.extend((project / "memory").rglob("*.yaml"))
+        formal = list(iter_formal_files(project))
         with self.connect(project_id) as connection:
             connection.execute("DELETE FROM content_fts")
             connection.executemany(

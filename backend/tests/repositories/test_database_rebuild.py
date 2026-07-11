@@ -79,3 +79,13 @@ def test_search_rejects_queries_shorter_than_trigram_contract(tmp_path: Path) ->
         database.search("story-01", "落雨")
 
     assert raised.value.code == "SEARCH_QUERY_INVALID"
+
+
+def test_rebuild_excludes_files_outside_formal_whitelist(tmp_path: Path) -> None:
+    workspace, _, database = setup_project(tmp_path)
+    rogue = workspace.resolve_project_path("story-01", "canon/arbitrary.md")
+    rogue.write_text("不应索引的秘密内容")
+
+    database.rebuild("story-01")
+
+    assert database.search("story-01", "秘密内容") == []

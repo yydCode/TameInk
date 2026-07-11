@@ -12,13 +12,12 @@ from app.domain.errors import (
     CanonVersionConflictError,
     RecoveryIncompleteError,
     StorageWriteError,
-    WorkspacePathViolationError,
 )
+from app.domain.paths import iter_formal_files, validate_formal_path
 from app.domain.revision import Revision, RevisionWrite
 from app.repositories.workspace import WorkspaceRepository
 
 REF = b"refs/heads/main"
-FORMAL_ROOTS = ("project.yaml", "canon", "memory")
 
 
 class RevisionRepository:
@@ -35,16 +34,37 @@ class RevisionRepository:
         current = self.current_revision(project_id)
         if current != expected_revision:
             raise CanonVersionConflictError(f"expected {expected_revision}, found {current}")
-        target = self._formal_target(project_id, write.path)
-        previous = target.read_bytes() if target.exists() else None
-        record = {"path": write.path, "old_ref": current, "old_content": self._encode(previous)}
-        self._write_log(log, record)
+        self._formal_target(project_id, write.path)
         try:
             commit_id = self._build_commit(repo, project, write, current)
-            record["new_ref"] = commit_id.decode()
-            self._write_log(log, record)
-            self._update_ref(repo, current, commit_id)
-            self._replace_file(target, write.content.encode())
+        except Exception as error:
+            raise StorageWriteError(str(error)) from error
+        files = self._current_files(project)
+        files[write.path] = write.content.encode()
+        self._transaction(repo, project, log, current, commit_id, files)
+        return Revision(id=commit_id.decode(), message=write.message)
+
+    def _transaction(
+        self,
+        repo: Repo,
+        project: Path,
+        log: Path,
+        old_ref: str | None,
+        new_ref: bytes,
+        files: dict[str, bytes],
+    ) -> None:
+        record = {
+            "old_ref": old_ref,
+            "new_ref": new_ref.decode(),
+            "old_files": {
+                path: self._encode(content)
+                for path, content in self._current_files(project).items()
+            },
+        }
+        self._write_log(log, record)
+        try:
+            self._update_ref(repo, old_ref, new_ref)
+            self._apply_files(project, files, self._replace_file)
         except CanonVersionConflictError:
             log.unlink()
             raise
@@ -56,7 +76,6 @@ class RevisionRepository:
                 raise RecoveryIncompleteError(str(recovery_error)) from error
             raise StorageWriteError(str(error)) from error
         log.unlink()
-        return Revision(id=commit_id.decode(), message=write.message)
 
     def current_revision(self, project_id: str) -> str | None:
         _, repo = self._repo(project_id)
@@ -75,23 +94,25 @@ class RevisionRepository:
             for entry in repo.get_walker(include=[current.encode()])
         ]
 
-    def rollback(self, project_id: str, revision_id: str, expected_revision: str) -> None:
+    def rollback(self, project_id: str, revision_id: str, expected_revision: str) -> Revision:
         project, repo = self._repo(project_id)
+        log = self._log_path(project_id)
+        if log.exists():
+            raise RecoveryIncompleteError(str(log))
         if self.current_revision(project_id) != expected_revision:
             raise CanonVersionConflictError(expected_revision)
         commit = repo[revision_id.encode()]
         if not isinstance(commit, Commit):
             raise StorageWriteError("revision is not a commit")
         target_tree = repo[commit.tree]
-        current_commit = repo[expected_revision.encode()]
-        if not isinstance(current_commit, Commit):
-            raise StorageWriteError("current revision is not a commit")
-        current_tree = repo[current_commit.tree]
-        for relative in self._tree_paths(repo, current_tree) - self._tree_paths(repo, target_tree):
-            (project / relative).unlink(missing_ok=True)
-        self._restore_tree(repo, project, target_tree, Path())
-        if not repo.refs.set_if_equals(REF, expected_revision.encode(), revision_id.encode()):
-            raise CanonVersionConflictError(expected_revision)
+        files = self._tree_files(repo, target_tree)
+        message = f"回滚：{commit.message.decode()}"
+        try:
+            rollback_id = self._build_commit_from_files(repo, files, expected_revision, message)
+        except Exception as error:
+            raise StorageWriteError(str(error)) from error
+        self._transaction(repo, project, log, expected_revision, rollback_id, files)
+        return Revision(id=rollback_id.decode(), message=message)
 
     def _repo(self, project_id: str) -> tuple[Path, Repo]:
         project = self.workspace.project_path(project_id)
@@ -104,28 +125,21 @@ class RevisionRepository:
         return project, repo
 
     def _formal_target(self, project_id: str, relative: str) -> Path:
-        pure = PurePosixPath(relative)
-        allowed = (
-            pure == PurePosixPath("project.yaml")
-            or (pure.parts[:1] == ("canon",) and pure.suffix == ".md")
-            or (pure.parts[:1] == ("memory",) and pure.suffix in {".md", ".yaml"})
-        )
-        if pure.is_absolute() or ".." in pure.parts or not allowed:
-            raise WorkspacePathViolationError(relative)
+        validate_formal_path(relative)
         return self.workspace.resolve_project_path(project_id, relative)
 
     def _build_commit(
         self, repo: Repo, project: Path, write: RevisionWrite, parent: str | None
     ) -> bytes:
-        files: dict[tuple[str, ...], bytes] = {}
-        for root_name in FORMAL_ROOTS:
-            root = project / root_name
-            paths = [root] if root.is_file() else list(root.rglob("*")) if root.exists() else []
-            for path in paths:
-                if path.is_file():
-                    files[path.relative_to(project).parts] = path.read_bytes()
-        files[PurePosixPath(write.path).parts] = write.content.encode()
-        tree_id = self._store_tree(repo, files)
+        files = self._current_files(project)
+        files[write.path] = write.content.encode()
+        return self._build_commit_from_files(repo, files, parent, write.message)
+
+    def _build_commit_from_files(
+        self, repo: Repo, files: dict[str, bytes], parent: str | None, message: str
+    ) -> bytes:
+        tree_files = {PurePosixPath(path).parts: content for path, content in files.items()}
+        tree_id = self._store_tree(repo, tree_files)
         now = int(time.time())
         commit = Commit()
         commit.tree = tree_id
@@ -133,7 +147,7 @@ class RevisionRepository:
         commit.author = commit.committer = b"Tame Ink <tame-ink@localhost>"
         commit.author_time = commit.commit_time = now
         commit.author_timezone = commit.commit_timezone = 0
-        commit.message = write.message.encode()
+        commit.message = message.encode()
         repo.object_store.add_object(commit)
         return cast(bytes, commit.id)
 
@@ -185,36 +199,47 @@ class RevisionRepository:
                 restored = repo.refs.set_if_equals(REF, new_ref.encode(), old_ref.encode())
             if not restored:
                 raise RecoveryIncompleteError("revision ref changed during recovery")
-        target = project / record["path"]
-        content = self._decode(record["old_content"])
-        if content is None:
-            target.unlink(missing_ok=True)
-        else:
-            self._replace_file_direct(target, content)
+        old_files = {path: self._decode(content) for path, content in record["old_files"].items()}
+        self._apply_files(
+            project,
+            {path: content for path, content in old_files.items() if content is not None},
+            self._replace_file_direct,
+        )
 
-    def _restore_tree(self, repo: Repo, project: Path, tree: object, prefix: Path) -> None:
+    def _tree_files(
+        self, repo: Repo, tree: object, prefix: PurePosixPath = PurePosixPath()
+    ) -> dict[str, bytes]:
         if not isinstance(tree, Tree):
             raise StorageWriteError("invalid tree")
-        for name, mode, sha in tree.iteritems():
-            relative = prefix / name.decode()
-            obj = repo[sha]
-            if isinstance(obj, Tree):
-                self._restore_tree(repo, project, obj, relative)
-            elif isinstance(obj, Blob):
-                self._replace_file_direct(project / relative, obj.data)
-
-    def _tree_paths(self, repo: Repo, tree: object, prefix: Path = Path()) -> set[Path]:
-        if not isinstance(tree, Tree):
-            raise StorageWriteError("invalid tree")
-        paths: set[Path] = set()
+        files: dict[str, bytes] = {}
         for name, _mode, sha in tree.iteritems():
             relative = prefix / name.decode()
             obj = repo[sha]
             if isinstance(obj, Tree):
-                paths.update(self._tree_paths(repo, obj, relative))
+                files.update(self._tree_files(repo, obj, relative))
             elif isinstance(obj, Blob):
-                paths.add(relative)
-        return paths
+                files[relative.as_posix()] = obj.data
+        return files
+
+    @staticmethod
+    def _current_files(project: Path) -> dict[str, bytes]:
+        return {
+            path.relative_to(project).as_posix(): path.read_bytes()
+            for path in iter_formal_files(project)
+        }
+
+    def _apply_files(
+        self,
+        project: Path,
+        files: dict[str, bytes],
+        writer: Any,
+    ) -> None:
+        for path in iter_formal_files(project):
+            relative = path.relative_to(project).as_posix()
+            if relative not in files:
+                path.unlink()
+        for relative, content in sorted(files.items()):
+            writer(project / relative, content)
 
     def _log_path(self, project_id: str) -> Path:
         return self.workspace.resolve_project_path(project_id, ".tame-ink/recovery.json")

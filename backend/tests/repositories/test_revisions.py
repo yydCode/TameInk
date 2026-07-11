@@ -71,10 +71,17 @@ def test_rollback_restores_file_and_ref(tmp_path: Path) -> None:
         first.id,
     )
 
-    revisions.rollback("story-01", first.id, expected_revision=second.id)
+    rollback = revisions.rollback("story-01", first.id, expected_revision=second.id)
 
-    assert revisions.current_revision("story-01") == first.id
+    assert rollback.id not in {first.id, second.id}
+    assert rollback.message.startswith("回滚：")
+    assert revisions.current_revision("story-01") == rollback.id
     assert workspace.resolve_project_path("story-01", "canon/outline.md").read_text() == "第一版\n"
+    assert [item.id for item in revisions.history("story-01")] == [
+        rollback.id,
+        second.id,
+        first.id,
+    ]
 
 
 def test_rollback_removes_files_added_after_target_revision(tmp_path: Path) -> None:
@@ -97,6 +104,37 @@ def test_rollback_removes_files_added_after_target_revision(tmp_path: Path) -> N
     assert not workspace.resolve_project_path("story-01", "canon/chapters/0001.md").exists()
 
 
+def test_rollback_concurrent_cas_failure_keeps_files_and_external_ref(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, revisions = repository(tmp_path)
+    first = revisions.confirm(
+        "story-01",
+        RevisionWrite(path="canon/outline.md", content="第一版\n", message="确认：第一版"),
+        None,
+    )
+    second = revisions.confirm(
+        "story-01",
+        RevisionWrite(path="canon/outline.md", content="第二版\n", message="确认：第二版"),
+        first.id,
+    )
+    _, repo = revisions._repo("story-01")
+    competing = b"2" * 40
+
+    def competing_update(*args: object) -> None:
+        repo.refs[b"refs/heads/main"] = competing
+        raise CanonVersionConflictError("concurrent rollback")
+
+    monkeypatch.setattr(revisions, "_update_ref", competing_update)
+
+    with pytest.raises(CanonVersionConflictError):
+        revisions.rollback("story-01", first.id, expected_revision=second.id)
+
+    assert workspace.resolve_project_path("story-01", "canon/outline.md").read_text() == "第二版\n"
+    assert repo.refs[b"refs/heads/main"] == competing
+    assert not workspace.resolve_project_path("story-01", ".tame-ink/recovery.json").exists()
+
+
 def test_revision_message_must_be_confirmation_in_chinese() -> None:
     with pytest.raises(ValidationError):
         RevisionWrite(path="canon/outline.md", content="大纲\n", message="update outline")
@@ -113,6 +151,18 @@ def test_confirm_rejects_path_escape_before_creating_recovery_log(tmp_path: Path
         )
 
     assert not workspace.resolve_project_path("story-01", ".tame-ink/recovery.json").exists()
+
+
+@pytest.mark.parametrize("path", ["canon/arbitrary.md", "canon/chapters/nested/0001.md"])
+def test_confirm_rejects_paths_outside_exact_formal_whitelist(tmp_path: Path, path: str) -> None:
+    _, revisions = repository(tmp_path)
+
+    with pytest.raises(WorkspacePathViolationError):
+        revisions.confirm(
+            "story-01",
+            RevisionWrite(path=path, content="内容\n", message="确认：内容"),
+            None,
+        )
 
 
 def test_git_ref_failure_restores_original_file(

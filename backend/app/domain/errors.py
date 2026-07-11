@@ -26,5 +26,9 @@ class StorageWriteError(TameInkError):
     code = "STORAGE_WRITE_FAILED"
 
 
+class StorageReadError(TameInkError):
+    code = "STORAGE_READ_FAILED"
+
+
 class RecoveryIncompleteError(TameInkError):
     code = "RECOVERY_INCOMPLETE"

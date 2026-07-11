@@ -1,9 +1,8 @@
-import re
 from pathlib import Path
 
-from app.domain.errors import InvalidProjectIdError, WorkspacePathViolationError
+from app.domain.errors import WorkspacePathViolationError
+from app.domain.paths import validate_project_id
 
-PROJECT_ID = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$")
 PROJECT_DIRS = (
     "canon/volumes",
     "canon/characters",
@@ -26,8 +25,7 @@ class WorkspaceRepository:
         self.root = root.resolve()
 
     def project_path(self, project_id: str) -> Path:
-        if PROJECT_ID.fullmatch(project_id) is None:
-            raise InvalidProjectIdError(project_id)
+        validate_project_id(project_id)
         projects = (self.root / "projects").resolve()
         result = (projects / project_id).resolve()
         try:
