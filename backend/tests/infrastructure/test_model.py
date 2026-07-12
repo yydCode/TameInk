@@ -5,6 +5,7 @@ from pydantic import SecretStr
 
 from app.infrastructure.model import (
     ModelConfigurationError,
+    TameInkChatOpenAI,
     build_model,
 )
 from app.infrastructure.model import (
@@ -30,7 +31,7 @@ def test_build_model_constructs_single_non_retrying_chat_openai(monkeypatch) -> 
         calls.append(kwargs)
         return sentinel
 
-    monkeypatch.setattr("app.infrastructure.model.ChatOpenAI", fake_chat_openai)
+    monkeypatch.setattr("app.infrastructure.model.TameInkChatOpenAI", fake_chat_openai)
 
     result = build_model(configured_settings(), "secret-value")
 
@@ -65,3 +66,31 @@ def test_connection_only_invokes_model_when_explicitly_called() -> None:
     assert model.calls == 0
     asyncio.run(check_connection(model))
     assert model.calls == 1
+
+
+def test_tame_ink_model_preserves_complex_identifier_and_tracking_fields() -> None:
+    model = TameInkChatOpenAI(
+        api_key=SecretStr("test-key"),
+        model="ft:gpt-4o-mini:org:custom",
+        temperature=0.2,
+        max_tokens=123,
+    )
+    parent = super(TameInkChatOpenAI, model)._get_ls_params()
+    params = model._get_ls_params()
+
+    assert model.model_name == "ft:gpt-4o-mini:org:custom"
+    assert params == {**parent, "ls_provider": "tame_ink_openai"}
+    assert params["ls_model_name"] == "ft:gpt-4o-mini:org:custom"
+    assert params["ls_temperature"] == 0.2
+    assert params["ls_max_tokens"] == 123
+
+
+def test_factory_accepts_complex_model_identifier() -> None:
+    settings = ModelSettings(
+        base_url="https://api.example.com/v1",
+        model="ft:gpt-4o-mini:org:custom",
+        timeout=30,
+    )
+    model = build_model(settings, "test-key")
+    assert isinstance(model, TameInkChatOpenAI)
+    assert model.model_name == "ft:gpt-4o-mini:org:custom"

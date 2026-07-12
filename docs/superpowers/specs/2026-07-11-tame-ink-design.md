@@ -82,9 +82,10 @@ Tame-Ink/
 当前任务的 `/drafts` 可写；读取、列举、glob 和 grep 仍保留可审计来源。草稿写入不改变
 正式事实，正式内容仍必须经用户审批后由确定性 Repository 事务原子写入并创建版本。
 
-`deepagents` harness profile 按精确 `openai:<model-id>` 注册，不使用 provider 级配置。
-同一产品进程内，相同 provider 与 model id 会受公开 registry 语义影响而共享同一 profile；
-模型 id 相同但期望不同权限的配置必须拆分进程或使用不同 model id，不能在同一进程内混用。
+Tame Ink 的 OpenAI-compatible 模型通过 LangChain 公开的 provider tracking hook 使用独立
+provider 标识 `tame_ink_openai`，`deepagents` harness profile 只注册到该隔离 provider，
+不污染普通 `openai` 模型。产品进程内所有 Tame Ink 模型共享同一安全 profile；这是有意的
+最小权限策略，模型 id（包括带多个冒号的 fine-tuned opaque id）不会被改写或用于 registry key。
 
 首版定位为本地单用户应用：允许显式配置 loopback 模型端点，并依赖原子替换、文件锁和路径
 校验降低并发风险。私网/DNS rebinding、本机恶意进程在校验后替换文件的 TOCTOU 属于已知

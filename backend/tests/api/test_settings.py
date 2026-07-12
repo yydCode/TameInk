@@ -56,7 +56,11 @@ def test_connection_is_explicit_and_uses_saved_config_and_secret(
     client, _ = client_for(tmp_path)
     client.put(
         "/api/settings",
-        json={"base_url": "https://api.example.com/v1", "model": "model-1", "timeout": 30.0},
+        json={
+            "base_url": "https://api.example.com/v1",
+            "model": "ft:gpt-4o-mini:org:custom",
+            "timeout": 30.0,
+        },
     )
     client.put("/api/settings/secret", json={"api_key": "secret-value"})
     calls: list[object] = []
@@ -68,6 +72,7 @@ def test_connection_is_explicit_and_uses_saved_config_and_secret(
     response = client.post("/api/settings/connection")
     assert response.json() == {"status": "ok"}
     assert len(calls) == 1
+    assert calls[0].model_name == "ft:gpt-4o-mini:org:custom"
     assert "secret-value" not in response.text
 
 

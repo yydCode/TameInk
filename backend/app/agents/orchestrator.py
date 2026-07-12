@@ -7,7 +7,6 @@ from deepagents import (
     create_deep_agent,
     register_harness_profile,
 )
-from langchain_openai import ChatOpenAI
 
 from app.agents.backend import NovelWorkspaceBackend
 from app.agents.context import TrustedAgentContext
@@ -17,20 +16,19 @@ from app.agents.subagents import (
     subagent_input_schemas,
     subagent_payload_schemas,
 )
+from app.infrastructure.model import TameInkChatOpenAI
 
 _PROFILE_LOCK = Lock()
-_REGISTERED_PROFILE_KEYS: set[str] = set()
+_PROFILE_REGISTERED = False
 
 
-def _register_model_profile(model_identifier: str) -> None:
-    if not model_identifier or ":" in model_identifier:
-        raise ValueError("MODEL_IDENTIFIER_INVALID")
-    key = f"openai:{model_identifier}"
+def _register_model_profile() -> None:
+    global _PROFILE_REGISTERED  # noqa: PLW0603
     with _PROFILE_LOCK:
-        if key in _REGISTERED_PROFILE_KEYS:
+        if _PROFILE_REGISTERED:
             return
         register_harness_profile(
-            key,
+            "tame_ink_openai",
             HarnessProfile(
                 excluded_tools=frozenset({"execute"}),
                 general_purpose_subagent=GeneralPurposeSubagentProfile(enabled=False),
@@ -43,18 +41,14 @@ def _register_model_profile(model_identifier: str) -> None:
                 },
             ),
         )
-        _REGISTERED_PROFILE_KEYS.add(key)
+        _PROFILE_REGISTERED = True
 
 
 def create_orchestrator(
-    model: ChatOpenAI,
+    model: TameInkChatOpenAI,
     backend: NovelWorkspaceBackend,
-    *,
-    model_identifier: str,
 ) -> ValidatedOrchestrator:
-    if model.model_name != model_identifier:
-        raise ValueError("MODEL_IDENTIFIER_MISMATCH")
-    _register_model_profile(model_identifier)
+    _register_model_profile()
     definitions = build_subagent_definitions(backend)
     graph = create_deep_agent(
         model=model,

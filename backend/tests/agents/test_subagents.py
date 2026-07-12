@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
@@ -9,7 +10,7 @@ from app.agents.context import ContextManifest
 from app.agents.contracts import OutputContractError
 from app.agents.orchestrator import create_orchestrator
 from app.agents.subagents import build_subagent_definitions
-from tests.agents.fake_model import ScriptedOpenAIModel
+from tests.agents.fake_model import ScriptedOpenAIModel, ScriptedTameInkModel
 from tests.agents.test_backend import make_backend
 
 EXPECTED_NAMES = {
@@ -43,19 +44,32 @@ def test_eight_subagents_have_independent_contracts_and_minimal_permissions(tmp_
     )
 
 
+def test_concurrent_tame_model_orchestrator_construction_is_idempotent(tmp_path: Path) -> None:
+    backend, _, _, _ = make_backend(tmp_path)
+    models = [
+        ScriptedTameInkModel(
+            api_key=SecretStr("test-key"),
+            model=f"ft:gpt-4o-mini:org:custom-{index}",
+            responses=[AIMessage(content="summary")],
+        )
+        for index in range(16)
+    ]
+    with ThreadPoolExecutor(max_workers=16) as executor:
+        orchestrators = list(
+            executor.map(lambda model: create_orchestrator(model, backend), models)
+        )
+    assert len(orchestrators) == 16
+
+
 def test_orchestrator_real_graph_has_only_eight_agents_and_no_execute(tmp_path: Path) -> None:
     backend, _, _, _ = make_backend(tmp_path)
-    model = ScriptedOpenAIModel(
+    model = ScriptedTameInkModel(
         api_key=SecretStr("test-key"),
         model="tame-ink-contract-test",
         responses=[AIMessage(content="summary")],
     )
 
-    graph = create_orchestrator(
-        model,
-        backend,
-        model_identifier="tame-ink-contract-test",
-    )
+    graph = create_orchestrator(model, backend)
     with pytest.raises(OutputContractError, match="TASK_DELEGATION_REQUIRED"):
         graph.invoke(
             {"messages": [{"role": "user", "content": "plan"}]},
@@ -71,16 +85,12 @@ def test_orchestrator_real_graph_has_only_eight_agents_and_no_execute(tmp_path: 
 
 def test_exact_model_profile_does_not_pollute_other_openai_model(tmp_path: Path) -> None:
     backend, _, _, _ = make_backend(tmp_path)
-    tame_model = ScriptedOpenAIModel(
+    tame_model = ScriptedTameInkModel(
         api_key=SecretStr("test-key"),
-        model="tame-ink-profile-isolation",
+        model="ft:gpt-4o-mini:org:custom",
         responses=[AIMessage(content="summary")],
     )
-    first = create_orchestrator(
-        tame_model,
-        backend,
-        model_identifier="tame-ink-profile-isolation",
-    )
+    first = create_orchestrator(tame_model, backend)
     with pytest.raises(OutputContractError):
         first.invoke(
             {"messages": [{"role": "user", "content": "plan"}]},
@@ -88,16 +98,12 @@ def test_exact_model_profile_does_not_pollute_other_openai_model(tmp_path: Path)
         )
     first_description = tame_model.bound_tool_descriptions["task"]
 
-    repeated_model = ScriptedOpenAIModel(
+    repeated_model = ScriptedTameInkModel(
         api_key=SecretStr("test-key"),
-        model="tame-ink-profile-isolation",
+        model="ft:gpt-4o-mini:org:another",
         responses=[AIMessage(content="summary")],
     )
-    repeated = create_orchestrator(
-        repeated_model,
-        backend,
-        model_identifier="tame-ink-profile-isolation",
-    )
+    repeated = create_orchestrator(repeated_model, backend)
     with pytest.raises(OutputContractError):
         repeated.invoke(
             {"messages": [{"role": "user", "content": "plan"}]},
