@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.events import router as events_router
 from app.api.health import router as health_router
+from app.api.settings import router as settings_router
 from app.api.tasks import router as tasks_router
 from app.domain.errors import (
     ActiveTaskConflictError,
@@ -15,6 +16,8 @@ from app.domain.errors import (
     TameInkError,
     TaskNotFoundError,
 )
+from app.infrastructure.secrets import ApiKeyStore
+from app.infrastructure.settings import SettingsRepository
 from app.repositories.database import DatabaseRepository
 from app.repositories.tasks import TasksRepository
 from app.repositories.workspace import WorkspaceRepository
@@ -37,9 +40,12 @@ def create_app(workspace_root: Path) -> FastAPI:
 
     application = FastAPI(title="Tame Ink API", version="0.1.0", lifespan=lifespan)
     application.state.workspace = workspace
+    application.state.model_settings = SettingsRepository(workspace.root / "settings.json")
+    application.state.api_keys = ApiKeyStore()
     application.include_router(health_router, prefix="/api")
     application.include_router(tasks_router, prefix="/api")
     application.include_router(events_router, prefix="/api")
+    application.include_router(settings_router, prefix="/api")
 
     @application.exception_handler(TameInkError)
     async def tame_ink_error(_: Request, error: TameInkError) -> JSONResponse:
