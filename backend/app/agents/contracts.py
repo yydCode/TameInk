@@ -6,7 +6,7 @@ from langchain.tools.tool_node import ToolCallRequest
 from langchain_core.messages import AIMessage, ToolMessage
 from pydantic import BaseModel, ValidationError
 
-from app.agents.context import ContextManifest
+from app.agents.context import ContextManifest, TrustedAgentContext
 from app.agents.schemas import ReferencedOutput
 
 
@@ -30,8 +30,13 @@ def validate_agent_output(
 
 
 class TaskInputContractMiddleware(AgentMiddleware):
-    def __init__(self, schemas: Mapping[str, type[BaseModel]]) -> None:
-        self._schemas = dict(schemas)
+    def __init__(
+        self,
+        payload_schemas: Mapping[str, type[BaseModel]],
+        input_schemas: Mapping[str, type[BaseModel]],
+    ) -> None:
+        self._payload_schemas = dict(payload_schemas)
+        self._input_schemas = dict(input_schemas)
 
     def wrap_tool_call(
         self,
@@ -44,17 +49,32 @@ class TaskInputContractMiddleware(AgentMiddleware):
         subagent_type = arguments.get("subagent_type")
         if not isinstance(subagent_type, str):
             raise TaskInputContractError("TASK_SUBAGENT_UNKNOWN")
-        schema = self._schemas.get(subagent_type)
-        if schema is None:
+        payload_schema = self._payload_schemas.get(subagent_type)
+        input_schema = self._input_schemas.get(subagent_type)
+        if payload_schema is None or input_schema is None:
             raise TaskInputContractError("TASK_SUBAGENT_UNKNOWN")
+        trusted_context = request.runtime.context
+        if not isinstance(trusted_context, TrustedAgentContext):
+            raise TaskInputContractError("TASK_CONTEXT_MISSING")
         description = arguments.get("description")
         if not isinstance(description, str):
             raise TaskInputContractError("TASK_INPUT_INVALID")
         try:
-            schema.model_validate_json(description)
+            payload = payload_schema.model_validate_json(description)
+            full_input = input_schema.model_validate(
+                {
+                    **payload.model_dump(mode="json"),
+                    "context": trusted_context.manifest.model_dump(mode="json"),
+                }
+            )
         except (ValidationError, ValueError) as error:
             raise TaskInputContractError("TASK_INPUT_INVALID") from error
-        return handler(request)
+        modified_arguments = {
+            **arguments,
+            "description": full_input.model_dump_json(),
+        }
+        modified_call = {**request.tool_call, "args": modified_arguments}
+        return handler(request.override(tool_call=modified_call))
 
 
 class ValidatedOrchestrator:
@@ -73,7 +93,12 @@ class ValidatedOrchestrator:
         *,
         context_manifest: ContextManifest,
     ) -> dict[str, Any]:
-        result: dict[str, Any] = self._graph.invoke(payload, config)
+        trusted_context = TrustedAgentContext(manifest=context_manifest)
+        result: dict[str, Any] = self._graph.invoke(
+            payload,
+            config,
+            context=trusted_context,
+        )
         task_calls: dict[str, str] = {}
         for message in result.get("messages", []):
             if isinstance(message, AIMessage):

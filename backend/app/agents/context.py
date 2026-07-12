@@ -53,6 +53,10 @@ class ContextManifest(StrictContextModel):
     retrieved: list[RetrievedSnippet]
 
 
+class TrustedAgentContext(StrictContextModel):
+    manifest: ContextManifest
+
+
 class ContextBuilder:
     def __init__(
         self, backend: NovelWorkspaceBackend, search: Callable[[str], list[RetrievedSnippet]]

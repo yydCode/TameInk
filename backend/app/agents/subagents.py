@@ -20,9 +20,44 @@ from app.agents.schemas import (
 from app.agents.tools import build_repository_tools
 
 
-class AgentInput(BaseModel):
+class AgentPayload(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     instruction: str
+
+
+class StoryArchitectPayload(AgentPayload):
+    pass
+
+
+class OutlineArchitectPayload(AgentPayload):
+    pass
+
+
+class ChapterPlannerPayload(AgentPayload):
+    pass
+
+
+class DraftWriterPayload(AgentPayload):
+    pass
+
+
+class ContinuityAuditorPayload(AgentPayload):
+    pass
+
+
+class StyleCriticPayload(AgentPayload):
+    pass
+
+
+class MemoryCuratorPayload(AgentPayload):
+    pass
+
+
+class ImportAnalystPayload(AgentPayload):
+    pass
+
+
+class AgentInput(AgentPayload):
     context: ContextManifest
 
 
@@ -155,6 +190,19 @@ def build_subagent_definitions(backend: NovelWorkspaceBackend) -> list[CreativeA
         )
         for name, description, prompt, output_schema, writable in specs
     ]
+
+
+def subagent_payload_schemas() -> dict[str, type[AgentPayload]]:
+    return {
+        "StoryArchitect": StoryArchitectPayload,
+        "OutlineArchitect": OutlineArchitectPayload,
+        "ChapterPlanner": ChapterPlannerPayload,
+        "DraftWriter": DraftWriterPayload,
+        "ContinuityAuditor": ContinuityAuditorPayload,
+        "StyleCritic": StyleCriticPayload,
+        "MemoryCurator": MemoryCuratorPayload,
+        "ImportAnalyst": ImportAnalystPayload,
+    }
 
 
 def subagent_input_schemas() -> dict[str, type[AgentInput]]:

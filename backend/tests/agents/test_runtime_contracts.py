@@ -11,7 +11,12 @@ from deepagents import (
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableLambda
 
-from app.agents.context import ContextManifest, ManifestSource
+from app.agents.context import (
+    ContextManifest,
+    ManifestSource,
+    RetrievedSnippet,
+    TrustedAgentContext,
+)
 from app.agents.contracts import (
     OutputContractError,
     TaskInputContractMiddleware,
@@ -19,7 +24,7 @@ from app.agents.contracts import (
     validate_agent_output,
 )
 from app.agents.schemas import StorySetting
-from app.agents.subagents import StoryArchitectInput
+from app.agents.subagents import StoryArchitectInput, StoryArchitectPayload
 from app.domain.project import ConfirmedContent
 from tests.agents.fake_model import ScriptedChatModel
 from tests.agents.test_backend import make_backend
@@ -28,7 +33,7 @@ from tests.agents.test_backend import make_backend
 def manifest(path: str = "canon/premise.md") -> ContextManifest:
     return ContextManifest(
         sources=[ManifestSource(path=path, sha256="a" * 64, excerpt="confirmed")],
-        retrieved=[],
+        retrieved=[RetrievedSnippet(path=path, location="paragraph 1", quote="confirmed quote")],
     )
 
 
@@ -51,7 +56,7 @@ def test_output_parses_without_context_then_validates_known_sources() -> None:
 
 
 def test_validated_orchestrator_invoke_cannot_skip_output_validation(tmp_path: Path) -> None:
-    _, canon, _, _ = make_backend(tmp_path)
+    backend, canon, _, _ = make_backend(tmp_path)
     canon.write_markdown("story-01", "canon/premise.md", ConfirmedContent(markdown="confirmed"))
     task_call = {
         "name": "task",
@@ -60,7 +65,7 @@ def test_validated_orchestrator_invoke_cannot_skip_output_validation(tmp_path: P
     }
 
     class FakeGraph:
-        def invoke(self, payload, config=None):
+        def invoke(self, payload, config=None, *, context=None):
             from langchain_core.messages import ToolMessage
 
             return {
@@ -96,12 +101,17 @@ def test_validated_orchestrator_accepts_known_structured_result() -> None:
         ]
     }
 
+    received_contexts: list[TrustedAgentContext] = []
+
     class FakeGraph:
-        def invoke(self, payload, config=None):
+        def invoke(self, payload, config=None, *, context=None):
+            received_contexts.append(context)
             return expected
 
     runtime = ValidatedOrchestrator(FakeGraph(), {"StoryArchitect": StorySetting})
-    assert runtime.invoke({"messages": []}, context_manifest=manifest()) is expected
+    trusted_manifest = manifest()
+    assert runtime.invoke({"messages": []}, context_manifest=trusted_manifest) is expected
+    assert received_contexts == [TrustedAgentContext(manifest=trusted_manifest)]
 
 
 @pytest.mark.parametrize(
@@ -117,8 +127,16 @@ def test_validated_orchestrator_accepts_known_structured_result() -> None:
                 "description": json.dumps(
                     {
                         "instruction": "design",
-                        "context": {"sources": [], "retrieved": []},
-                        "extra": "forbidden",
+                        "context": {
+                            "sources": [
+                                {
+                                    "path": "canon/premise.md",
+                                    "sha256": "0" * 64,
+                                    "excerpt": "FABRICATED",
+                                }
+                            ],
+                            "retrieved": [],
+                        },
                     }
                 ),
             },
@@ -127,18 +145,18 @@ def test_validated_orchestrator_accepts_known_structured_result() -> None:
         (
             {
                 "subagent_type": "UnknownAgent",
-                "description": json.dumps(
-                    {"instruction": "design", "context": {"sources": [], "retrieved": []}}
-                ),
+                "description": json.dumps({"instruction": "design"}),
             },
             "TASK_SUBAGENT_UNKNOWN",
         ),
     ],
 )
 def test_task_input_middleware_rejects_invalid_before_dispatch(
-    task_args: dict[str, str], error_code: str
+    tmp_path: Path, task_args: dict[str, str], error_code: str
 ) -> None:
     called: list[str] = []
+    backend, canon, _, _ = make_backend(tmp_path)
+    canon.write_markdown("story-01", "canon/premise.md", ConfirmedContent(markdown="confirmed"))
 
     def subagent(state):
         called.append("called")
@@ -164,27 +182,34 @@ def test_task_input_middleware_rejects_invalid_before_dispatch(
     )
     graph = create_deep_agent(
         model=model,
+        backend=backend,
         subagents=[
             {"name": "StoryArchitect", "description": "test", "runnable": RunnableLambda(subagent)}
         ],
-        middleware=[TaskInputContractMiddleware({"StoryArchitect": StoryArchitectInput})],
+        middleware=[
+            TaskInputContractMiddleware(
+                {"StoryArchitect": StoryArchitectPayload},
+                {"StoryArchitect": StoryArchitectInput},
+            )
+        ],
+        context_schema=TrustedAgentContext,
     )
     with pytest.raises(RuntimeError, match=error_code):
-        graph.invoke({"messages": [{"role": "user", "content": "delegate"}]})
+        graph.invoke(
+            {"messages": [{"role": "user", "content": "delegate"}]},
+            context=TrustedAgentContext(manifest=manifest()),
+        )
     assert called == []
+    assert canon.read_markdown("story-01", "canon/premise.md").markdown == "confirmed"
 
 
-def test_task_input_middleware_allows_valid_envelope_to_dispatch() -> None:
+def test_task_input_middleware_requires_runtime_manifest_before_dispatch() -> None:
     called: list[str] = []
 
     def subagent(state):
-        called.append(state["messages"][0].content)
+        called.append("called")
         return {"messages": [AIMessage(content="done")]}
 
-    envelope = {
-        "instruction": "design",
-        "context": {"sources": [], "retrieved": []},
-    }
     model = ScriptedChatModel(
         responses=[
             AIMessage(
@@ -194,13 +219,12 @@ def test_task_input_middleware_allows_valid_envelope_to_dispatch() -> None:
                         "name": "task",
                         "args": {
                             "subagent_type": "StoryArchitect",
-                            "description": json.dumps(envelope),
+                            "description": json.dumps({"instruction": "design"}),
                         },
                         "id": "task-1",
                     }
                 ],
-            ),
-            AIMessage(content="summary"),
+            )
         ]
     )
     graph = create_deep_agent(
@@ -208,7 +232,83 @@ def test_task_input_middleware_allows_valid_envelope_to_dispatch() -> None:
         subagents=[
             {"name": "StoryArchitect", "description": "test", "runnable": RunnableLambda(subagent)}
         ],
-        middleware=[TaskInputContractMiddleware({"StoryArchitect": StoryArchitectInput})],
+        middleware=[
+            TaskInputContractMiddleware(
+                {"StoryArchitect": StoryArchitectPayload},
+                {"StoryArchitect": StoryArchitectInput},
+            )
+        ],
+        context_schema=TrustedAgentContext,
     )
-    graph.invoke({"messages": [{"role": "user", "content": "delegate"}]})
-    assert called == [json.dumps(envelope)]
+    with pytest.raises(RuntimeError, match="TASK_CONTEXT_MISSING"):
+        graph.invoke({"messages": [{"role": "user", "content": "delegate"}]})
+    assert called == []
+
+
+def test_task_input_middleware_injects_full_trusted_manifest_without_cross_run_leak() -> None:
+    called: list[str] = []
+
+    def subagent(state):
+        called.append(state["messages"][0].content)
+        return {"messages": [AIMessage(content="done")]}
+
+    payload = {"instruction": "design"}
+    model = ScriptedChatModel(
+        responses=[
+            AIMessage(
+                content="",
+                tool_calls=[
+                    {
+                        "name": "task",
+                        "args": {
+                            "subagent_type": "StoryArchitect",
+                            "description": json.dumps(payload),
+                        },
+                        "id": "task-1",
+                    }
+                ],
+            ),
+            AIMessage(content="summary"),
+            AIMessage(
+                content="",
+                tool_calls=[
+                    {
+                        "name": "task",
+                        "args": {
+                            "subagent_type": "StoryArchitect",
+                            "description": json.dumps(payload),
+                        },
+                        "id": "task-2",
+                    }
+                ],
+            ),
+            AIMessage(content="summary 2"),
+        ]
+    )
+    graph = create_deep_agent(
+        model=model,
+        subagents=[
+            {"name": "StoryArchitect", "description": "test", "runnable": RunnableLambda(subagent)}
+        ],
+        middleware=[
+            TaskInputContractMiddleware(
+                {"StoryArchitect": StoryArchitectPayload},
+                {"StoryArchitect": StoryArchitectInput},
+            )
+        ],
+        context_schema=TrustedAgentContext,
+    )
+    first = manifest("canon/premise.md")
+    second = manifest("canon/outline.md")
+    graph.invoke(
+        {"messages": [{"role": "user", "content": "delegate"}]},
+        context=TrustedAgentContext(manifest=first),
+    )
+    graph.invoke(
+        {"messages": [{"role": "user", "content": "delegate again"}]},
+        context=TrustedAgentContext(manifest=second),
+    )
+    parsed = [StoryArchitectInput.model_validate_json(item) for item in called]
+    assert parsed[0].context == first
+    assert parsed[1].context == second
+    assert parsed[0].context != parsed[1].context

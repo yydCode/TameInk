@@ -8,8 +8,13 @@ from deepagents import (
 from langchain_core.language_models.chat_models import BaseChatModel
 
 from app.agents.backend import NovelWorkspaceBackend
+from app.agents.context import TrustedAgentContext
 from app.agents.contracts import TaskInputContractMiddleware, ValidatedOrchestrator
-from app.agents.subagents import build_subagent_definitions, subagent_input_schemas
+from app.agents.subagents import (
+    build_subagent_definitions,
+    subagent_input_schemas,
+    subagent_payload_schemas,
+)
 
 
 def create_orchestrator(
@@ -25,8 +30,9 @@ def create_orchestrator(
             general_purpose_subagent=GeneralPurposeSubagentProfile(enabled=False),
             tool_description_overrides={
                 "task": (
-                    "委派给一个专业创作 Agent。description 必须是对应输入 Schema 的严格 "
-                    "JSON envelope，包含 instruction 和 context。可用 Agent：\n{available_agents}"
+                    "委派给一个专业创作 Agent。description 必须是对应业务 payload Schema "
+                    "的严格 JSON，只含业务字段；模型不得提供 context。可用 Agent：\n"
+                    "{available_agents}"
                 ),
             },
         ),
@@ -37,12 +43,18 @@ def create_orchestrator(
         tools=[],
         system_prompt=(
             "你只负责委派给八个专业 Agent 并汇总候选结果，不得写入 canon 或 memory。"
-            "调用 task 时 description 必须是对应输入 Schema 的严格 JSON envelope。"
+            "调用 task 时 description 只提交业务 payload，禁止提交 context；context 由系统注入。"
         ),
         subagents=[definition.to_deepagent() for definition in definitions],
         backend=backend,
         permissions=[FilesystemPermission(operations=["write"], paths=["/**"], mode="deny")],
-        middleware=[TaskInputContractMiddleware(subagent_input_schemas())],
+        middleware=[
+            TaskInputContractMiddleware(
+                subagent_payload_schemas(),
+                subagent_input_schemas(),
+            )
+        ],
+        context_schema=TrustedAgentContext,
     )
     output_schemas = {definition.name: definition.output_schema for definition in definitions}
     return ValidatedOrchestrator(graph, output_schemas)
