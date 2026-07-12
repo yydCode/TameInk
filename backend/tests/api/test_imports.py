@@ -24,7 +24,15 @@ def test_import_upload_preserves_original_and_requires_boundary_confirmation(
             "/api/projects/night-01/imports/source-01?encoding=utf-8",
             content="# 第一章\n\n正文".encode(),
         )
-        confirmed = client.post("/api/projects/night-01/imports/source-01/boundaries")
+        body = uploaded.json()
+        confirmed = client.post(
+            "/api/projects/night-01/imports/source-01/boundaries",
+            json={
+                "source_sha256": body["sha256"],
+                "source_size": body["size"],
+                "boundaries": body["chapters"],
+            },
+        )
 
     assert uploaded.status_code == 201
     assert uploaded.json()["chapters"][0]["number"] == 1

@@ -37,6 +37,8 @@ class MemoryService:
         source_path = self.workspace.resolve_project_path(project_id, source)
         if not source.startswith("canon/chapters/") or not source_path.is_file():
             raise MemoryProvenanceError("memory source must be an approved chapter")
+        if quote not in source_path.read_text(encoding="utf-8"):
+            raise MemoryProvenanceError("memory quote is not present in its source chapter")
         relative = f"memory/{directory}/{stable_id}.yaml"
         target = self.workspace.resolve_project_path(project_id, relative)
         if target.exists():

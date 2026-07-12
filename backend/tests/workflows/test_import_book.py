@@ -76,6 +76,23 @@ def test_import_original_cannot_be_overwritten(tmp_path: Path) -> None:
     ).read_bytes() == original
 
 
+def test_ambiguous_upload_can_be_completed_with_explicit_encoding(tmp_path: Path) -> None:
+    workspace = WorkspaceRepository(tmp_path)
+    workspace.create_project("story-01")
+    service = ImportBookService(workspace)
+    original = "第一章\n正文".encode("gb18030")
+
+    with pytest.raises(ImportEncodingAmbiguousError):
+        service.upload("story-01", "source-01", original, None)
+
+    decoded, _ = service.upload("story-01", "source-01", original, "gb18030")
+
+    assert decoded.encoding == "gb18030"
+    assert (
+        workspace.project_path("story-01") / "imports/originals/source-01.bin"
+    ).read_bytes() == original
+
+
 @pytest.mark.parametrize(
     "text",
     [

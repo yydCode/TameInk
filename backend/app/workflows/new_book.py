@@ -62,11 +62,18 @@ class NewBookService:
         database = DatabaseRepository(self.workspace)
         service = TaskService(TasksRepository(database, project_id))
         service.approve(task_id)
-        content = DraftRepository(self.workspace).read(project_id, task_id, "setting.md")
-        revisions = RevisionRepository(self.workspace)
-        revisions.confirm(
-            project_id,
-            RevisionWrite(path="canon/world/setting.md", content=content, message="确认：故事设定"),
-            revisions.current_revision(project_id),
-        )
+        try:
+            content = DraftRepository(self.workspace).read(project_id, task_id, "setting.md")
+            revisions = RevisionRepository(self.workspace)
+            revisions.confirm(
+                project_id,
+                RevisionWrite(
+                    path="canon/world/setting.md", content=content, message="确认：故事设定"
+                ),
+                revisions.current_revision(project_id),
+            )
+            DatabaseRepository(self.workspace).rebuild(project_id)
+        except Exception:
+            service.fail(task_id)
+            raise
         return service.complete(task_id)

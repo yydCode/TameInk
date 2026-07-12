@@ -1,8 +1,26 @@
 from fastapi import APIRouter, Request, status
+from pydantic import BaseModel, ConfigDict
 
 from app.workflows.import_book import ChapterBoundary, ImportBookService
 
 router = APIRouter(prefix="/projects/{project_id}/imports", tags=["imports"])
+
+
+class BoundaryRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    number: int
+    title: str
+    start: dict[str, int]
+    end: dict[str, int]
+
+
+class ConfirmBoundariesRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    source_sha256: str
+    source_size: int
+    boundaries: list[BoundaryRequest]
 
 
 def _boundary(chapter: ChapterBoundary) -> dict[str, object]:
@@ -10,7 +28,7 @@ def _boundary(chapter: ChapterBoundary) -> dict[str, object]:
         "number": chapter.number,
         "title": chapter.title,
         "start": chapter.start.__dict__,
-        "body_start": chapter.body_start.__dict__,
+        "end": chapter.end.__dict__,
     }
 
 
@@ -21,12 +39,27 @@ async def upload_import(
     decoded, boundaries = ImportBookService(request.app.state.workspace).upload(
         project_id, import_id, await request.body(), encoding
     )
-    return {"encoding": decoded.encoding, "chapters": [_boundary(item) for item in boundaries]}
+    source = request.app.state.workspace.resolve_project_path(
+        project_id, f".tame-ink/imports/{import_id}.json"
+    )
+    record = __import__("json").loads(source.read_text())
+    return {
+        "encoding": decoded.encoding,
+        "sha256": record["sha256"],
+        "size": record["size"],
+        "chapters": [_boundary(item) for item in boundaries],
+    }
 
 
 @router.post("/{import_id}/boundaries", status_code=status.HTTP_201_CREATED)
-def confirm_boundaries(project_id: str, import_id: str, request: Request) -> dict[str, object]:
+def confirm_boundaries(
+    project_id: str, import_id: str, payload: ConfirmBoundariesRequest, request: Request
+) -> dict[str, object]:
     task, boundaries = ImportBookService(request.app.state.workspace).confirm_boundaries(
-        project_id, import_id
+        project_id,
+        import_id,
+        payload.source_sha256,
+        payload.source_size,
+        [item.model_dump() for item in payload.boundaries],
     )
     return {"task": task, "chapters": [_boundary(item) for item in boundaries]}

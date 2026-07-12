@@ -36,3 +36,19 @@ def test_memory_rejects_missing_source_or_duplicate_stable_id(tmp_path: Path) ->
 
     with pytest.raises(MemoryProvenanceError):
         memory.create("story-01", "missing", "fact", "canon/chapters/0001.md", "line 1", "quote")
+
+
+def test_memory_rejects_quote_not_present_in_source_chapter(tmp_path: Path) -> None:
+    workspace = WorkspaceRepository(tmp_path)
+    workspace.create_project("story-01")
+    canon = CanonRepository(workspace)
+    canon.write_project(Project(id="story-01", title="长夜", language="zh-CN"))
+    canon.write_markdown(
+        "story-01", "canon/chapters/0001.md", ConfirmedContent(markdown="雨夜相遇")
+    )
+    RevisionRepository(workspace).current_revision("story-01")
+
+    with pytest.raises(MemoryProvenanceError):
+        MemoryService(workspace).create(
+            "story-01", "bad", "fact", "canon/chapters/0001.md", "line 1", "不存在"
+        )

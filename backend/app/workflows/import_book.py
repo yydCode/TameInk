@@ -60,6 +60,7 @@ class ChapterBoundary:
     title: str
     start: SourceLocation
     body_start: SourceLocation
+    end: SourceLocation
 
 
 def decode_import(payload: bytes, encoding: str | None) -> DecodedImport:
@@ -147,7 +148,7 @@ def parse_chapters(text: str, encoding: str = "utf-8") -> list[ChapterBoundary]:
             index + 1,
             1,
         )
-        boundaries.append(ChapterBoundary(number, title, location, body_start))
+        boundaries.append(ChapterBoundary(number, title, location, body_start, body_start))
         previous_number = number
         byte_offset += len(line.encode(encoding, errors="strict"))
         char_offset += len(line)
@@ -155,18 +156,29 @@ def parse_chapters(text: str, encoding: str = "utf-8") -> list[ChapterBoundary]:
         raise ImportChapterBoundaryError(
             "no deterministic chapter title found", SourceLocation(0, 0, 1, 1)
         )
+    resolved: list[ChapterBoundary] = []
+    encoded = text.encode(encoding, errors="strict")
     for position, chapter in enumerate(boundaries):
         next_byte = (
             boundaries[position + 1].start.byte
             if position + 1 < len(boundaries)
-            else len(text.encode(encoding, errors="strict"))
+            else len(encoded)
         )
-        body = text.encode(encoding, errors="strict")[chapter.body_start.byte : next_byte].decode(
-            encoding, errors="strict"
-        )
+        body = encoded[chapter.body_start.byte : next_byte].decode(encoding, errors="strict")
         if not body.strip():
             raise ImportChapterBoundaryError("chapter has no body", chapter.start)
-    return boundaries
+        end_char = len(encoded[:next_byte].decode(encoding, errors="strict"))
+        before_end = encoded[:next_byte].decode(encoding, errors="strict")
+        end = SourceLocation(
+            next_byte,
+            end_char,
+            before_end.count("\n") + 1,
+            len(before_end.rsplit("\n", 1)[-1]) + 1,
+        )
+        resolved.append(
+            ChapterBoundary(chapter.number, chapter.title, chapter.start, chapter.body_start, end)
+        )
+    return resolved
 
 
 def _chapter_number(value: str) -> int:
@@ -200,9 +212,13 @@ class ImportBookService:
         metadata = self.workspace.resolve_project_path(
             project_id, f".tame-ink/imports/{import_id}.json"
         )
-        if original.exists() or metadata.exists():
+        if metadata.exists():
             raise ImportAlreadyExistsError(import_id)
-        self._atomic_write(original, payload)
+        if original.exists():
+            if original.read_bytes() != payload:
+                raise ImportAlreadyExistsError(import_id)
+        else:
+            self._atomic_write(original, payload)
         decoded = decode_import(payload, encoding)
         self._atomic_write(
             metadata,
@@ -218,27 +234,72 @@ class ImportBookService:
         return decoded, parse_chapters(decoded.text, decoded.encoding)
 
     def confirm_boundaries(
-        self, project_id: str, import_id: str
+        self,
+        project_id: str,
+        import_id: str,
+        source_sha256: str,
+        source_size: int,
+        boundaries: list[dict[str, object]],
     ) -> tuple[Task, list[ChapterBoundary]]:
         metadata = self.workspace.resolve_project_path(
             project_id, f".tame-ink/imports/{import_id}.json"
         )
         try:
-            encoding = str(json.loads(metadata.read_text())["encoding"])
-            decoded = decode_import(
-                self._original_path(project_id, import_id).read_bytes(), encoding
-            )
+            record = json.loads(metadata.read_text())
+            original = self._original_path(project_id, import_id).read_bytes()
+            if record["sha256"] != source_sha256 or record["size"] != source_size:
+                raise ValueError("import identity does not match")
+            if sha256(original).hexdigest() != source_sha256 or len(original) != source_size:
+                raise ValueError("stored import bytes do not match")
+            encoding = str(record["encoding"])
+            decoded = decode_import(original, encoding)
         except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError) as error:
             raise ImportChapterBoundaryError(
                 "import must be uploaded with a confirmed encoding", SourceLocation(0, 0, 1, 1)
             ) from error
-        boundaries = parse_chapters(decoded.text, decoded.encoding)
+        candidates = parse_chapters(decoded.text, decoded.encoding)
+        expected = [
+            {
+                "number": item.number,
+                "title": item.title,
+                "start": item.start.__dict__,
+                "end": item.end.__dict__,
+            }
+            for item in candidates
+        ]
+        received: list[dict[str, object]] = []
+        for item in boundaries:
+            start = item.get("start")
+            received.append(
+                {
+                    "number": item.get("number"),
+                    "title": item.get("title"),
+                    "start": start,
+                    "end": item.get("end"),
+                }
+            )
+        if received != expected:
+            raise ImportChapterBoundaryError(
+                "confirmed boundaries do not match deterministic candidates",
+                SourceLocation(0, 0, 1, 1),
+            )
+        confirmation = self.workspace.resolve_project_path(
+            project_id, f".tame-ink/imports/{import_id}-boundaries.json"
+        )
+        if confirmation.exists():
+            raise ImportAlreadyExistsError(import_id)
+        self._atomic_write(
+            confirmation,
+            json.dumps(
+                {"sha256": source_sha256, "size": source_size, "boundaries": boundaries}
+            ).encode(),
+        )
         service = TaskService(TasksRepository(DatabaseRepository(self.workspace), project_id))
         task = service.create(TaskKind.READ)
         service.start(task.id)
-        analysis = "\n".join(f"{item.number}: {item.title}" for item in boundaries)
+        analysis = "\n".join(f"{item.number}: {item.title}" for item in candidates)
         DraftRepository(self.workspace).write(project_id, task.id, "import-analysis.md", analysis)
-        return service.await_approval(task.id), boundaries
+        return service.await_approval(task.id), candidates
 
     def _original_path(self, project_id: str, import_id: str) -> Path:
         if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,62}", import_id):
