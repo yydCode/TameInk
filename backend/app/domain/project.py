@@ -65,9 +65,10 @@ class MemoryRecord(StrictModel):
     kind: Literal["fact", "event", "relationship", "foreshadowing"]
     status: Literal["active", "resolved", "superseded"]
     source: str
+    location: str
     quote: str
 
-    @field_validator("id", "quote")
+    @field_validator("id", "location", "quote")
     @classmethod
     def validate_non_blank(cls, value: str) -> str:
         stripped = value.strip()

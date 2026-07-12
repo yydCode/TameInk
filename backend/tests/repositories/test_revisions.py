@@ -435,6 +435,75 @@ def test_file_replace_failure_restores_git_ref(
     assert workspace.resolve_project_path("story-01", "canon/outline.md").read_text() == "旧版\n"
 
 
+def test_confirm_batch_commits_all_files_as_one_revision(tmp_path: Path) -> None:
+    workspace, revisions = repository(tmp_path)
+    current = baseline(revisions)
+
+    revision = revisions.confirm_batch(
+        "story-01",
+        [
+            RevisionWrite(
+                path="canon/chapters/0001.md", content="正文\n", message="确认：章节 0001"
+            ),
+            RevisionWrite(
+                path="memory/summaries/chapters/0001.md",
+                content="章节摘要\n",
+                message="确认：章节 0001",
+            ),
+        ],
+        current,
+    )
+
+    assert revisions.current_revision("story-01") == revision.id
+    assert [item.id for item in revisions.history("story-01")] == [revision.id, current]
+    chapter = workspace.resolve_project_path("story-01", "canon/chapters/0001.md")
+    assert chapter.read_text() == "正文\n"
+    assert (
+        workspace.resolve_project_path("story-01", "memory/summaries/chapters/0001.md").read_text()
+        == "章节摘要\n"
+    )
+
+
+def test_confirm_batch_failure_restores_every_file_and_ref(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, revisions = repository(tmp_path)
+    current = baseline(revisions)
+    calls = 0
+    replace = revisions._replace_file
+
+    def fail_second(path: Path, payload: bytes) -> None:
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise OSError("second replace failed")
+        replace(path, payload)
+
+    monkeypatch.setattr(revisions, "_replace_file", fail_second)
+
+    with pytest.raises(StorageWriteError):
+        revisions.confirm_batch(
+            "story-01",
+            [
+                RevisionWrite(
+                    path="canon/chapters/0001.md", content="正文\n", message="确认：章节 0001"
+                ),
+                RevisionWrite(
+                    path="memory/summaries/chapters/0001.md",
+                    content="章节摘要\n",
+                    message="确认：章节 0001",
+                ),
+            ],
+            current,
+        )
+
+    assert revisions.current_revision("story-01") == current
+    assert not workspace.resolve_project_path("story-01", "canon/chapters/0001.md").exists()
+    assert not workspace.resolve_project_path(
+        "story-01", "memory/summaries/chapters/0001.md"
+    ).exists()
+
+
 def test_incomplete_recovery_blocks_later_writes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

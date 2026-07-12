@@ -28,6 +28,7 @@ def setup_project(
             kind="fact",
             status="active",
             source="canon/chapters/0001.md",
+            location="line 3, column 1",
             quote="长街落雨",
         ),
     )

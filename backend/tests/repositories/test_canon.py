@@ -51,6 +51,7 @@ def test_memory_yaml_round_trip(tmp_path: Path) -> None:
         kind="fact",
         status="active",
         source="canon/chapters/0001.md",
+        location="line 1, column 1",
         quote="天在下雨",
     )
     canon.write_memory("story-01", "memory/facts/fact-001.yaml", memory)
@@ -126,13 +127,14 @@ def test_project_schema_rejects_invalid_identity_and_blank_fields(data: dict[str
         Project.model_validate(data)
 
 
-@pytest.mark.parametrize("field", ["id", "source", "quote"])
+@pytest.mark.parametrize("field", ["id", "source", "location", "quote"])
 def test_memory_schema_rejects_blank_required_fields(field: str) -> None:
     data = {
         "id": "fact-001",
         "kind": "fact",
         "status": "active",
         "source": "canon/chapters/0001.md",
+        "location": "line 1, column 1",
         "quote": "原文",
     }
     data[field] = "   "

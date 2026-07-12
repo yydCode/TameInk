@@ -40,6 +40,21 @@ class RevisionRepository:
             self._gate_recovery(project_id)
             return self._confirm_locked(project_id, write, expected_revision)
 
+    def confirm_batch(
+        self,
+        project_id: str,
+        writes: list[RevisionWrite],
+        expected_revision: str | None,
+    ) -> Revision:
+        if not writes:
+            raise StorageWriteError("revision batch must not be empty")
+        messages = {write.message for write in writes}
+        if len(messages) != 1:
+            raise StorageWriteError("revision batch must use one commit message")
+        with self._locked(project_id):
+            self._gate_recovery(project_id)
+            return self._confirm_batch_locked(project_id, writes, expected_revision)
+
     def _confirm_locked(
         self, project_id: str, write: RevisionWrite, expected_revision: str | None
     ) -> Revision:
@@ -62,6 +77,33 @@ class RevisionRepository:
         files[write.path] = write.content.encode()
         self._transaction(repo, project, log, current, commit_id, files)
         return Revision(id=commit_id.decode(), message=write.message)
+
+    def _confirm_batch_locked(
+        self, project_id: str, writes: list[RevisionWrite], expected_revision: str | None
+    ) -> Revision:
+        project, repo = self._repo(project_id)
+        log = self._log_path(project_id)
+        current = self._current_revision_from_repo(repo)
+        if current != expected_revision:
+            raise CanonVersionConflictError(f"expected {expected_revision}, found {current}")
+        if current is None:
+            raise StorageWriteError("project baseline is missing")
+        self._assert_no_drift(repo, project, current)
+        if len({write.path for write in writes}) != len(writes):
+            raise StorageWriteError("revision batch contains duplicate paths")
+        for write in writes:
+            self._formal_target(project_id, write.path)
+        files = self._current_files(project)
+        for write in writes:
+            files[write.path] = write.content.encode()
+        try:
+            commit_id = self._build_commit_from_files(repo, files, current, writes[0].message)
+        except TameInkError:
+            raise
+        except Exception as error:
+            raise StorageWriteError(str(error)) from error
+        self._transaction(repo, project, log, current, commit_id, files)
+        return Revision(id=commit_id.decode(), message=writes[0].message)
 
     def _transaction(
         self,
