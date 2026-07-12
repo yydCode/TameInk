@@ -1,3 +1,4 @@
+import asyncio
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Request
@@ -82,7 +83,9 @@ def delete_secret(request: Request) -> SecretStatus:
 async def connect(request: Request) -> dict[str, str]:
     settings, secrets = _repositories(request)
     try:
-        model = build_model(settings.load(), secrets.get())
+        config = await asyncio.to_thread(settings.load)
+        api_key = await asyncio.to_thread(secrets.get)
+        model = build_model(config, api_key)
         await test_connection(model)
         return {"status": "ok"}
     except (SettingsError, SecretStoreError, ModelConfigurationError) as error:

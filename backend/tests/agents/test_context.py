@@ -1,8 +1,9 @@
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
-from app.agents.context import ContextBuilder, ContextRequest, RetrievedSnippet
+from app.agents.context import ContextBuilder, ContextRequest, ManifestSource, RetrievedSnippet
 from app.domain.project import ConfirmedContent
 from tests.agents.test_backend import make_backend
 
@@ -35,6 +36,8 @@ def test_context_reads_exact_manifest_and_records_hashes(tmp_path: Path) -> None
 
     assert [source.path for source in manifest.sources] == list(sources)
     assert all(len(source.sha256) == 64 and source.excerpt for source in manifest.sources)
+    assert all(source.location == "full document" for source in manifest.sources)
+    assert [source.quote for source in manifest.sources] == list(sources.values())
     assert queried == ["hero clue"]
     assert manifest.retrieved[0].path == "canon/premise.md"
 
@@ -51,3 +54,27 @@ def test_context_missing_explicit_source_fails_without_glob_fallback(tmp_path: P
     )
     with pytest.raises(RuntimeError, match="CONTEXT_SOURCE_MISSING"):
         builder.build(request)
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"path": "../canon/premise.md"},
+        {"sha256": "0" * 63},
+        {"sha256": "g" * 64},
+        {"excerpt": " "},
+        {"location": ""},
+        {"quote": ""},
+    ],
+)
+def test_manifest_source_rejects_invalid_evidence(overrides: dict[str, str]) -> None:
+    payload = {
+        "path": "canon/premise.md",
+        "sha256": "a" * 64,
+        "excerpt": "confirmed",
+        "location": "full document",
+        "quote": "confirmed",
+        **overrides,
+    }
+    with pytest.raises(ValidationError):
+        ManifestSource.model_validate(payload)

@@ -1,3 +1,5 @@
+from threading import Lock
+
 from deepagents import (
     FilesystemPermission,
     GeneralPurposeSubagentProfile,
@@ -5,7 +7,7 @@ from deepagents import (
     create_deep_agent,
     register_harness_profile,
 )
-from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_openai import ChatOpenAI
 
 from app.agents.backend import NovelWorkspaceBackend
 from app.agents.context import TrustedAgentContext
@@ -16,27 +18,43 @@ from app.agents.subagents import (
     subagent_payload_schemas,
 )
 
+_PROFILE_LOCK = Lock()
+_REGISTERED_PROFILE_KEYS: set[str] = set()
+
+
+def _register_model_profile(model_identifier: str) -> None:
+    if not model_identifier or ":" in model_identifier:
+        raise ValueError("MODEL_IDENTIFIER_INVALID")
+    key = f"openai:{model_identifier}"
+    with _PROFILE_LOCK:
+        if key in _REGISTERED_PROFILE_KEYS:
+            return
+        register_harness_profile(
+            key,
+            HarnessProfile(
+                excluded_tools=frozenset({"execute"}),
+                general_purpose_subagent=GeneralPurposeSubagentProfile(enabled=False),
+                tool_description_overrides={
+                    "task": (
+                        "委派给一个专业创作 Agent。description 必须是对应业务 payload Schema "
+                        "的严格 JSON，只含业务字段；模型不得提供 context。可用 Agent：\n"
+                        "{available_agents}"
+                    ),
+                },
+            ),
+        )
+        _REGISTERED_PROFILE_KEYS.add(key)
+
 
 def create_orchestrator(
-    model: BaseChatModel,
+    model: ChatOpenAI,
     backend: NovelWorkspaceBackend,
     *,
-    profile_key: str = "openai",
+    model_identifier: str,
 ) -> ValidatedOrchestrator:
-    register_harness_profile(
-        profile_key,
-        HarnessProfile(
-            excluded_tools=frozenset({"execute"}),
-            general_purpose_subagent=GeneralPurposeSubagentProfile(enabled=False),
-            tool_description_overrides={
-                "task": (
-                    "委派给一个专业创作 Agent。description 必须是对应业务 payload Schema "
-                    "的严格 JSON，只含业务字段；模型不得提供 context。可用 Agent：\n"
-                    "{available_agents}"
-                ),
-            },
-        ),
-    )
+    if model.model_name != model_identifier:
+        raise ValueError("MODEL_IDENTIFIER_MISMATCH")
+    _register_model_profile(model_identifier)
     definitions = build_subagent_definitions(backend)
     graph = create_deep_agent(
         model=model,

@@ -80,6 +80,8 @@ class NovelWorkspaceBackend(BackendProtocol):
             if root != "drafts":
                 raise WorkspacePathViolationError(file_path)
             content = self.drafts.read(self.project_id, self.task_id, relative)
+            if old_string == "":
+                return EditResult(error="EDIT_TARGET_INVALID")
             occurrences = content.count(old_string)
             if (
                 occurrences == 0

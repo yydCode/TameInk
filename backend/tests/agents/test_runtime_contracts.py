@@ -8,7 +8,7 @@ from deepagents import (
     create_deep_agent,
     register_harness_profile,
 )
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.runnables import RunnableLambda
 
 from app.agents.context import (
@@ -32,18 +32,31 @@ from tests.agents.test_backend import make_backend
 
 def manifest(path: str = "canon/premise.md") -> ContextManifest:
     return ContextManifest(
-        sources=[ManifestSource(path=path, sha256="a" * 64, excerpt="confirmed")],
+        sources=[
+            ManifestSource(
+                path=path,
+                sha256="a" * 64,
+                excerpt="confirmed",
+                location="paragraph 1",
+                quote="confirmed quote",
+            )
+        ],
         retrieved=[RetrievedSnippet(path=path, location="paragraph 1", quote="confirmed quote")],
     )
 
 
-def output(path: str) -> StorySetting:
+def output(
+    path: str,
+    *,
+    location: str = "paragraph 1",
+    quote: str = "confirmed quote",
+) -> StorySetting:
     return StorySetting.model_validate(
         {
             "id": "setting-1",
             "title": "setting",
             "content": "content",
-            "references": [{"path": path, "location": "paragraph 1", "quote": "confirmed"}],
+            "references": [{"path": path, "location": location, "quote": quote}],
         }
     )
 
@@ -53,6 +66,10 @@ def test_output_parses_without_context_then_validates_known_sources() -> None:
     assert validate_agent_output(parsed, manifest()) is parsed
     with pytest.raises(OutputContractError, match="REFERENCE_SOURCE_UNKNOWN"):
         validate_agent_output(parsed, manifest("canon/outline.md"))
+    with pytest.raises(OutputContractError, match="REFERENCE_EVIDENCE_UNKNOWN"):
+        validate_agent_output(output("canon/premise.md", quote="FABRICATED"), manifest())
+    with pytest.raises(OutputContractError, match="REFERENCE_EVIDENCE_UNKNOWN"):
+        validate_agent_output(output("canon/premise.md", location="wrong location"), manifest())
 
 
 def test_validated_orchestrator_invoke_cannot_skip_output_validation(tmp_path: Path) -> None:
@@ -84,8 +101,6 @@ def test_validated_orchestrator_invoke_cannot_skip_output_validation(tmp_path: P
 
 
 def test_validated_orchestrator_accepts_known_structured_result() -> None:
-    from langchain_core.messages import ToolMessage
-
     task_call = {
         "name": "task",
         "args": {"subagent_type": "StoryArchitect", "description": "{}"},
@@ -112,6 +127,132 @@ def test_validated_orchestrator_accepts_known_structured_result() -> None:
     trusted_manifest = manifest()
     assert runtime.invoke({"messages": []}, context_manifest=trusted_manifest) is expected
     assert received_contexts == [TrustedAgentContext(manifest=trusted_manifest)]
+
+
+@pytest.mark.parametrize(
+    ("messages", "error_code"),
+    [
+        ([AIMessage(content="summary without delegation")], "TASK_DELEGATION_REQUIRED"),
+        (
+            [
+                AIMessage(
+                    content="",
+                    tool_calls=[
+                        {
+                            "name": "task",
+                            "args": {"subagent_type": "StoryArchitect", "description": "{}"},
+                            "id": "task-1",
+                        }
+                    ],
+                )
+            ],
+            "TASK_RESULT_MISSING",
+        ),
+        (
+            [
+                AIMessage(
+                    content="",
+                    tool_calls=[
+                        {
+                            "name": "task",
+                            "args": {"subagent_type": "StoryArchitect", "description": "{}"},
+                            "id": "task-1",
+                        },
+                        {
+                            "name": "task",
+                            "args": {"subagent_type": "StoryArchitect", "description": "{}"},
+                            "id": "task-1",
+                        },
+                    ],
+                )
+            ],
+            "TASK_CALL_ID_DUPLICATE",
+        ),
+        (
+            [
+                AIMessage(
+                    content="",
+                    tool_calls=[
+                        {
+                            "name": "task",
+                            "args": {"subagent_type": "StoryArchitect", "description": "{}"},
+                            "id": "task-1",
+                        }
+                    ],
+                ),
+                ToolMessage(
+                    content=output("canon/premise.md").model_dump_json(),
+                    tool_call_id="task-1",
+                ),
+                ToolMessage(
+                    content=output("canon/premise.md").model_dump_json(),
+                    tool_call_id="task-1",
+                ),
+            ],
+            "TASK_RESULT_DUPLICATE",
+        ),
+        (
+            [
+                AIMessage(
+                    content="",
+                    tool_calls=[
+                        {
+                            "name": "task",
+                            "args": {"subagent_type": "StoryArchitect", "description": "{}"},
+                            "id": "task-1",
+                        }
+                    ],
+                ),
+                ToolMessage(
+                    content=output("canon/premise.md").model_dump_json(),
+                    tool_call_id="orphan",
+                ),
+            ],
+            "TOOL_RESULT_ORPHAN",
+        ),
+    ],
+)
+def test_validated_orchestrator_fails_closed_on_invalid_delegation_results(
+    messages: list, error_code: str
+) -> None:
+    class FakeGraph:
+        def invoke(self, payload, config=None, *, context=None):
+            return {"messages": messages}
+
+    runtime = ValidatedOrchestrator(FakeGraph(), {"StoryArchitect": StorySetting})
+    with pytest.raises(OutputContractError, match=error_code):
+        runtime.invoke({"messages": []}, context_manifest=manifest())
+
+
+def test_validated_orchestrator_accepts_multiple_complete_task_results() -> None:
+    calls = [
+        {
+            "name": "task",
+            "args": {"subagent_type": "StoryArchitect", "description": "{}"},
+            "id": f"task-{index}",
+        }
+        for index in (1, 2)
+    ]
+    expected = {
+        "messages": [
+            AIMessage(content="", tool_calls=calls),
+            *[
+                ToolMessage(
+                    content=output("canon/premise.md").model_dump_json(),
+                    tool_call_id=call["id"],
+                )
+                for call in calls
+            ],
+            AIMessage(content="delegated summary"),
+        ]
+    }
+
+    class FakeGraph:
+        def invoke(self, payload, config=None, *, context=None):
+            return expected
+
+    runtime = ValidatedOrchestrator(FakeGraph(), {"StoryArchitect": StorySetting})
+    assert runtime.invoke({"messages": []}, context_manifest=manifest()) is expected
 
 
 @pytest.mark.parametrize(

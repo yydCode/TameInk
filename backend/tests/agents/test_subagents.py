@@ -1,12 +1,15 @@
 from pathlib import Path
 
-from deepagents import FilesystemPermission
+import pytest
+from deepagents import FilesystemPermission, create_deep_agent
 from langchain_core.messages import AIMessage
+from pydantic import SecretStr
 
 from app.agents.context import ContextManifest
+from app.agents.contracts import OutputContractError
 from app.agents.orchestrator import create_orchestrator
 from app.agents.subagents import build_subagent_definitions
-from tests.agents.fake_model import ScriptedChatModel
+from tests.agents.fake_model import ScriptedOpenAIModel
 from tests.agents.test_backend import make_backend
 
 EXPECTED_NAMES = {
@@ -42,19 +45,76 @@ def test_eight_subagents_have_independent_contracts_and_minimal_permissions(tmp_
 
 def test_orchestrator_real_graph_has_only_eight_agents_and_no_execute(tmp_path: Path) -> None:
     backend, _, _, _ = make_backend(tmp_path)
-    model = ScriptedChatModel(responses=[AIMessage(content="summary")])
-
-    graph = create_orchestrator(model, backend, profile_key="scriptedchatmodel")
-    graph.invoke(
-        {"messages": [{"role": "user", "content": "plan"}]},
-        context_manifest=ContextManifest(sources=[], retrieved=[]),
+    model = ScriptedOpenAIModel(
+        api_key=SecretStr("test-key"),
+        model="tame-ink-contract-test",
+        responses=[AIMessage(content="summary")],
     )
+
+    graph = create_orchestrator(
+        model,
+        backend,
+        model_identifier="tame-ink-contract-test",
+    )
+    with pytest.raises(OutputContractError, match="TASK_DELEGATION_REQUIRED"):
+        graph.invoke(
+            {"messages": [{"role": "user", "content": "plan"}]},
+            context_manifest=ContextManifest(sources=[], retrieved=[]),
+        )
 
     assert "task" in model.bound_tool_names
     assert "execute" not in model.bound_tool_names
     task_description = model.bound_tool_descriptions["task"]
     assert "general-purpose" not in task_description
     assert all(name in task_description for name in EXPECTED_NAMES)
+
+
+def test_exact_model_profile_does_not_pollute_other_openai_model(tmp_path: Path) -> None:
+    backend, _, _, _ = make_backend(tmp_path)
+    tame_model = ScriptedOpenAIModel(
+        api_key=SecretStr("test-key"),
+        model="tame-ink-profile-isolation",
+        responses=[AIMessage(content="summary")],
+    )
+    first = create_orchestrator(
+        tame_model,
+        backend,
+        model_identifier="tame-ink-profile-isolation",
+    )
+    with pytest.raises(OutputContractError):
+        first.invoke(
+            {"messages": [{"role": "user", "content": "plan"}]},
+            context_manifest=ContextManifest(sources=[], retrieved=[]),
+        )
+    first_description = tame_model.bound_tool_descriptions["task"]
+
+    repeated_model = ScriptedOpenAIModel(
+        api_key=SecretStr("test-key"),
+        model="tame-ink-profile-isolation",
+        responses=[AIMessage(content="summary")],
+    )
+    repeated = create_orchestrator(
+        repeated_model,
+        backend,
+        model_identifier="tame-ink-profile-isolation",
+    )
+    with pytest.raises(OutputContractError):
+        repeated.invoke(
+            {"messages": [{"role": "user", "content": "plan"}]},
+            context_manifest=ContextManifest(sources=[], retrieved=[]),
+        )
+    assert repeated_model.bound_tool_descriptions["task"] == first_description
+
+    other_model = ScriptedOpenAIModel(
+        api_key=SecretStr("test-key"),
+        model="unrelated-profile-model",
+        responses=[AIMessage(content="summary")],
+    )
+    graph = create_deep_agent(model=other_model, backend=backend)
+    graph.invoke({"messages": [{"role": "user", "content": "answer"}]})
+
+    assert "task" in other_model.bound_tool_names
+    assert "general-purpose" in other_model.bound_tool_descriptions["task"]
 
 
 def test_orchestrator_main_permissions_deny_all_writes(tmp_path: Path) -> None:

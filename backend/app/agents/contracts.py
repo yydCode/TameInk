@@ -26,6 +26,15 @@ def validate_agent_output(
     known_sources.update(snippet.path for snippet in manifest.retrieved)
     if any(reference.path not in known_sources for reference in output.references):
         raise OutputContractError("REFERENCE_SOURCE_UNKNOWN")
+    known_evidence = {(source.path, source.location, source.quote) for source in manifest.sources}
+    known_evidence.update(
+        (snippet.path, snippet.location, snippet.quote) for snippet in manifest.retrieved
+    )
+    if any(
+        (reference.path, reference.location, reference.quote) not in known_evidence
+        for reference in output.references
+    ):
+        raise OutputContractError("REFERENCE_EVIDENCE_UNKNOWN")
     return output
 
 
@@ -100,19 +109,39 @@ class ValidatedOrchestrator:
             context=trusted_context,
         )
         task_calls: dict[str, str] = {}
+        all_call_ids: set[str] = set()
         for message in result.get("messages", []):
             if isinstance(message, AIMessage):
                 for call in message.tool_calls:
-                    if call["name"] == "task":
-                        call_id = call.get("id")
-                        subagent_type = call["args"].get("subagent_type")
-                        if not isinstance(call_id, str) or not isinstance(subagent_type, str):
-                            raise OutputContractError("OUTPUT_TASK_INVALID")
-                        task_calls[call_id] = subagent_type
+                    call_id = call.get("id")
+                    if not isinstance(call_id, str):
+                        raise OutputContractError("OUTPUT_TASK_INVALID")
+                    all_call_ids.add(call_id)
+                    if call["name"] != "task":
+                        continue
+                    subagent_type = call["args"].get("subagent_type")
+                    if not isinstance(subagent_type, str):
+                        raise OutputContractError("OUTPUT_TASK_INVALID")
+                    if call_id in task_calls:
+                        raise OutputContractError("TASK_CALL_ID_DUPLICATE")
+                    task_calls[call_id] = subagent_type
+        if not task_calls:
+            raise OutputContractError("TASK_DELEGATION_REQUIRED")
+        task_results: dict[str, list[ToolMessage]] = {call_id: [] for call_id in task_calls}
         for message in result.get("messages", []):
-            if not isinstance(message, ToolMessage) or message.tool_call_id not in task_calls:
+            if not isinstance(message, ToolMessage):
                 continue
-            schema = self._output_schemas.get(task_calls[message.tool_call_id])
+            if message.tool_call_id not in all_call_ids:
+                raise OutputContractError("TOOL_RESULT_ORPHAN")
+            if message.tool_call_id in task_results:
+                task_results[message.tool_call_id].append(message)
+        for call_id, messages in task_results.items():
+            if not messages:
+                raise OutputContractError("TASK_RESULT_MISSING")
+            if len(messages) != 1:
+                raise OutputContractError("TASK_RESULT_DUPLICATE")
+            message = messages[0]
+            schema = self._output_schemas.get(task_calls[call_id])
             if schema is None:
                 raise OutputContractError("OUTPUT_SUBAGENT_UNKNOWN")
             if not isinstance(message.content, str):

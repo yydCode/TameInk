@@ -1,4 +1,5 @@
 import json
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 from pydantic import ValidationError
@@ -69,3 +70,23 @@ def test_settings_repository_invalid_payload_has_stable_error(tmp_path) -> None:
     path.write_text('{"base_url":"file:///tmp/model","model":"model-1","timeout":30}')
     with pytest.raises(RuntimeError, match="MODEL_SETTINGS_INVALID"):
         SettingsRepository(path).load()
+
+
+def test_settings_repository_concurrent_saves_are_complete_last_writer_wins(tmp_path) -> None:
+    repository = SettingsRepository(tmp_path / "settings.json")
+    settings = [
+        ModelSettings(
+            base_url=f"https://api-{index}.example.com/v1",
+            model=f"model-{index}",
+            timeout=float(index + 1),
+        )
+        for index in range(24)
+    ]
+
+    with ThreadPoolExecutor(max_workers=24) as executor:
+        list(executor.map(repository.save, settings))
+
+    loaded = repository.load()
+    assert loaded in settings
+    assert json.loads(repository.path.read_text()) == loaded.model_dump(mode="json")
+    assert list(tmp_path.glob(".settings.json.*.tmp")) == []

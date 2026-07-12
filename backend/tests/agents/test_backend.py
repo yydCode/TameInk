@@ -81,6 +81,15 @@ def test_backend_edit_is_exact_and_locked_to_current_task(tmp_path: Path) -> Non
     assert drafts.read("story-01", task_id, "chapter.md") == "new text"
 
 
+@pytest.mark.parametrize("replace_all", [False, True])
+def test_backend_edit_rejects_empty_old_string(tmp_path: Path, replace_all: bool) -> None:
+    backend, _, drafts, task_id = make_backend(tmp_path)
+    drafts.write("story-01", task_id, "chapter.md", "text")
+    result = backend.edit("/drafts/chapter.md", "", "injected", replace_all=replace_all)
+    assert result.error == "EDIT_TARGET_INVALID"
+    assert drafts.read("story-01", task_id, "chapter.md") == "text"
+
+
 def test_backend_grep_propagates_invalid_virtual_path(tmp_path: Path) -> None:
     backend, _, _, _ = make_backend(tmp_path)
     result = backend.grep("needle", "/etc")

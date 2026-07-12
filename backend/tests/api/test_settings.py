@@ -1,9 +1,13 @@
+import asyncio
+import time
 from pathlib import Path
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
 from app.infrastructure.secrets import ApiKeyStore
+from app.infrastructure.settings import ModelSettings
 from app.main import create_app
 from tests.infrastructure.test_secrets import FakeKeyring
 
@@ -109,3 +113,50 @@ def test_connection_sdk_error_is_stable_and_redacted(
     }
     assert "secret-value" not in response.text
     assert str(provider_error) not in response.text
+
+
+def test_connection_keyring_read_does_not_block_event_loop(tmp_path: Path, monkeypatch) -> None:
+    class SlowKeyring(FakeKeyring):
+        def get_password(self, service: str, username: str) -> str | None:
+            time.sleep(0.15)
+            return super().get_password(service, username)
+
+    async def run() -> None:
+        application = create_app(tmp_path)
+        backend = SlowKeyring()
+        application.state.api_keys = ApiKeyStore(backend)
+        application.state.model_settings.save(
+            ModelSettings(
+                base_url="https://api.example.com/v1",
+                model="model-1",
+                timeout=30.0,
+            )
+        )
+        application.state.api_keys.save("secret-value")
+
+        async def fake_connection(model: object) -> None:
+            return None
+
+        monkeypatch.setattr("app.api.settings.test_connection", fake_connection)
+        ticks = 0
+        running = True
+
+        async def ticker() -> None:
+            nonlocal ticks
+            while running:
+                ticks += 1
+                await asyncio.sleep(0.005)
+
+        transport = httpx.ASGITransport(app=application)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            ticker_task = asyncio.create_task(ticker())
+            request_task = asyncio.create_task(client.post("/api/settings/connection"))
+            await asyncio.sleep(0.03)
+            assert ticks > 1
+            assert not request_task.done()
+            response = await request_task
+            running = False
+            await ticker_task
+        assert response.status_code == 200
+
+    asyncio.run(run())

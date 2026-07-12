@@ -1,8 +1,10 @@
 import json
 import os
+import tempfile
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from filelock import FileLock
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 
@@ -43,8 +45,14 @@ class ModelSettings(BaseModel):
 class SettingsRepository:
     def __init__(self, path: Path) -> None:
         self.path = path
+        self._lock = FileLock(f"{path}.lock")
 
     def load(self) -> ModelSettings:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self._lock:
+            return self._load_locked()
+
+    def _load_locked(self) -> ModelSettings:
         try:
             payload = json.loads(self.path.read_text())
         except FileNotFoundError as error:
@@ -58,18 +66,30 @@ class SettingsRepository:
 
     def save(self, settings: ModelSettings) -> None:
         payload = json.dumps(settings.model_dump(mode="json"), sort_keys=True).encode()
-        temporary = self.path.with_name(f".{self.path.name}.tmp")
+        temporary: Path | None = None
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            with temporary.open("wb") as stream:
-                stream.write(payload)
-                stream.flush()
-                os.fsync(stream.fileno())
-            os.replace(temporary, self.path)
-            directory = os.open(self.path.parent, os.O_RDONLY)
-            try:
-                os.fsync(directory)
-            finally:
-                os.close(directory)
+            with self._lock:
+                with tempfile.NamedTemporaryFile(
+                    mode="wb",
+                    dir=self.path.parent,
+                    prefix=f".{self.path.name}.",
+                    suffix=".tmp",
+                    delete=False,
+                ) as stream:
+                    temporary = Path(stream.name)
+                    stream.write(payload)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                os.replace(temporary, self.path)
+                temporary = None
+                directory = os.open(self.path.parent, os.O_RDONLY)
+                try:
+                    os.fsync(directory)
+                finally:
+                    os.close(directory)
         except OSError as error:
             raise SettingsError("MODEL_SETTINGS_WRITE_FAILED") from error
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
