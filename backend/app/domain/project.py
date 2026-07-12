@@ -14,6 +14,9 @@ class Project(StrictModel):
     id: str
     title: str
     language: str
+    genre: str | None = None
+    target_words: int | None = None
+    constraints: str | None = None
 
     @field_validator("id")
     @classmethod
@@ -30,6 +33,20 @@ class Project(StrictModel):
         if not stripped:
             raise ValueError("value must not be blank")
         return stripped
+
+    @field_validator("genre", "constraints")
+    @classmethod
+    def validate_optional_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return cls.validate_text(value)
+
+    @field_validator("target_words")
+    @classmethod
+    def validate_target_words(cls, value: int | None) -> int | None:
+        if value is not None and value <= 0:
+            raise ValueError("target words must be positive")
+        return value
 
 
 class ConfirmedContent(StrictModel):

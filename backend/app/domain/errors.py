@@ -56,3 +56,31 @@ class ActiveTaskConflictError(TameInkError):
 
 class DatabaseSchemaError(TameInkError):
     code = "DATABASE_SCHEMA_INVALID"
+
+
+class ImportEncodingAmbiguousError(TameInkError):
+    code = "IMPORT_ENCODING_AMBIGUOUS"
+
+    def __init__(self, candidates: list[str]) -> None:
+        super().__init__("encoding requires user confirmation")
+        self.candidates = candidates
+
+
+class ImportEncodingUnsupportedError(TameInkError):
+    code = "IMPORT_ENCODING_UNSUPPORTED"
+
+
+class ImportChapterBoundaryError(TameInkError):
+    code = "IMPORT_CHAPTER_BOUNDARY_INVALID"
+
+    def __init__(self, message: str, location: object) -> None:
+        super().__init__(message)
+        self.location = location
+
+
+class WorkflowGateError(TameInkError):
+    code = "WORKFLOW_GATE_BLOCKED"
+
+
+class MemoryProvenanceError(TameInkError):
+    code = "MEMORY_PROVENANCE_INVALID"

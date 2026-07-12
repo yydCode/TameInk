@@ -6,12 +6,16 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from app.api.creation import router as creation_router
 from app.api.events import router as events_router
 from app.api.health import router as health_router
+from app.api.imports import router as imports_router
+from app.api.projects import router as projects_router
 from app.api.settings import router as settings_router
 from app.api.tasks import router as tasks_router
 from app.domain.errors import (
     ActiveTaskConflictError,
+    ImportEncodingAmbiguousError,
     InvalidTaskTransitionError,
     TameInkError,
     TaskNotFoundError,
@@ -46,6 +50,9 @@ def create_app(workspace_root: Path) -> FastAPI:
     application.include_router(tasks_router, prefix="/api")
     application.include_router(events_router, prefix="/api")
     application.include_router(settings_router, prefix="/api")
+    application.include_router(projects_router, prefix="/api")
+    application.include_router(imports_router, prefix="/api")
+    application.include_router(creation_router, prefix="/api")
 
     @application.exception_handler(TameInkError)
     async def tame_ink_error(_: Request, error: TameInkError) -> JSONResponse:
@@ -57,9 +64,12 @@ def create_app(workspace_root: Path) -> FastAPI:
             status_code, message = 409, "task transition is not allowed"
         else:
             status_code, message = 400, "request could not be processed"
+        content: dict[str, object] = {"error": {"code": error.code, "message": message}}
+        if isinstance(error, ImportEncodingAmbiguousError):
+            content["candidates"] = error.candidates
         return JSONResponse(
             status_code=status_code,
-            content={"error": {"code": error.code, "message": message}},
+            content=content,
         )
 
     return application
