@@ -70,6 +70,18 @@ Tame-Ink/
 - Repository 是唯一持久化入口，Agent 不能直接访问任意本地路径。
 - Agent 只能写草稿。用户确认后，确定性服务才可写入正式内容并创建版本。
 
+`deepagents` 的内置文件工具保留，但它们只能看到由自定义 `BackendProtocol`
+提供的虚拟工作区：`/canon` 和 `/memory` 只读映射到 `CanonRepository`，
+`/drafts` 只映射到当前任务的 `.tame-ink/drafts/<task-id>`。`project_id` 和
+`task_id` 由受信运行上下文绑定，模型参数不能切换项目或任务。任何其他虚拟根、
+操作系统路径、`..`、反斜线和符号链接逃逸都必须拒绝；Agent 不提供 Shell、命令执行
+或任意 HTTP 工具。
+
+文件访问采用双重限制：自定义 backend 强制虚拟路径边界，工具 permissions 再按角色
+限制读写能力。内置 `write_file` 和 `edit_file` 对 `/canon`、`/memory` 始终拒绝，只有
+当前任务的 `/drafts` 可写；读取、列举、glob 和 grep 仍保留可审计来源。草稿写入不改变
+正式事实，正式内容仍必须经用户审批后由确定性 Repository 事务原子写入并创建版本。
+
 核心原则：模型输出永远是候选内容，用户确认过的文件才是作品事实。
 
 ## 5. Agent 设计

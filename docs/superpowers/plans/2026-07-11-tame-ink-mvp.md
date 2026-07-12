@@ -212,6 +212,8 @@ cd frontend && pnpm test --run src/features/runs/RunStatus.test.tsx
 - Create: `backend/app/agents/context.py`
 - Create: `backend/app/agents/subagents.py`
 - Create: `backend/app/agents/orchestrator.py`
+- Create: `backend/app/agents/backend.py`
+- Create: `backend/app/repositories/drafts.py`
 - Create: `backend/app/api/settings.py`
 - Modify: `backend/app/main.py`
 - Create: `backend/tests/agents/fake_model.py`
@@ -225,7 +227,13 @@ cd frontend && pnpm test --run src/features/runs/RunStatus.test.tsx
 - [ ] 使用 `keyring` 实现密钥保存，配置文件只保存非敏感模型信息。
 - [ ] 定义所有 Agent 输出的 Pydantic Schema，并为非法字段、缺失引用和未知实体写失败测试。
 - [ ] 为受限读写工具写越权测试，确认没有 Shell 和任意 HTTP 工具。
-- [ ] 实现只能调用 Repository 的 Agent 工具。
+- [ ] 实现基于公开 `BackendProtocol` 的虚拟工作区：`/canon`、`/memory` 只读映射
+  `CanonRepository`，`/drafts` 只写当前任务 `.tame-ink/drafts/<task-id>`；由受信上下文
+  绑定 `project_id`/`task_id`，拒绝其他虚拟根、操作系统路径、`..` 和反斜线。
+- [ ] 保留 `deepagents` 内置文件工具，通过 backend 强制边界与 permissions 角色权限双重
+  限制；验证内置 `write_file`/`edit_file` 不能写 `/canon`、`/memory` 或操作系统路径，
+  只能写当前 `/drafts`，且读、list、glob、grep 记录来源。
+- [ ] 实现只能调用 Repository 的 Agent 工具；不提供 Shell、命令执行或任意 HTTP 工具。
 - [ ] 为上下文清单和实际文件读取一致性写测试。
 - [ ] 实现分层上下文构建器，记录每个送入模型的来源。
 - [ ] 使用假模型测试主 Agent 与八个子 Agent 的输入边界、输出 Schema 和失败传播。
@@ -241,7 +249,7 @@ cd backend && uv run ruff check .
 cd backend && uv run mypy app
 ```
 
-**通过标准：** 假模型可走完候选内容流程；Schema 或来源错误立即失败；API Key 不出现在项目文件、数据库和测试日志中。
+**通过标准：** 假模型可走完候选内容流程；Schema 或来源错误立即失败；API Key 不出现在项目文件、数据库和测试日志中；Agent 只能写当前任务草稿，正式内容仍仅由用户审批后的确定性 Repository 事务写入。
 
 ### 阶段 5：实现新书、导入、记忆和逐章后端流程
 
