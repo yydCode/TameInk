@@ -70,6 +70,10 @@ class ImportEncodingUnsupportedError(TameInkError):
     code = "IMPORT_ENCODING_UNSUPPORTED"
 
 
+class ImportAlreadyExistsError(TameInkError):
+    code = "IMPORT_ALREADY_EXISTS"
+
+
 class ImportChapterBoundaryError(TameInkError):
     code = "IMPORT_CHAPTER_BOUNDARY_INVALID"
 

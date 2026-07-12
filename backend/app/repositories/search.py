@@ -32,11 +32,17 @@ class SearchRepository:
                 continue
             content = source.read_text(encoding="utf-8")
             quote = self._excerpt(content, query)
+            offset = content.find(query)
+            if offset < 0:
+                continue
+            line = content.count("\n", 0, offset) + 1
+            previous_newline = content.rfind("\n", 0, offset)
+            column = offset - previous_newline
             hits.append(
                 SearchHit(
                     path=path,
                     sha256=sha256(content.encode()).hexdigest(),
-                    location="FTS match",
+                    location=f"line {line}, column {column}, char {offset}",
                     quote=quote,
                 )
             )

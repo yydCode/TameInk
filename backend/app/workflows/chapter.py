@@ -1,3 +1,4 @@
+import json
 from collections.abc import Sequence
 
 from app.domain.errors import WorkflowGateError
@@ -37,25 +38,44 @@ class ChapterService:
         drafts = DraftRepository(self.workspace)
         drafts.write(project_id, task.id, "plan.md", plan)
         drafts.write(project_id, task.id, "chapter.md", self._apply_issues(draft, issues))
+        drafts.write(
+            project_id,
+            task.id,
+            "run.json",
+            json.dumps(
+                {"project_id": project_id, "chapter_id": chapter_id, "volume_id": volume_id}
+            ),
+        )
         return service.await_approval(task.id)
 
     def approve(self, project_id: str, task_id: str, chapter_id: str, volume_id: str = "1") -> Task:
         service = TaskService(TasksRepository(DatabaseRepository(self.workspace), project_id))
         service.approve(task_id)
-        content = DraftRepository(self.workspace).read(project_id, task_id, "chapter.md")
-        revisions = RevisionRepository(self.workspace)
-        revisions.confirm(
-            project_id,
-            RevisionWrite(
-                path=f"canon/chapters/{chapter_id}.md",
-                content=content,
-                message=f"确认：章节 {chapter_id}",
-            ),
-            revisions.current_revision(project_id),
-        )
-        completed = service.complete(task_id)
-        MemoryService(self.workspace).derive_summaries(project_id, chapter_id, volume_id, content)
-        return completed
+        try:
+            drafts = DraftRepository(self.workspace)
+            manifest = json.loads(drafts.read(project_id, task_id, "run.json"))
+            if manifest["project_id"] != project_id or manifest["chapter_id"] != chapter_id:
+                raise WorkflowGateError("chapter approval does not match its run manifest")
+            stored_volume_id = str(manifest["volume_id"])
+            content = drafts.read(project_id, task_id, "chapter.md")
+            revisions = RevisionRepository(self.workspace)
+            revisions.confirm(
+                project_id,
+                RevisionWrite(
+                    path=f"canon/chapters/{chapter_id}.md",
+                    content=content,
+                    message=f"确认：章节 {chapter_id}",
+                ),
+                revisions.current_revision(project_id),
+            )
+            MemoryService(self.workspace).derive_summaries(
+                project_id, chapter_id, stored_volume_id, content
+            )
+            DatabaseRepository(self.workspace).rebuild(project_id)
+        except Exception:
+            service.fail(task_id)
+            raise
+        return service.complete(task_id)
 
     @staticmethod
     def _apply_issues(draft: str, issues: Sequence[dict[str, str]]) -> str:

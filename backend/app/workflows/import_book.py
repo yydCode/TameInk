@@ -1,11 +1,14 @@
 import json
+import os
 import re
 from dataclasses import dataclass
+from hashlib import sha256
 from pathlib import Path
 
 from charset_normalizer import from_bytes
 
 from app.domain.errors import (
+    ImportAlreadyExistsError,
     ImportChapterBoundaryError,
     ImportEncodingAmbiguousError,
     ImportEncodingUnsupportedError,
@@ -77,23 +80,34 @@ def _normalise_encoding(encoding: str) -> str:
 
 
 def _detect_encoding(payload: bytes) -> str:
-    matches = from_bytes(payload)
+    if payload.startswith(b"\xef\xbb\xbf"):
+        return "utf-8-sig"
+    try:
+        payload.decode("utf-8", errors="strict")
+    except UnicodeDecodeError:
+        pass
+    else:
+        return "utf-8"
+    # A short non-UTF-8 byte sequence has too little evidence to identify GB18030.
+    if len(payload) < 32:
+        raise ImportEncodingAmbiguousError([])
+    matches = list(from_bytes(payload))
     candidates: list[tuple[str, float]] = []
     for match in matches:
         try:
             candidate = _normalise_encoding(str(match.encoding))
         except ImportEncodingUnsupportedError:
             continue
-        score = float(match.coherence)
+        score = float(match.chaos)
         if (candidate, score) not in candidates:
             candidates.append((candidate, score))
-    candidates.sort(key=lambda item: (-item[1], item[0]))
+    candidates.sort(key=lambda item: (item[1], item[0]))
     if not candidates:
         raise ImportEncodingAmbiguousError([])
     winner, score = candidates[0]
-    close = [name for name, other_score in candidates if score - other_score < 0.15]
-    # Charset-normalizer's coherence is [0, 1].  0.70 avoids silently accepting weak guesses.
-    if score < 0.70 or len(close) != 1:
+    close = [name for name, other_score in candidates if other_score - score <= 0.01]
+    # For non-UTF-8 input we accept only the unambiguous, low-chaos GB18030 best match.
+    if winner != "gb18030" or score > 0.05 or len(close) != 1:
         raise ImportEncodingAmbiguousError([name for name, _ in candidates])
     return winner
 
@@ -119,9 +133,12 @@ def parse_chapters(text: str, encoding: str = "utf-8") -> list[ChapterBoundary]:
         else:
             title = markdown.group(2).strip() if markdown is not None else ""
             embedded = _WEB_TITLE.match(title)
-            number = _chapter_number(embedded.group(1)) if embedded else previous_number + 1
-            if embedded:
-                title = (embedded.group(2) or "").strip()
+            if embedded is None:
+                byte_offset += len(line.encode(encoding, errors="strict"))
+                char_offset += len(line)
+                continue
+            number = _chapter_number(embedded.group(1))
+            title = (embedded.group(2) or "").strip()
         if number <= previous_number:
             raise ImportChapterBoundaryError("chapter number is duplicated or decreasing", location)
         body_start = SourceLocation(
@@ -180,14 +197,24 @@ class ImportBookService:
         self, project_id: str, import_id: str, payload: bytes, encoding: str | None
     ) -> tuple[DecodedImport, list[ChapterBoundary]]:
         original = self._original_path(project_id, import_id)
-        original.parent.mkdir(parents=True, exist_ok=True)
-        original.write_bytes(payload)
-        decoded = decode_import(payload, encoding)
         metadata = self.workspace.resolve_project_path(
             project_id, f".tame-ink/imports/{import_id}.json"
         )
-        metadata.parent.mkdir(parents=True, exist_ok=True)
-        metadata.write_text(json.dumps({"encoding": decoded.encoding}, ensure_ascii=False))
+        if original.exists() or metadata.exists():
+            raise ImportAlreadyExistsError(import_id)
+        self._atomic_write(original, payload)
+        decoded = decode_import(payload, encoding)
+        self._atomic_write(
+            metadata,
+            json.dumps(
+                {
+                    "encoding": decoded.encoding,
+                    "sha256": sha256(payload).hexdigest(),
+                    "size": len(payload),
+                },
+                ensure_ascii=False,
+            ).encode(),
+        )
         return decoded, parse_chapters(decoded.text, decoded.encoding)
 
     def confirm_boundaries(
@@ -217,3 +244,18 @@ class ImportBookService:
         if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,62}", import_id):
             raise ImportChapterBoundaryError("import id is invalid", SourceLocation(0, 0, 1, 1))
         return self.workspace.resolve_project_path(project_id, f"imports/originals/{import_id}.bin")
+
+    @staticmethod
+    def _atomic_write(path: Path, payload: bytes) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_name(f".{path.name}.tmp")
+        with temporary.open("wb") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+        directory = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)

@@ -25,6 +25,7 @@ def test_search_returns_only_formal_sources_with_actual_hash_and_excerpt(tmp_pat
     assert result[0].path == "canon/outline.md"
     assert len(result[0].sha256) == 64
     assert result[0].quote == "雨夜线索出现"
+    assert result[0].location == "line 1, column 1, char 0"
 
 
 def test_search_rejects_short_fts_query_stably(tmp_path: Path) -> None:
