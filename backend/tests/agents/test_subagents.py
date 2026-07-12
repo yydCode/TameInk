@@ -3,6 +3,7 @@ from pathlib import Path
 from deepagents import FilesystemPermission
 from langchain_core.messages import AIMessage
 
+from app.agents.context import ContextManifest
 from app.agents.orchestrator import create_orchestrator
 from app.agents.subagents import build_subagent_definitions
 from tests.agents.fake_model import ScriptedChatModel
@@ -26,10 +27,8 @@ def test_eight_subagents_have_independent_contracts_and_minimal_permissions(tmp_
 
     assert {definition.name for definition in definitions} == EXPECTED_NAMES
     assert len({definition.system_prompt for definition in definitions}) == 8
-    assert all(
-        definition.input_schema is not None and definition.output_schema is not None
-        for definition in definitions
-    )
+    assert all(definition.output_schema is not None for definition in definitions)
+    assert all(not hasattr(definition, "input_schema") for definition in definitions)
     writers = [
         definition
         for definition in definitions
@@ -46,7 +45,10 @@ def test_orchestrator_real_graph_has_only_eight_agents_and_no_execute(tmp_path: 
     model = ScriptedChatModel(responses=[AIMessage(content="summary")])
 
     graph = create_orchestrator(model, backend, profile_key="scriptedchatmodel")
-    graph.invoke({"messages": [{"role": "user", "content": "plan"}]})
+    graph.invoke(
+        {"messages": [{"role": "user", "content": "plan"}]},
+        context_manifest=ContextManifest(sources=[], retrieved=[]),
+    )
 
     assert "task" in model.bound_tool_names
     assert "execute" not in model.bound_tool_names

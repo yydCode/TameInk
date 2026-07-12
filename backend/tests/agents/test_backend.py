@@ -130,3 +130,73 @@ def test_create_deep_agent_builtin_write_obeys_backend_and_permissions(tmp_path:
     assert invoke_write("/canon/premise.md", "changed")[0].status == "error"
     assert invoke_write("/tmp/escape.md", "changed")[0].status == "error"
     assert canon.read_markdown("story-01", "canon/premise.md").markdown == "confirmed"
+
+
+def test_backend_upload_download_stays_inside_virtual_workspace(tmp_path: Path) -> None:
+    backend, canon, drafts, task_id = make_backend(tmp_path)
+    canon.write_markdown("story-01", "canon/premise.md", ConfirmedContent(markdown="confirmed"))
+
+    uploaded = backend.upload_files(
+        [
+            ("/drafts/nested/chapter.md", b"draft"),
+            ("/canon/outline.md", b"blocked"),
+            ("/tmp/escape.md", b"blocked"),
+            ("/drafts/../escape.md", b"blocked"),
+        ]
+    )
+    assert uploaded[0].error is None
+    assert [item.error for item in uploaded[1:]] == [
+        "WORKSPACE_PATH_VIOLATION",
+        "WORKSPACE_PATH_VIOLATION",
+        "WORKSPACE_PATH_VIOLATION",
+    ]
+    assert drafts.read("story-01", task_id, "nested/chapter.md") == "draft"
+
+    downloaded = backend.download_files(
+        ["/drafts/nested/chapter.md", "/canon/premise.md", "/etc/passwd"]
+    )
+    assert [item.content for item in downloaded[:2]] == [b"draft", b"confirmed"]
+    assert downloaded[2].error == "WORKSPACE_PATH_VIOLATION"
+
+
+def test_backend_ls_returns_only_sorted_direct_children_and_directories(tmp_path: Path) -> None:
+    backend, canon, drafts, task_id = make_backend(tmp_path)
+    canon.write_markdown("story-01", "canon/premise.md", ConfirmedContent(markdown="premise"))
+    canon.write_markdown(
+        "story-01", "canon/chapters/chapter-1.md", ConfirmedContent(markdown="chapter")
+    )
+    drafts.write("story-01", task_id, "nested/chapter.md", "draft")
+
+    assert backend.ls("/").entries == [
+        {"path": "/canon", "is_dir": True},
+        {"path": "/drafts", "is_dir": True},
+        {"path": "/memory", "is_dir": True},
+    ]
+    assert backend.ls("/canon").entries == [
+        {"path": "/canon/chapters", "is_dir": True},
+        {"path": "/canon/premise.md", "is_dir": False},
+    ]
+    assert backend.ls("/canon/chapters").entries == [
+        {"path": "/canon/chapters/chapter-1.md", "is_dir": False}
+    ]
+    assert backend.ls("/drafts").entries == [{"path": "/drafts/nested", "is_dir": True}]
+    assert backend.ls("/memory").entries == []
+
+    model = ScriptedChatModel(
+        responses=[
+            AIMessage(
+                content="",
+                tool_calls=[{"name": "ls", "args": {"path": "/canon"}, "id": "ls-1"}],
+            ),
+            AIMessage(content="done"),
+        ]
+    )
+    graph = create_deep_agent(model=model, backend=backend)
+    result = graph.invoke({"messages": [{"role": "user", "content": "list"}]})
+    tool_result = next(
+        message.content
+        for message in result["messages"]
+        if isinstance(message, ToolMessage) and message.tool_call_id == "ls-1"
+    )
+    assert "/canon/chapters" in tool_result
+    assert "/canon/chapters/chapter-1.md" not in tool_result

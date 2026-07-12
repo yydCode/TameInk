@@ -91,7 +91,7 @@ REFERENCE = {"path": "canon/premise.md", "location": "paragraph 2", "quote": "�
     ],
 )
 def test_agent_output_schemas_accept_strict_valid_payload(schema, payload) -> None:
-    result = schema.model_validate(payload, context={"known_sources": {"canon/premise.md"}})
+    result = schema.model_validate(payload)
     assert result.id
 
 
@@ -104,7 +104,7 @@ def test_agent_output_rejects_extra_fields() -> None:
         "guess": "no",
     }
     with pytest.raises(ValidationError):
-        StorySetting.model_validate(payload, context={"known_sources": {"canon/premise.md"}})
+        StorySetting.model_validate(payload)
 
 
 @pytest.mark.parametrize("field", ["path", "location", "quote"])
@@ -112,7 +112,7 @@ def test_reference_rejects_missing_or_blank_required_parts(field: str) -> None:
     payload = dict(REFERENCE)
     payload[field] = ""
     with pytest.raises(ValidationError):
-        SourceReference.model_validate(payload, context={"known_sources": {"canon/premise.md"}})
+        SourceReference.model_validate(payload)
 
 
 @pytest.mark.parametrize(
@@ -120,19 +120,11 @@ def test_reference_rejects_missing_or_blank_required_parts(field: str) -> None:
 )
 def test_reference_rejects_non_formal_paths(path: str) -> None:
     with pytest.raises(ValidationError):
-        SourceReference.model_validate(
-            {**REFERENCE, "path": path}, context={"known_sources": {path}}
-        )
-
-
-def test_reference_rejects_unknown_source() -> None:
-    with pytest.raises(ValidationError, match="REFERENCE_SOURCE_UNKNOWN"):
-        SourceReference.model_validate(REFERENCE, context={"known_sources": {"canon/outline.md"}})
+        SourceReference.model_validate({**REFERENCE, "path": path})
 
 
 def test_output_rejects_missing_references_and_blank_ids() -> None:
     with pytest.raises(ValidationError):
         ChapterDraft.model_validate(
             {"id": " ", "chapter_id": "chapter-1", "markdown": "正文", "references": []},
-            context={"known_sources": set()},
         )

@@ -5,9 +5,17 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.infrastructure.model import ModelConfigurationError, build_model, test_connection
 from app.infrastructure.secrets import ApiKeyStore, SecretStoreError
-from app.infrastructure.settings import ModelSettings, SettingsRepository
+from app.infrastructure.settings import ModelSettings, SettingsError, SettingsRepository
 
 router = APIRouter(prefix="/settings", tags=["settings"])
+
+SAFE_CONNECTION_CODES = {
+    "MODEL_API_KEY_MISSING",
+    "MODEL_SETTINGS_INVALID",
+    "MODEL_SETTINGS_NOT_FOUND",
+    "MODEL_SETTINGS_READ_FAILED",
+    "SECRET_STORE_READ_FAILED",
+}
 
 
 class SettingsResponse(ModelSettings):
@@ -77,8 +85,9 @@ async def connect(request: Request) -> dict[str, str]:
         model = build_model(settings.load(), secrets.get())
         await test_connection(model)
         return {"status": "ok"}
-    except (RuntimeError, SecretStoreError, ModelConfigurationError) as error:
-        code = str(error) if str(error).isupper() else "MODEL_CONNECTION_FAILED"
+    except (SettingsError, SecretStoreError, ModelConfigurationError) as error:
+        candidate = str(error)
+        code = candidate if candidate in SAFE_CONNECTION_CODES else "MODEL_CONNECTION_FAILED"
         raise HTTPException(
             status_code=400, detail={"code": code, "message": "connection failed"}
         ) from error

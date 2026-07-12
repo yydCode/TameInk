@@ -5,7 +5,9 @@ import yaml
 from deepagents.backends.protocol import (
     BackendProtocol,
     EditResult,
+    FileDownloadResponse,
     FileInfo,
+    FileUploadResponse,
     GlobResult,
     GrepMatch,
     GrepResult,
@@ -105,21 +107,57 @@ class NovelWorkspaceBackend(BackendProtocol):
                 return LsResult(
                     entries=[
                         {"path": f"/{name}", "is_dir": True}
-                        for name in ("canon", "memory", "drafts")
+                        for name in ("canon", "drafts", "memory")
                     ]
                 )
-            root, relative = (
-                self._parse(path + "/placeholder") if path.count("/") == 1 else self._parse(path)
-            )
-            prefix = f"/{root}" + (f"/{relative}" if path.count("/") > 1 else "")
-            entries: list[FileInfo] = [
-                {"path": item, "is_dir": False}
-                for item in self._files()
-                if item.startswith(prefix.rstrip("/") + "/")
-            ]
-            return LsResult(entries=entries)
+            if "\\" in path or not path.startswith("/") or path.endswith("/"):
+                raise WorkspacePathViolationError(path)
+            parts = path.split("/")[1:]
+            if not parts or parts[0] not in {"canon", "memory", "drafts"}:
+                raise WorkspacePathViolationError(path)
+            if any(part in {"", ".", ".."} for part in parts):
+                raise WorkspacePathViolationError(path)
+            prefix = path + "/"
+            children: dict[str, FileInfo] = {}
+            for item in self._files():
+                if not item.startswith(prefix):
+                    continue
+                remainder = item[len(prefix) :]
+                child_name, separator, _ = remainder.partition("/")
+                child_path = prefix + child_name
+                children[child_path] = {
+                    "path": child_path,
+                    "is_dir": bool(separator),
+                }
+            return LsResult(entries=[children[key] for key in sorted(children)])
         except TameInkError as error:
             return LsResult(error=error.code)
+
+    def upload_files(self, files: list[tuple[str, bytes]]) -> list[FileUploadResponse]:
+        responses: list[FileUploadResponse] = []
+        for path, payload in files:
+            try:
+                root, relative = self._parse(path)
+                if root != "drafts":
+                    raise WorkspacePathViolationError(path)
+                content = payload.decode("utf-8")
+                self.drafts.write(self.project_id, self.task_id, relative, content)
+                responses.append(FileUploadResponse(path=path))
+            except UnicodeDecodeError:
+                responses.append(FileUploadResponse(path=path, error="DRAFT_ENCODING_INVALID"))
+            except TameInkError as error:
+                responses.append(FileUploadResponse(path=path, error=error.code))
+        return responses
+
+    def download_files(self, paths: list[str]) -> list[FileDownloadResponse]:
+        responses: list[FileDownloadResponse] = []
+        for path in paths:
+            try:
+                content = self._read_text(path).encode("utf-8")
+                responses.append(FileDownloadResponse(path=path, content=content))
+            except TameInkError as error:
+                responses.append(FileDownloadResponse(path=path, error=error.code))
+        return responses
 
     def glob(self, pattern: str, path: str | None = None) -> GlobResult:
         base = path or "/"

@@ -1,6 +1,6 @@
 from typing import Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.domain.errors import WorkspacePathViolationError
 from app.domain.paths import validate_formal_path
@@ -23,14 +23,11 @@ class SourceReference(StrictSchema):
     quote: str
 
     @model_validator(mode="after")
-    def validate_source(self, info: ValidationInfo) -> Self:
+    def validate_source(self) -> Self:
         try:
             validate_formal_path(self.path)
         except WorkspacePathViolationError as error:
             raise ValueError("REFERENCE_PATH_INVALID") from error
-        known_sources = None if info.context is None else info.context.get("known_sources")
-        if known_sources is None or self.path not in known_sources:
-            raise ValueError("REFERENCE_SOURCE_UNKNOWN")
         return self
 
 

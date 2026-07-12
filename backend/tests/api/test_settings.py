@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.infrastructure.secrets import ApiKeyStore
@@ -79,7 +80,13 @@ def test_connection_without_secret_has_stable_error(tmp_path: Path) -> None:
     }
 
 
-def test_connection_sdk_error_is_stable_and_redacted(tmp_path: Path, monkeypatch) -> None:
+@pytest.mark.parametrize(
+    "provider_error",
+    [RuntimeError("SECRET_API_KEY_ABC"), Exception("ordinary provider detail")],
+)
+def test_connection_sdk_error_is_stable_and_redacted(
+    tmp_path: Path, monkeypatch, provider_error: Exception
+) -> None:
     client, _ = client_for(tmp_path)
     client.put(
         "/api/settings",
@@ -92,7 +99,7 @@ def test_connection_sdk_error_is_stable_and_redacted(tmp_path: Path, monkeypatch
     client.put("/api/settings/secret", json={"api_key": "secret-value"})
 
     async def fail_connection(model: object) -> None:
-        raise Exception("secret-value provider detail")
+        raise provider_error
 
     monkeypatch.setattr("app.api.settings.test_connection", fail_connection)
     response = client.post("/api/settings/connection")
@@ -101,3 +108,4 @@ def test_connection_sdk_error_is_stable_and_redacted(tmp_path: Path, monkeypatch
         "detail": {"code": "MODEL_CONNECTION_FAILED", "message": "connection failed"}
     }
     assert "secret-value" not in response.text
+    assert str(provider_error) not in response.text
