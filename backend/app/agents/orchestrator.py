@@ -48,6 +48,14 @@ def create_orchestrator(
     model: TameInkChatOpenAI,
     backend: NovelWorkspaceBackend,
 ) -> ValidatedOrchestrator:
+    if not isinstance(model, TameInkChatOpenAI):
+        raise RuntimeError("MODEL_PROVIDER_INVALID")
+    try:
+        provider = model._get_ls_params().get("ls_provider")
+    except Exception as error:
+        raise RuntimeError("MODEL_PROVIDER_INVALID") from error
+    if provider != "tame_ink_openai":
+        raise RuntimeError("MODEL_PROVIDER_INVALID")
     _register_model_profile()
     definitions = build_subagent_definitions(backend)
     graph = create_deep_agent(

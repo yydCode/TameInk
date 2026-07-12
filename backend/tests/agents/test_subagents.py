@@ -61,6 +61,39 @@ def test_concurrent_tame_model_orchestrator_construction_is_idempotent(tmp_path:
     assert len(orchestrators) == 16
 
 
+@pytest.mark.parametrize("kind", ["ordinary", "forged"])
+def test_orchestrator_rejects_uncontrolled_provider_before_registration_or_graph(
+    tmp_path: Path, monkeypatch, kind: str
+) -> None:
+    backend, _, _, _ = make_backend(tmp_path)
+
+    class ForgedProviderModel(ScriptedTameInkModel):
+        def _get_ls_params(self, stop=None, **kwargs):
+            params = super()._get_ls_params(stop=stop, **kwargs)
+            return {**params, "ls_provider": "openai"}
+
+    model_class = ScriptedOpenAIModel if kind == "ordinary" else ForgedProviderModel
+    model = model_class(
+        api_key=SecretStr("test-key"),
+        model="ft:gpt-4o-mini:org:uncontrolled",
+        responses=[AIMessage(content="summary")],
+    )
+    calls: list[str] = []
+    monkeypatch.setattr(
+        "app.agents.orchestrator.register_harness_profile",
+        lambda *args, **kwargs: calls.append("register"),
+    )
+    monkeypatch.setattr(
+        "app.agents.orchestrator.create_deep_agent",
+        lambda *args, **kwargs: calls.append("graph"),
+    )
+    monkeypatch.setattr("app.agents.orchestrator._PROFILE_REGISTERED", False)
+
+    with pytest.raises(RuntimeError, match="MODEL_PROVIDER_INVALID"):
+        create_orchestrator(model, backend)  # type: ignore[arg-type]
+    assert calls == []
+
+
 def test_orchestrator_real_graph_has_only_eight_agents_and_no_execute(tmp_path: Path) -> None:
     backend, _, _, _ = make_backend(tmp_path)
     model = ScriptedTameInkModel(
