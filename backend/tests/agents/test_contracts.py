@@ -5,6 +5,7 @@ from app.agents.schemas import (
     ChapterDraft,
     ChapterPlan,
     ContinuityIssue,
+    DraftCitation,
     ImportAnalysis,
     MemoryUpdate,
     Outline,
@@ -58,6 +59,7 @@ REFERENCE = {"path": "canon/premise.md", "location": "paragraph 2", "quote": "�
                 "id": "issue-1",
                 "severity": "error",
                 "description": "冲突",
+                "citation": {"source": "draft", "location": "chars:0-2", "quote": "正文"},
                 "references": [REFERENCE],
             },
         ),
@@ -67,6 +69,7 @@ REFERENCE = {"path": "canon/premise.md", "location": "paragraph 2", "quote": "�
                 "id": "style-1",
                 "severity": "warning",
                 "description": "重复",
+                "citation": {"source": "draft", "location": "chars:0-2", "quote": "正文"},
                 "references": [REFERENCE],
             },
         ),
@@ -74,9 +77,11 @@ REFERENCE = {"path": "canon/premise.md", "location": "paragraph 2", "quote": "�
             RevisionProposal,
             {
                 "id": "revision-1",
-                "target": "draft-1",
+                "issue_id": "issue-1",
+                "target": "chars:0-2",
                 "replacement": "替换",
                 "reason": "修复",
+                "citation": {"source": "draft", "location": "chars:0-2", "quote": "正文"},
                 "references": [REFERENCE],
             },
         ),
@@ -127,4 +132,19 @@ def test_output_rejects_missing_references_and_blank_ids() -> None:
     with pytest.raises(ValidationError):
         ChapterDraft.model_validate(
             {"id": " ", "chapter_id": "chapter-1", "markdown": "正文", "references": []},
+        )
+
+
+def test_draft_citation_has_parseable_exact_character_range() -> None:
+    citation = DraftCitation.model_validate(
+        {"source": "draft", "location": "chars:0-2", "quote": "正文"}
+    )
+    assert citation.character_range() == (0, 2)
+
+
+@pytest.mark.parametrize("location", ["line 1", "chars:2-1", "chars:-1-2"])
+def test_draft_citation_rejects_unparseable_or_reversed_range(location: str) -> None:
+    with pytest.raises(ValidationError):
+        DraftCitation.model_validate(
+            {"source": "draft", "location": location, "quote": "正文"}
         )

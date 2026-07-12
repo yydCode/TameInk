@@ -1,3 +1,4 @@
+import re
 from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -31,6 +32,26 @@ class SourceReference(StrictSchema):
         return self
 
 
+class DraftCitation(StrictSchema):
+    source: Literal["draft"]
+    location: str
+    quote: str
+
+    def character_range(self) -> tuple[int, int]:
+        match = re.fullmatch(r"chars:(\d+)-(\d+)", self.location)
+        if match is None:
+            raise ValueError("DRAFT_LOCATION_INVALID")
+        start, end = (int(value) for value in match.groups())
+        if start >= end:
+            raise ValueError("DRAFT_LOCATION_INVALID")
+        return start, end
+
+    @model_validator(mode="after")
+    def validate_location(self) -> Self:
+        self.character_range()
+        return self
+
+
 class ReferencedOutput(StrictSchema):
     id: str
     references: list[SourceReference] = Field(min_length=1)
@@ -60,17 +81,21 @@ class ChapterDraft(ReferencedOutput):
 class ContinuityIssue(ReferencedOutput):
     severity: Literal["warning", "error"]
     description: str
+    citation: DraftCitation
 
 
 class StyleIssue(ReferencedOutput):
     severity: Literal["warning", "error"]
     description: str
+    citation: DraftCitation
 
 
 class RevisionProposal(ReferencedOutput):
+    issue_id: str
     target: str
     replacement: str
     reason: str
+    citation: DraftCitation
 
 
 class MemoryUpdate(ReferencedOutput):
