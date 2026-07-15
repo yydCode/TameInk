@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
@@ -56,5 +56,16 @@ describe("App", () => {
     unmount();
 
     expect(requestSignal?.aborted).toBe(true);
+  });
+
+  it("opens the project creation workflow", () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("offline")));
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "创建第一部作品" }));
+
+    expect(screen.getByRole("heading", { name: "建立你的故事" })).toBeInTheDocument();
+    expect(screen.getByLabelText("项目 ID")).toHaveValue("my-novel");
+    expect(screen.getByRole("button", { name: "创建并进入工作台" })).toBeInTheDocument();
   });
 });

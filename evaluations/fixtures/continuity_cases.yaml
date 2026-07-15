@@ -1,0 +1,27 @@
+cases:
+  - id: character-name
+    category: character
+    context: "第一章确认主角名为沈砚，黑发，左手有旧伤。"
+    candidate: "沈岩抬起完好的左手，抓住了刀锋。"
+    expected: [character_name, character_state]
+  - id: timeline-order
+    category: timeline
+    context: "庆典定于七月初七。主角在七月初六夜里离城。"
+    candidate: "离城后的第二天清晨，众人开始准备明日的七夕庆典。"
+    expected: [timeline]
+  - id: ability-boundary
+    category: ability
+    context: "主角只能感知十步内的灵力，无法隔墙定位。"
+    candidate: "他隔着三条街和两堵石墙，准确锁定了刺客的位置。"
+    expected: [ability]
+  - id: foreshadowing-state
+    category: foreshadowing
+    context: "铜钥匙已在第十二章用于开门并折断，伏笔状态为已解决。"
+    candidate: "第二十章，他第一次取出完好无损的铜钥匙。"
+    expected: [foreshadowing, object_state]
+  - id: viewpoint
+    category: style
+    context: "本书固定使用主角沈砚的第三人称限知视角。"
+    candidate: "沈砚离开后，留在密室里的顾清心想，他终于上钩了。"
+    expected: [viewpoint]
+

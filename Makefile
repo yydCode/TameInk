@@ -1,4 +1,4 @@
-.PHONY: install backend-dev frontend-dev test check
+.PHONY: install backend-dev frontend-dev test check e2e evaluate verify
 
 install:
 	cd backend && uv sync
@@ -19,3 +19,11 @@ check:
 	cd backend && uv run mypy app
 	cd frontend && pnpm lint
 	cd frontend && pnpm build
+
+e2e:
+	cd frontend && pnpm e2e
+
+evaluate:
+	cd backend && uv run python ../evaluations/run.py --fixture-only
+
+verify: test check evaluate e2e

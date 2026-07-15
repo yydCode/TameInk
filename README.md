@@ -1,6 +1,6 @@
 # Tame Ink
 
-Tame Ink 是面向个人本机使用的中文网络小说写作 Web 工具。本阶段提供 FastAPI 健康检查和 React 应用外壳，不包含写作领域功能。
+Tame Ink 是面向个人本机使用的中文网络小说写作 Web 工具。当前版本已包含作品存储、版本事务、任务审批、SSE 事件恢复、受控 Agent 后端和三栏创作工作台。
 
 ## 环境要求
 
@@ -31,6 +31,9 @@ make frontend-dev
 ```bash
 make test
 make check
+make evaluate
+make e2e
+make verify
 ```
 
 也可以分别运行：
@@ -42,4 +45,18 @@ cd backend && uv run ruff check .
 cd backend && uv run mypy app
 cd frontend && pnpm lint
 cd frontend && pnpm build
+```
+
+## 数据与恢复
+
+运行期作品数据位于 `TAME_INK_WORKSPACE` 指定目录；未设置时使用当前目录下的 `.tame-ink-workspace`。正式内容位于项目 `canon/`，未确认内容位于 `.tame-ink/drafts/`，SQLite 索引可从正式文件重建。API 默认只监听 `127.0.0.1`。
+
+浏览器会保存当前项目、任务和草稿路径，刷新后通过后端草稿接口恢复工作副本。正式内容必须通过工作台中的审批按钮确认，确认时才创建版本提交。
+
+## 真实模型评测
+
+真实模型调用不会进入默认测试。需要显式设置 `OPENAI_API_KEY`、`TAME_INK_MODEL` 和 `TAME_INK_BASE_URL` 后运行：
+
+```bash
+cd backend && uv run python ../evaluations/run.py --live
 ```

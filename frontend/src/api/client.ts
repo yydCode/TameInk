@@ -4,6 +4,146 @@ export interface HealthResponse {
   version: string;
 }
 
+export interface Project {
+  id: string;
+  title: string;
+  language: string;
+  genre: string | null;
+  target_words: number | null;
+  constraints: string | null;
+}
+
+export type TaskStatus =
+  | "pending"
+  | "running"
+  | "awaiting_approval"
+  | "completed"
+  | "failed"
+  | "cancelled"
+  | "interrupted";
+
+export interface Task {
+  id: string;
+  project_id: string;
+  kind: "read" | "write";
+  status: TaskStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MemoryRecord {
+  id: string;
+  kind: "fact" | "event" | "relationship" | "foreshadowing";
+  status: "active" | "resolved" | "superseded";
+  source: string;
+  location: string;
+  quote: string;
+}
+
+export class ApiError extends Error {
+  readonly code?: string;
+  readonly status: number;
+
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
+async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const response = await fetch(path, {
+    ...init,
+    headers: { Accept: "application/json", "Content-Type": "application/json", ...init.headers },
+  });
+  const payload: unknown = await response.json().catch(() => undefined);
+  if (!response.ok) {
+    const body = payload as { error?: { message?: string; code?: string } } | undefined;
+    throw new ApiError(
+      body?.error?.message ?? `Request failed with status ${response.status}`,
+      response.status,
+      body?.error?.code,
+    );
+  }
+  return payload as T;
+}
+
+export function createProject(input: {
+  project_id: string;
+  title: string;
+  genre: string;
+  target_words: number;
+  constraints: string;
+  setting_draft: string;
+}): Promise<{ project: Project; task: Task }> {
+  return requestJson("/api/projects", { method: "POST", body: JSON.stringify(input) });
+}
+
+export function getProject(projectId: string): Promise<Project> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}`);
+}
+
+export function getTask(projectId: string, taskId: string): Promise<Task> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/tasks/${taskId}`);
+}
+
+export function getDraft(projectId: string, taskId: string, path: string): Promise<{ task_id: string; path: string; content: string }> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/drafts/${taskId}?path=${encodeURIComponent(path)}`);
+}
+
+export function saveDraft(projectId: string, taskId: string, path: string, content: string): Promise<{ task_id: string; path: string; content: string }> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/drafts/${taskId}`, {
+    method: "PUT",
+    body: JSON.stringify({ path, content }),
+  });
+}
+
+export function approveSetting(projectId: string, taskId: string): Promise<Task> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/setting/${taskId}/approve`, {
+    method: "POST",
+  });
+}
+
+export function createOutline(projectId: string, content: string): Promise<Task> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/design/outline`, {
+    method: "POST",
+    body: JSON.stringify({ content }),
+  });
+}
+
+export function approveOutline(projectId: string, taskId: string): Promise<Task> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/design/outline/${taskId}/approve`, {
+    method: "POST",
+  });
+}
+
+export function startChapter(
+  projectId: string,
+  chapterId: string,
+  input: { plan: string; draft: string; issues: Array<Record<string, string>>; volume_id?: string },
+): Promise<Task> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/design/chapters/${encodeURIComponent(chapterId)}`, {
+    method: "POST",
+    body: JSON.stringify({ ...input, volume_id: input.volume_id ?? "1" }),
+  });
+}
+
+export function approveChapter(projectId: string, chapterId: string, taskId: string): Promise<Task> {
+  return requestJson(
+    `/api/projects/${encodeURIComponent(projectId)}/design/chapters/${encodeURIComponent(chapterId)}/${taskId}/approve`,
+    { method: "POST" },
+  );
+}
+
+export function getMemory(projectId: string, kind: MemoryRecord["kind"], id: string): Promise<MemoryRecord> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/memory/${kind}/${encodeURIComponent(id)}`);
+}
+
+export function searchMemory(projectId: string, query: string): Promise<Array<{ path: string; location: string; snippet: string }>> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/search?q=${encodeURIComponent(query)}`);
+}
+
 interface HealthRequestOptions {
   signal?: AbortSignal;
 }
