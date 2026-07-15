@@ -55,6 +55,16 @@ def test_task_endpoints_create_read_and_transition(client: TestClient) -> None:
         client.post(f"/api/projects/story-01/tasks/{task_id}/complete").json()["status"]
         == "completed"
     )
+    listed = client.get("/api/projects/story-01/tasks").json()
+    assert [item["id"] for item in listed] == [task_id]
+    history = client.get(f"/api/projects/story-01/tasks/{task_id}/history").json()
+    assert [event["type"] for event in history] == [
+        "task.created",
+        "task.started",
+        "task.awaiting_approval",
+        "task.approved",
+        "task.completed",
+    ]
 
 
 def test_api_maps_domain_errors_without_sqlite_details(client: TestClient) -> None:

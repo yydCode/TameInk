@@ -84,18 +84,32 @@ export function getProject(projectId: string): Promise<Project> {
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}`);
 }
 
+export function listProjects(): Promise<Project[]> { return requestJson("/api/projects"); }
+
+export function listTasks(projectId: string): Promise<Task[]> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/tasks`);
+}
+
+export function listTaskDrafts(projectId: string, taskId: string): Promise<string[]> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/tasks/${taskId}/drafts`);
+}
+
+export function transitionTask(projectId: string, taskId: string, action: "start" | "cancel" | "fail"): Promise<Task> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/tasks/${taskId}/${action}`, { method: "POST" });
+}
+
 export function getTask(projectId: string, taskId: string): Promise<Task> {
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}/tasks/${taskId}`);
 }
 
-export function getDraft(projectId: string, taskId: string, path: string): Promise<{ task_id: string; path: string; content: string }> {
+export function getDraft(projectId: string, taskId: string, path: string): Promise<{ task_id: string; path: string; content: string; revision: string | null }> {
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}/drafts/${taskId}?path=${encodeURIComponent(path)}`);
 }
 
-export function saveDraft(projectId: string, taskId: string, path: string, content: string): Promise<{ task_id: string; path: string; content: string }> {
+export function saveDraft(projectId: string, taskId: string, path: string, content: string, baseRevision: string | null): Promise<{ task_id: string; path: string; content: string; revision: string | null }> {
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}/drafts/${taskId}`, {
     method: "PUT",
-    body: JSON.stringify({ path, content }),
+    body: JSON.stringify({ path, content, base_revision: baseRevision }),
   });
 }
 
@@ -129,6 +143,39 @@ export function approveVolume(projectId: string, volumeId: string, taskId: strin
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}/design/volumes/${encodeURIComponent(volumeId)}/${taskId}/approve`, { method: "POST" });
 }
 
+export interface GeneratedTask {
+  task: Task;
+  content: string;
+}
+
+export function generateSetting(projectId: string, taskId: string, instruction: string): Promise<GeneratedTask> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/design/agent/setting/${taskId}`, {
+    method: "POST",
+    body: JSON.stringify({ instruction }),
+  });
+}
+
+export function generateOutline(projectId: string, instruction: string): Promise<GeneratedTask> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/design/agent/outline`, {
+    method: "POST",
+    body: JSON.stringify({ instruction }),
+  });
+}
+
+export function generateVolume(projectId: string, volumeId: string, instruction: string): Promise<GeneratedTask> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/design/agent/volumes/${encodeURIComponent(volumeId)}`, {
+    method: "POST",
+    body: JSON.stringify({ instruction }),
+  });
+}
+
+export function generateChapter(projectId: string, chapterId: string, instruction: string): Promise<GeneratedTask> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/design/agent/chapters/${encodeURIComponent(chapterId)}`, {
+    method: "POST",
+    body: JSON.stringify({ instruction }),
+  });
+}
+
 export function startChapter(
   projectId: string,
   chapterId: string,
@@ -151,8 +198,36 @@ export function getMemory(projectId: string, kind: MemoryRecord["kind"], id: str
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}/memory/${kind}/${encodeURIComponent(id)}`);
 }
 
-export function searchMemory(projectId: string, query: string): Promise<Array<{ path: string; location: string; snippet: string }>> {
+export function searchMemory(projectId: string, query: string): Promise<Array<{ path: string; location: string; quote: string; sha256: string }>> {
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}/search?q=${encodeURIComponent(query)}`);
+}
+
+export function listMemory(projectId: string): Promise<MemoryRecord[]> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/memory`);
+}
+
+export function correctMemory(projectId: string, record: MemoryRecord): Promise<MemoryRecord> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/memory/${record.kind}/${encodeURIComponent(record.id)}`, {
+    method: "PUT",
+    body: JSON.stringify({ source: record.source, location: record.location, quote: record.quote }),
+  });
+}
+
+export function revokeMemory(projectId: string, record: MemoryRecord): Promise<MemoryRecord> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/memory/${record.kind}/${encodeURIComponent(record.id)}/revoke`, { method: "POST" });
+}
+
+export interface TaskEventRecord {
+  task_id: string;
+  project_id: string;
+  sequence: number;
+  type: string;
+  timestamp: string;
+  data: Record<string, unknown>;
+}
+
+export function getTaskHistory(projectId: string, taskId: string): Promise<TaskEventRecord[]> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/tasks/${taskId}/history`);
 }
 
 export interface ChapterBoundary {

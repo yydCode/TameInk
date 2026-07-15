@@ -40,6 +40,7 @@ def test_memory_and_search_api_complete_correction_lifecycle(tmp_path: Path) -> 
             },
         )
         searched = client.get("/api/projects/story-01/search", params={"q": "长街重逢"})
+        listed = client.get("/api/projects/story-01/memory")
         revoked = client.post("/api/projects/story-01/memory/fact/meeting/revoke")
 
     assert created.status_code == 201
@@ -49,4 +50,5 @@ def test_memory_and_search_api_complete_correction_lifecycle(tmp_path: Path) -> 
         "canon/chapters/0001.md",
         "memory/facts/meeting.yaml",
     ]
+    assert [(item["id"], item["kind"]) for item in listed.json()] == [("meeting", "fact")]
     assert revoked.json()["status"] == "superseded"

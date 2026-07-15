@@ -35,6 +35,8 @@ class NovelWorkspaceBackend(BackendProtocol):
     def _parse(path: str) -> tuple[str, str]:
         if "\\" in path or not path.startswith("/"):
             raise WorkspacePathViolationError(path)
+        if path == "/project.yaml":
+            return "project", "project.yaml"
         parts = path.split("/")
         if len(parts) < 3 or parts[0] != "" or parts[1] not in {"canon", "memory", "drafts"}:
             raise WorkspacePathViolationError(path)
@@ -44,6 +46,8 @@ class NovelWorkspaceBackend(BackendProtocol):
 
     def _read_text(self, path: str) -> str:
         root, relative = self._parse(path)
+        if root == "project":
+            return self.canon.project_file(self.project_id).read_text(encoding="utf-8")
         if root == "drafts":
             return self.drafts.read(self.project_id, self.task_id, relative)
         formal = f"{root}/{relative}"

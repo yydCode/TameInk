@@ -38,6 +38,11 @@ def create_memory(
     )
 
 
+@router.get("/memory", response_model=list[MemoryRecord])
+def list_memory(project_id: str, request: Request) -> list[MemoryRecord]:
+    return MemoryService(request.app.state.workspace).list_records(project_id)
+
+
 @router.get("/memory/{kind}/{stable_id}", response_model=MemoryRecord)
 def read_memory(
     project_id: str, kind: MemoryKind, stable_id: str, request: Request

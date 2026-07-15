@@ -1,3 +1,4 @@
+import json
 from collections.abc import Callable, Mapping
 from typing import Any
 
@@ -7,7 +8,7 @@ from langchain_core.messages import AIMessage, ToolMessage
 from pydantic import BaseModel, ValidationError
 
 from app.agents.context import ContextManifest, TrustedAgentContext
-from app.agents.schemas import ReferencedOutput
+from app.agents.schemas import ContinuityReport, DraftWriterResult, ReferencedOutput, StyleReport
 
 
 class OutputContractError(RuntimeError):
@@ -102,6 +103,42 @@ class ValidatedOrchestrator:
         *,
         context_manifest: ContextManifest,
     ) -> dict[str, Any]:
+        result, _ = self._invoke_validated(payload, config, context_manifest=context_manifest)
+        return result
+
+    def invoke_agent(
+        self,
+        agent: str,
+        instruction: str,
+        *,
+        context_manifest: ContextManifest,
+    ) -> ReferencedOutput:
+        if agent not in self._output_schemas:
+            raise OutputContractError("OUTPUT_SUBAGENT_UNKNOWN")
+        payload = {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": (
+                        f"只委派给 {agent}。description 必须是严格 JSON："
+                        f'{{"instruction":{json.dumps(instruction, ensure_ascii=False)}}}'
+                    ),
+                }
+            ]
+        }
+        _, outputs = self._invoke_validated(payload, None, context_manifest=context_manifest)
+        selected = [output for name, output in outputs if name == agent]
+        if len(selected) != 1 or len(outputs) != 1:
+            raise OutputContractError("TASK_DELEGATION_UNEXPECTED")
+        return selected[0]
+
+    def _invoke_validated(
+        self,
+        payload: Any,
+        config: Any,
+        *,
+        context_manifest: ContextManifest,
+    ) -> tuple[dict[str, Any], list[tuple[str, ReferencedOutput]]]:
         trusted_context = TrustedAgentContext(manifest=context_manifest)
         result: dict[str, Any] = self._graph.invoke(
             payload,
@@ -135,6 +172,7 @@ class ValidatedOrchestrator:
                 raise OutputContractError("TOOL_RESULT_ORPHAN")
             if message.tool_call_id in task_results:
                 task_results[message.tool_call_id].append(message)
+        outputs: list[tuple[str, ReferencedOutput]] = []
         for call_id, messages in task_results.items():
             if not messages:
                 raise OutputContractError("TASK_RESULT_MISSING")
@@ -151,4 +189,12 @@ class ValidatedOrchestrator:
             except (ValidationError, ValueError, TypeError) as error:
                 raise OutputContractError("AGENT_OUTPUT_INVALID") from error
             validate_agent_output(parsed, context_manifest)
-        return result
+            children: list[ReferencedOutput] = []
+            if isinstance(parsed, (ContinuityReport, StyleReport)):
+                children.extend(parsed.issues)
+            if isinstance(parsed, DraftWriterResult):
+                children.extend(parsed.revisions)
+            for child in children:
+                validate_agent_output(child, context_manifest)
+            outputs.append((task_calls[call_id], parsed))
+        return result, outputs

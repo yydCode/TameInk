@@ -147,6 +147,14 @@ class TasksRepository:
             ).fetchall()
         return [self._task(row) for row in rows]
 
+    def list_all(self) -> list[Task]:
+        with self.database.connect(self.project_id) as connection:
+            rows = connection.execute(
+                """SELECT id, project_id, kind, status, created_at, updated_at
+                FROM tasks ORDER BY created_at DESC, id DESC"""
+            ).fetchall()
+        return [self._task(row) for row in rows]
+
     @staticmethod
     def _task(row: tuple[object, ...]) -> Task:
         return Task(

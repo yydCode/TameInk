@@ -62,6 +62,24 @@ class MemoryService:
         except Exception as error:
             raise MemoryProvenanceError("memory record does not exist") from error
 
+    def list_records(self, project_id: str) -> list[MemoryRecord]:
+        canon = CanonRepository(self.workspace)
+        records: list[MemoryRecord] = []
+        for directory in _DIRECTORIES.values():
+            root = self.workspace.resolve_project_path(project_id, f"memory/{directory}")
+            if not root.exists():
+                continue
+            for path in sorted(root.glob("*.yaml")):
+                if path.is_symlink():
+                    raise MemoryProvenanceError("memory record path is invalid")
+                records.append(
+                    canon.read_memory(
+                        project_id,
+                        path.relative_to(self.workspace.project_path(project_id)).as_posix(),
+                    )
+                )
+        return records
+
     def revoke(self, project_id: str, stable_id: str, kind: MemoryKind) -> MemoryRecord:
         relative = self._relative(stable_id, kind)
         existing = self.read(project_id, stable_id, kind)

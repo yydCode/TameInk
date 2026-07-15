@@ -44,10 +44,10 @@ test("creates a local project and restores its workbench", async ({ page }) => {
   await page.getByLabel("创作约束").fill("第三人称限知");
   await page.getByRole("button", { name: "创建并进入工作台" }).click({ force: true });
 
-  await expect(page.getByRole("heading", { name: "夜渡长河" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "夜渡长河", level: 2 })).toBeVisible();
   await expect(page.getByText("等待审批").first()).toBeVisible();
 
   await page.reload();
-  await expect(page.getByRole("heading", { name: "夜渡长河" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "夜渡长河", level: 2 })).toBeVisible();
   await expect(page.getByText("雨夜渡口。")).toBeVisible();
 });

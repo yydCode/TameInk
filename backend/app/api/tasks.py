@@ -4,8 +4,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Request, status
 from pydantic import BaseModel, ConfigDict
 
-from app.domain.task import Task, TaskKind
+from app.domain.task import Task, TaskEvent, TaskKind
 from app.repositories.database import DatabaseRepository
+from app.repositories.drafts import DraftRepository
 from app.repositories.tasks import TasksRepository
 from app.repositories.workspace import WorkspaceRepository
 from app.workflows.task_service import TaskService
@@ -33,9 +34,27 @@ def create_task(payload: CreateTaskRequest, service: Service) -> Task:
     return service.create(payload.kind)
 
 
+@router.get("", response_model=list[Task])
+def list_tasks(service: Service) -> list[Task]:
+    return service.repository.list_all()
+
+
 @router.get("/{task_id}", response_model=Task)
 def read_task(task_id: str, service: Service) -> Task:
     return service.get(task_id)
+
+
+@router.get("/{task_id}/drafts", response_model=list[str])
+def list_task_drafts(
+    project_id: str, task_id: str, request: Request, service: Service
+) -> list[str]:
+    service.get(task_id)
+    return DraftRepository(request.app.state.workspace).list_files(project_id, task_id)
+
+
+@router.get("/{task_id}/history", response_model=list[TaskEvent])
+def task_history(task_id: str, service: Service) -> list[TaskEvent]:
+    return service.events(task_id)
 
 
 def operation(name: str) -> Callable[[str, TaskService], Task]:

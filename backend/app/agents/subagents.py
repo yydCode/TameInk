@@ -7,15 +7,15 @@ from pydantic import BaseModel, ConfigDict
 from app.agents.backend import NovelWorkspaceBackend
 from app.agents.context import ContextManifest
 from app.agents.schemas import (
-    ChapterDraft,
     ChapterPlan,
-    ContinuityIssue,
+    ContinuityReport,
+    DraftWriterResult,
     ImportAnalysis,
     MemoryUpdate,
     Outline,
     ReferencedOutput,
     StorySetting,
-    StyleIssue,
+    StyleReport,
 )
 from app.agents.tools import build_repository_tools
 
@@ -147,21 +147,21 @@ def build_subagent_definitions(backend: NovelWorkspaceBackend) -> list[CreativeA
             "DraftWriter",
             "生成当前任务正文草稿",
             "生成正文候选，只能写当前任务的 /drafts。",
-            ChapterDraft,
+            DraftWriterResult,
             True,
         ),
         (
             "ContinuityAuditor",
             "审计连续性",
             "检查人物、时间线、能力和因果冲突，不修改事实。",
-            ContinuityIssue,
+            ContinuityReport,
             False,
         ),
         (
             "StyleCritic",
             "审计文风",
             "检查视角、节奏、重复和章节钩子，不修改事实。",
-            StyleIssue,
+            StyleReport,
             False,
         ),
         (

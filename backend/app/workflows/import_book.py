@@ -63,6 +63,20 @@ class ChapterBoundary:
     end: SourceLocation
 
 
+def _source_location(value: object) -> SourceLocation:
+    if not isinstance(value, dict):
+        raise TypeError("source location must be an object")
+    keys = ("byte", "character", "line", "column")
+    if set(value) != set(keys) or not all(isinstance(value[key], int) for key in keys):
+        raise TypeError("source location fields are invalid")
+    return SourceLocation(
+        byte=value["byte"],
+        character=value["character"],
+        line=value["line"],
+        column=value["column"],
+    )
+
+
 def decode_import(payload: bytes, encoding: str | None) -> DecodedImport:
     """Decode only a confirmed supported encoding; never replace undecodable bytes."""
     selected = _normalise_encoding(encoding) if encoding is not None else _detect_encoding(payload)
@@ -258,31 +272,40 @@ class ImportBookService:
                 "import must be uploaded with a confirmed encoding", SourceLocation(0, 0, 1, 1)
             ) from error
         candidates = parse_chapters(decoded.text, decoded.encoding)
-        expected = [
-            {
-                "number": item.number,
-                "title": item.title,
-                "start": item.start.__dict__,
-                "end": item.end.__dict__,
-            }
-            for item in candidates
-        ]
-        received: list[dict[str, object]] = []
-        for item in boundaries:
-            start = item.get("start")
-            received.append(
-                {
-                    "number": item.get("number"),
-                    "title": item.get("title"),
-                    "start": start,
-                    "end": item.get("end"),
-                }
-            )
-        if received != expected:
+        candidate_by_start = {item.start.character: item for item in candidates}
+        confirmed: list[ChapterBoundary] = []
+        try:
+            starts = [_source_location(item["start"]) for item in boundaries]
+            ends = [_source_location(item["end"]) for item in boundaries]
+            if not boundaries or [item.character for item in starts] != sorted(
+                {item.character for item in starts}
+            ):
+                raise ValueError("chapter starts must be unique and ordered")
+            for index, item in enumerate(boundaries):
+                candidate = candidate_by_start[starts[index].character]
+                expected_end = starts[index + 1] if index + 1 < len(starts) else candidates[-1].end
+                if starts[index] != candidate.start or ends[index] != expected_end:
+                    raise ValueError("chapter positions are not deterministic boundaries")
+                number = item["number"]
+                title = item["title"]
+                if not isinstance(number, int) or number <= 0:
+                    raise ValueError("chapter number must be positive")
+                if not isinstance(title, str):
+                    raise ValueError("chapter title must be text")
+                confirmed.append(
+                    ChapterBoundary(
+                        number=number,
+                        title=title.strip(),
+                        start=candidate.start,
+                        body_start=candidate.body_start,
+                        end=expected_end,
+                    )
+                )
+        except (KeyError, TypeError, ValueError) as error:
             raise ImportChapterBoundaryError(
-                "confirmed boundaries do not match deterministic candidates",
+                "confirmed boundaries are invalid or outside deterministic source positions",
                 SourceLocation(0, 0, 1, 1),
-            )
+            ) from error
         confirmation = self.workspace.resolve_project_path(
             project_id, f".tame-ink/imports/{import_id}-boundaries.json"
         )
@@ -297,9 +320,9 @@ class ImportBookService:
         service = TaskService(TasksRepository(DatabaseRepository(self.workspace), project_id))
         task = service.create(TaskKind.READ)
         service.start(task.id)
-        analysis = "\n".join(f"{item.number}: {item.title}" for item in candidates)
+        analysis = "\n".join(f"{item.number}: {item.title}" for item in confirmed)
         DraftRepository(self.workspace).write(project_id, task.id, "import-analysis.md", analysis)
-        return service.await_approval(task.id), candidates
+        return service.await_approval(task.id), confirmed
 
     def _original_path(self, project_id: str, import_id: str) -> Path:
         if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,62}", import_id):

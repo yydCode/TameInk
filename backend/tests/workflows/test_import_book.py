@@ -1,3 +1,4 @@
+from hashlib import sha256
 from pathlib import Path
 
 import pytest
@@ -9,6 +10,7 @@ from app.domain.errors import (
 )
 from app.repositories.workspace import WorkspaceRepository
 from app.workflows.import_book import ImportBookService, decode_import, parse_chapters
+from app.workflows.new_book import NewBookRequest, NewBookService
 
 
 def test_explicit_supported_encoding_decodes_without_replacement() -> None:
@@ -107,3 +109,50 @@ def test_parser_rejects_missing_or_invalid_boundaries_with_location(text: str) -
         parse_chapters(text)
 
     assert raised.value.location.line >= 1
+
+
+def test_import_confirmation_allows_title_correction_and_false_positive_removal(
+    tmp_path: Path,
+) -> None:
+    workspace = WorkspaceRepository(tmp_path)
+    NewBookService(workspace).create(
+        NewBookRequest(
+            project_id="story-01",
+            title="长夜",
+            genre="悬疑",
+            target_words=1000,
+            constraints="第三人称",
+        ),
+        "设定",
+    )
+    service = ImportBookService(workspace)
+    payload = "第一章 旧标题\n正文甲\n第二章 误识别\n正文乙\n第三章 终章\n正文丙".encode()
+    _, candidates = service.upload("story-01", "source-01", payload, "utf-8")
+    selected = [candidates[0], candidates[2]]
+    boundaries = [
+        {
+            "number": 1,
+            "title": "修正标题",
+            "start": selected[0].start.__dict__,
+            "end": selected[1].start.__dict__,
+        },
+        {
+            "number": 2,
+            "title": "终章",
+            "start": selected[1].start.__dict__,
+            "end": selected[1].end.__dict__,
+        },
+    ]
+
+    _, confirmed = service.confirm_boundaries(
+        "story-01",
+        "source-01",
+        sha256(payload).hexdigest(),
+        len(payload),
+        boundaries,
+    )
+
+    assert [(chapter.number, chapter.title) for chapter in confirmed] == [
+        (1, "修正标题"),
+        (2, "终章"),
+    ]

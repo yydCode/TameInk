@@ -1,11 +1,13 @@
 from fastapi import APIRouter, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.domain.errors import CanonVersionConflictError
 from app.domain.project import Project
 from app.domain.task import Task
 from app.repositories.canon import CanonRepository
 from app.repositories.database import DatabaseRepository
 from app.repositories.drafts import DraftRepository
+from app.repositories.revisions import RevisionRepository
 from app.repositories.tasks import TasksRepository
 from app.repositories.workspace import WorkspaceRepository
 from app.workflows.new_book import NewBookRequest, NewBookService
@@ -24,10 +26,16 @@ class DraftContentRequest(BaseModel):
 
     path: str = Field(min_length=1)
     content: str
+    base_revision: str | None
 
 
-class DraftContentResponse(DraftContentRequest):
+class DraftContentResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
     task_id: str
+    path: str
+    content: str
+    revision: str | None
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
@@ -37,6 +45,13 @@ def create_project(payload: CreateProjectRequest, request: Request) -> dict[str,
         NewBookRequest(**payload.model_dump(exclude={"setting_draft"})), payload.setting_draft
     )
     return {"project": result.project, "task": result.task}
+
+
+@router.get("", response_model=list[Project])
+def list_projects(request: Request) -> list[Project]:
+    workspace: WorkspaceRepository = request.app.state.workspace
+    canon = CanonRepository(workspace)
+    return [canon.read_project(project_id) for project_id in workspace.project_ids()]
 
 
 @router.get("/{project_id}", response_model=Project)
@@ -52,7 +67,8 @@ def get_draft(
     workspace: WorkspaceRepository = request.app.state.workspace
     TasksRepository(DatabaseRepository(workspace), project_id).get(task_id)
     content = DraftRepository(workspace).read(project_id, task_id, path)
-    return DraftContentResponse(task_id=task_id, path=path, content=content)
+    revision = RevisionRepository(workspace).current_revision(project_id)
+    return DraftContentResponse(task_id=task_id, path=path, content=content, revision=revision)
 
 
 @router.put("/{project_id}/drafts/{task_id}", response_model=DraftContentResponse)
@@ -61,8 +77,16 @@ def save_draft(
 ) -> DraftContentResponse:
     workspace: WorkspaceRepository = request.app.state.workspace
     TasksRepository(DatabaseRepository(workspace), project_id).get(task_id)
+    revision = RevisionRepository(workspace).current_revision(project_id)
+    if payload.base_revision != revision:
+        raise CanonVersionConflictError("formal content changed while editing")
     DraftRepository(workspace).write(project_id, task_id, payload.path, payload.content)
-    return DraftContentResponse(task_id=task_id, path=payload.path, content=payload.content)
+    return DraftContentResponse(
+        task_id=task_id,
+        path=payload.path,
+        content=payload.content,
+        revision=revision,
+    )
 
 
 @router.post("/{project_id}/setting/{task_id}/approve", response_model=Task)

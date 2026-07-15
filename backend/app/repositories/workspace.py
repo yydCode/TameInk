@@ -46,6 +46,20 @@ class WorkspaceRepository:
             (project / relative).mkdir(parents=True, exist_ok=True)
         return project
 
+    def project_ids(self) -> list[str]:
+        projects = self.root / "projects"
+        if not projects.exists():
+            return []
+        if projects.is_symlink():
+            raise WorkspacePathViolationError(str(projects))
+        result: list[str] = []
+        for path in sorted(projects.iterdir()):
+            if path.is_symlink():
+                raise WorkspacePathViolationError(str(path))
+            if path.is_dir() and (path / "project.yaml").is_file():
+                result.append(validate_project_id(path.name))
+        return result
+
     def resolve_project_path(self, project_id: str, relative: str | Path) -> Path:
         project = self.project_path(project_id)
         candidate = Path(relative)

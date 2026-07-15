@@ -98,6 +98,26 @@ class RevisionProposal(ReferencedOutput):
     citation: DraftCitation
 
 
+class DraftWriterResult(ReferencedOutput):
+    chapter_id: str
+    markdown: str | None = None
+    revisions: list[RevisionProposal] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_mode(self) -> Self:
+        if (self.markdown is None) == (len(self.revisions) == 0):
+            raise ValueError("DRAFT_WRITER_MODE_INVALID")
+        return self
+
+
+class ContinuityReport(ReferencedOutput):
+    issues: list[ContinuityIssue]
+
+
+class StyleReport(ReferencedOutput):
+    issues: list[StyleIssue]
+
+
 class MemoryUpdate(ReferencedOutput):
     operation: Literal["create", "update", "close"]
     content: str

@@ -46,8 +46,8 @@ describe("App", () => {
     let requestSignal: AbortSignal | undefined;
     vi.stubGlobal(
       "fetch",
-      vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
-        requestSignal = init?.signal ?? undefined;
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).endsWith("/api/health")) requestSignal = init?.signal ?? undefined;
         return new Promise<Response>(() => undefined);
       }),
     );
