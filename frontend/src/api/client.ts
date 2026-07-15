@@ -59,11 +59,11 @@ async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> 
   });
   const payload: unknown = await response.json().catch(() => undefined);
   if (!response.ok) {
-    const body = payload as { error?: { message?: string; code?: string } } | undefined;
+    const body = payload as { error?: { message?: string; code?: string }; detail?: { message?: string; code?: string } } | undefined;
     throw new ApiError(
-      body?.error?.message ?? `Request failed with status ${response.status}`,
+      body?.error?.message ?? body?.detail?.message ?? `Request failed with status ${response.status}`,
       response.status,
-      body?.error?.code,
+      body?.error?.code ?? body?.detail?.code,
     );
   }
   return payload as T;
@@ -118,6 +118,17 @@ export function approveOutline(projectId: string, taskId: string): Promise<Task>
   });
 }
 
+export function createVolume(projectId: string, volumeId: string, content: string): Promise<Task> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/design/volumes/${encodeURIComponent(volumeId)}`, {
+    method: "POST",
+    body: JSON.stringify({ content }),
+  });
+}
+
+export function approveVolume(projectId: string, volumeId: string, taskId: string): Promise<Task> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/design/volumes/${encodeURIComponent(volumeId)}/${taskId}/approve`, { method: "POST" });
+}
+
 export function startChapter(
   projectId: string,
   chapterId: string,
@@ -143,6 +154,50 @@ export function getMemory(projectId: string, kind: MemoryRecord["kind"], id: str
 export function searchMemory(projectId: string, query: string): Promise<Array<{ path: string; location: string; snippet: string }>> {
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}/search?q=${encodeURIComponent(query)}`);
 }
+
+export interface ChapterBoundary {
+  number: number;
+  title: string;
+  start: Record<string, number>;
+  end: Record<string, number>;
+}
+
+export interface ImportPreview {
+  encoding: string;
+  sha256: string;
+  size: number;
+  chapters: ChapterBoundary[];
+}
+
+export async function uploadImport(projectId: string, importId: string, file: File): Promise<ImportPreview> {
+  const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}/imports/${encodeURIComponent(importId)}`, {
+    method: "POST",
+    headers: { Accept: "application/json", "Content-Type": "application/octet-stream" },
+    body: await file.arrayBuffer(),
+  });
+  const payload: unknown = await response.json().catch(() => undefined);
+  if (!response.ok) throw new ApiError(`Import failed with status ${response.status}`, response.status);
+  return payload as ImportPreview;
+}
+
+export function confirmImport(projectId: string, importId: string, preview: ImportPreview): Promise<{ task: Task; chapters: ChapterBoundary[] }> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/imports/${encodeURIComponent(importId)}/boundaries`, {
+    method: "POST",
+    body: JSON.stringify({ source_sha256: preview.sha256, source_size: preview.size, boundaries: preview.chapters }),
+  });
+}
+
+export interface ModelSettings {
+  base_url: string;
+  model: string;
+  timeout: number;
+  has_api_key?: boolean;
+}
+
+export function getModelSettings(): Promise<ModelSettings> { return requestJson("/api/settings"); }
+export function saveModelSettings(settings: Omit<ModelSettings, "has_api_key">): Promise<ModelSettings> { return requestJson("/api/settings", { method: "PUT", body: JSON.stringify(settings) }); }
+export function saveApiKey(apiKey: string): Promise<{ has_api_key: boolean }> { return requestJson("/api/settings/secret", { method: "PUT", body: JSON.stringify({ api_key: apiKey }) }); }
+export function testModelConnection(): Promise<{ status: "ok" }> { return requestJson("/api/settings/connection", { method: "POST" }); }
 
 interface HealthRequestOptions {
   signal?: AbortSignal;
