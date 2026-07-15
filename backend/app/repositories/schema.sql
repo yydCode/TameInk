@@ -1,0 +1,55 @@
+PRAGMA foreign_keys = ON;
+
+CREATE TABLE IF NOT EXISTS metadata (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS content_fts USING fts5(
+    path UNINDEXED,
+    content,
+    tokenize = 'trigram'
+);
+
+CREATE TABLE IF NOT EXISTS tasks (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('read', 'write')),
+    status TEXT NOT NULL CHECK (
+        status IN (
+            'pending', 'running', 'awaiting_approval', 'completed',
+            'failed', 'cancelled', 'interrupted'
+        )
+    ),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS one_active_write_task_per_project
+ON tasks(project_id)
+WHERE kind = 'write'
+  AND status IN ('pending', 'running', 'awaiting_approval', 'interrupted');
+
+CREATE TRIGGER IF NOT EXISTS enforce_task_status_transition
+BEFORE UPDATE OF status ON tasks
+WHEN NEW.status <> OLD.status AND NOT (
+    (OLD.status = 'pending' AND NEW.status IN ('running', 'cancelled')) OR
+    (OLD.status = 'running' AND NEW.status IN (
+        'awaiting_approval', 'completed', 'failed', 'cancelled', 'interrupted'
+    )) OR
+    (OLD.status = 'awaiting_approval' AND NEW.status IN ('running', 'cancelled')) OR
+    (OLD.status = 'interrupted' AND NEW.status IN ('running', 'cancelled', 'failed'))
+)
+BEGIN
+    SELECT RAISE(ABORT, 'invalid task transition');
+END;
+
+CREATE TABLE IF NOT EXISTS task_events (
+    task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    project_id TEXT NOT NULL,
+    sequence INTEGER NOT NULL CHECK (sequence > 0),
+    type TEXT NOT NULL CHECK (length(trim(type)) > 0),
+    timestamp TEXT NOT NULL,
+    data TEXT NOT NULL,
+    PRIMARY KEY (task_id, sequence)
+);

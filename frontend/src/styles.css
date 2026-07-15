@@ -1,0 +1,114 @@
+:root {
+  color: #252826;
+  background: #f4f4f2;
+  font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: 52px 1fr;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 20px;
+  color: #f7f8f6;
+  background: #262b28;
+  border-bottom: 1px solid #171a18;
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: #d4d8d5;
+}
+
+.status__indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #a6aaa7;
+}
+
+.status--online .status__indicator {
+  background: #55b77a;
+}
+
+.status--offline .status__indicator {
+  background: #e07163;
+}
+
+.workspace-shell {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+}
+
+.sidebar {
+  padding: 18px 16px;
+  color: #636966;
+  background: #e9ebe8;
+  border-right: 1px solid #d4d7d3;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.empty-workspace {
+  display: grid;
+  place-content: center;
+  text-align: center;
+  padding: 24px;
+}
+
+.empty-workspace h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.empty-workspace p {
+  margin: 0;
+  color: #747a76;
+  font-size: 14px;
+}
+
+@media (max-width: 640px) {
+  .workspace-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    display: none;
+  }
+}
