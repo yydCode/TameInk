@@ -1,0 +1,65 @@
+- description: 首章立即兑现能力与代价
+  vars:
+    commercialProfile: "都市异能；首章完成能力觉醒并付出代价；核心差异是能力会暴露自身秘密。"
+    candidate: "催债人踹开门时，陈默第一次听见了谎言。那句话变成红字浮在半空，而他母亲隐瞒十年的秘密也同时响在所有人耳边。门外警笛逼近，他必须在十秒内决定相信谁。"
+    expectedRecommendation: pass
+    expectedLowDimensions: ""
+    fixtureReport:
+      chapter_id: "1"
+      total_score: 82
+      recommendation: pass
+      dimensions:
+        - { dimension: opening_urgency, score: 88, reason: "冲突立即发生" }
+        - { dimension: reader_promise, score: 84, reason: "能力与代价同时兑现" }
+        - { dimension: emotional_payoff, score: 78, reason: "秘密公开形成即时后果" }
+        - { dimension: conflict_escalation, score: 85, reason: "催债与警笛叠加" }
+        - { dimension: information_clarity, score: 80, reason: "能力规则清晰" }
+        - { dimension: chapter_hook, score: 86, reason: "十秒选择形成钩子" }
+        - { dimension: differentiation, score: 76, reason: "能力代价具差异" }
+      issues: []
+- description: 长篇背景介绍后仍无行动
+  vars:
+    commercialProfile: "都市异能；首章完成能力觉醒。"
+    candidate: "林默醒来后，先回忆了城市三百年的历史，又逐一介绍学校的七栋教学楼。直到夜色降临，他仍然没有离开宿舍。"
+    expectedRecommendation: revise
+    expectedLowDimensions: "opening_urgency,reader_promise,chapter_hook"
+    fixtureReport:
+      chapter_id: "1"
+      total_score: 45
+      recommendation: revise
+      dimensions:
+        - { dimension: opening_urgency, score: 25, reason: "没有当前冲突" }
+        - { dimension: reader_promise, score: 35, reason: "能力未出现" }
+        - { dimension: emotional_payoff, score: 50, reason: "没有情绪兑现" }
+        - { dimension: conflict_escalation, score: 48, reason: "情势没有升级" }
+        - { dimension: information_clarity, score: 62, reason: "信息可理解但过量" }
+        - { dimension: chapter_hook, score: 35, reason: "结尾没有未决问题" }
+        - { dimension: differentiation, score: 58, reason: "尚未展示独特机制" }
+      issues:
+        - severity: error
+          dimension: opening_urgency
+          description: "背景介绍取代了开篇事件"
+          citation: { location: "chars:0-52", quote: "林默醒来后，先回忆了城市三百年的历史，又逐一介绍学校的七栋教学楼。直到夜色降临，他仍然没有离开宿舍。" }
+- description: 套路能力没有差异代价
+  vars:
+    commercialProfile: "玄幻升级；差异是每次升级必须失去一段记忆。"
+    candidate: "系统提示修为提升。周玄握拳大笑，只要完成签到，他就能无限升级，而且不会付出任何代价。下一刻，他再次获得十年修为。"
+    expectedRecommendation: revise
+    expectedLowDimensions: "reader_promise,differentiation"
+    fixtureReport:
+      chapter_id: "3"
+      total_score: 52
+      recommendation: revise
+      dimensions:
+        - { dimension: opening_urgency, score: 58, reason: "存在即时变化" }
+        - { dimension: reader_promise, score: 30, reason: "违背记忆代价承诺" }
+        - { dimension: emotional_payoff, score: 68, reason: "升级有即时回报" }
+        - { dimension: conflict_escalation, score: 45, reason: "没有新阻力" }
+        - { dimension: information_clarity, score: 72, reason: "规则表达清楚" }
+        - { dimension: chapter_hook, score: 55, reason: "结尾缺少风险" }
+        - { dimension: differentiation, score: 35, reason: "退化为无代价签到" }
+      issues:
+        - severity: error
+          dimension: reader_promise
+          description: "正文否定了商业定位中的核心代价"
+          citation: { location: "chars:16-41", quote: "只要完成签到，他就能无限升级，而且不会付出任何代价" }

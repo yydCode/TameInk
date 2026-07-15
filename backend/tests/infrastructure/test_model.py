@@ -52,6 +52,19 @@ def test_build_model_constructs_single_non_retrying_chat_openai(monkeypatch) -> 
     ]
 
 
+def test_build_model_can_explicitly_disable_provider_thinking(monkeypatch) -> None:
+    calls: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        "app.infrastructure.model.TameInkChatOpenAI",
+        lambda **kwargs: calls.append(kwargs),
+    )
+    settings = configured_settings().model_copy(update={"disable_thinking": True})
+
+    build_model(settings, "secret-value")
+
+    assert calls[0]["extra_body"] == {"thinking": {"type": "disabled"}}
+
+
 def test_connection_only_invokes_model_when_explicitly_called() -> None:
     class FakeModel:
         def __init__(self) -> None:

@@ -21,7 +21,12 @@ def client_for(tmp_path: Path) -> tuple[TestClient, FakeKeyring]:
 
 def test_settings_api_never_echoes_secret(tmp_path: Path) -> None:
     client, _ = client_for(tmp_path)
-    config = {"base_url": "https://api.example.com/v1", "model": "model-1", "timeout": 30.0}
+    config = {
+        "base_url": "https://api.example.com/v1",
+        "model": "model-1",
+        "timeout": 30.0,
+        "disable_thinking": False,
+    }
 
     put_config = client.put("/api/settings", json=config)
     put_secret = client.put("/api/settings/secret", json={"api_key": "secret-value"})

@@ -40,6 +40,95 @@ export interface MemoryRecord {
   quote: string;
 }
 
+export interface CommercialTargets {
+  click_through_rate: number | null;
+  chapter_one_completion_rate: number | null;
+  chapter_three_retention_rate: number | null;
+  follow_rate: number | null;
+  revenue_per_thousand_opens_yuan: number | null;
+}
+
+export interface CommercialProfile {
+  schema_version: 1;
+  platform: "fanqie" | "qidian" | "jinjiang" | "custom";
+  custom_platform: string | null;
+  monetization: "free_ad" | "paid_subscription" | "custom";
+  target_reader: string;
+  core_fantasy: string;
+  differentiator: string;
+  emotional_payoffs: string[];
+  opening_promise: string;
+  first_thirty_chapter_promise: string;
+  update_cadence: string;
+  title_candidates: string[];
+  synopsis: string;
+  comparable_titles: string[];
+  minimum_commercial_score: number;
+  targets: CommercialTargets;
+}
+
+export type CommercialDimension =
+  | "opening_urgency"
+  | "reader_promise"
+  | "emotional_payoff"
+  | "conflict_escalation"
+  | "information_clarity"
+  | "chapter_hook"
+  | "differentiation";
+
+export interface CommercialReport {
+  id: string;
+  chapter_id: string;
+  total_score: number;
+  recommendation: "pass" | "revise";
+  dimensions: Array<{ dimension: CommercialDimension; score: number; reason: string }>;
+  issues: Array<{
+    id: string;
+    severity: "warning" | "error";
+    dimension: CommercialDimension;
+    description: string;
+    citation: { source: "draft"; location: string; quote: string };
+  }>;
+}
+
+export interface CommercialAudit {
+  commercial_report: CommercialReport;
+  minimum_commercial_score: number;
+  commercial_gate_passed: boolean;
+}
+
+export interface CommercialObservationInput {
+  observed_at: string;
+  impressions: number;
+  opens: number;
+  chapter_one_completions: number;
+  chapter_three_completions: number;
+  follows: number;
+  read_minutes: number;
+  revenue_cents: number;
+}
+
+export interface CommercialObservation extends CommercialObservationInput {
+  id: string;
+}
+
+export interface CommercialMetrics {
+  observations: number;
+  impressions: number;
+  opens: number;
+  chapter_one_completions: number;
+  chapter_three_completions: number;
+  follows: number;
+  read_minutes: number;
+  revenue_cents: number;
+  click_through_rate: number;
+  chapter_one_completion_rate: number;
+  chapter_three_retention_rate: number;
+  follow_rate: number;
+  average_read_minutes_per_open: number;
+  revenue_per_thousand_opens_yuan: number;
+}
+
 export class ApiError extends Error {
   readonly code?: string;
   readonly status: number;
@@ -148,6 +237,8 @@ export interface GeneratedTask {
   content: string;
 }
 
+export interface GeneratedChapter extends GeneratedTask, CommercialAudit {}
+
 export function generateSetting(projectId: string, taskId: string, instruction: string): Promise<GeneratedTask> {
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}/design/agent/setting/${taskId}`, {
     method: "POST",
@@ -169,7 +260,7 @@ export function generateVolume(projectId: string, volumeId: string, instruction:
   });
 }
 
-export function generateChapter(projectId: string, chapterId: string, instruction: string): Promise<GeneratedTask> {
+export function generateChapter(projectId: string, chapterId: string, instruction: string): Promise<GeneratedChapter> {
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}/design/agent/chapters/${encodeURIComponent(chapterId)}`, {
     method: "POST",
     body: JSON.stringify({ instruction }),
@@ -187,11 +278,63 @@ export function startChapter(
   });
 }
 
-export function approveChapter(projectId: string, chapterId: string, taskId: string): Promise<Task> {
+export function approveChapter(projectId: string, chapterId: string, taskId: string, commercialOverrideReason?: string): Promise<Task> {
   return requestJson(
     `/api/projects/${encodeURIComponent(projectId)}/design/chapters/${encodeURIComponent(chapterId)}/${taskId}/approve`,
-    { method: "POST" },
+    { method: "POST", body: JSON.stringify({ commercial_override_reason: commercialOverrideReason ?? null }) },
   );
+}
+
+export function auditChapterCommercially(projectId: string, chapterId: string, taskId: string): Promise<CommercialAudit> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/design/agent/chapters/${encodeURIComponent(chapterId)}/${taskId}/commercial-audit`, { method: "POST" });
+}
+
+export function getCommercialProfile(projectId: string): Promise<CommercialProfile | null> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/commercial/profile`);
+}
+
+export function getCommercialAudit(projectId: string, taskId: string): Promise<CommercialAudit | null> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/commercial/reports/${taskId}`);
+}
+
+export function createCommercialDraft(projectId: string, profile: CommercialProfile): Promise<Task> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/commercial/draft`, { method: "POST", body: JSON.stringify(profile) });
+}
+
+export function updateCommercialDraft(projectId: string, taskId: string, profile: CommercialProfile): Promise<CommercialProfile> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/commercial/draft/${taskId}`, { method: "PUT", body: JSON.stringify(profile) });
+}
+
+export function getCommercialDraft(projectId: string, taskId: string): Promise<CommercialProfile> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/commercial/draft/${taskId}`);
+}
+
+export function approveCommercialDraft(projectId: string, taskId: string): Promise<Task> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/commercial/draft/${taskId}/approve`, { method: "POST" });
+}
+
+export function generateCommercialProfile(projectId: string, input: {
+  platform: CommercialProfile["platform"];
+  monetization: CommercialProfile["monetization"];
+  target_reader: string;
+  core_fantasy: string;
+  differentiator: string;
+  comparable_titles: string[];
+  instruction: string;
+}): Promise<{ task: Task; profile: CommercialProfile }> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/commercial/agent`, { method: "POST", body: JSON.stringify(input) });
+}
+
+export function listCommercialObservations(projectId: string): Promise<CommercialObservation[]> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/commercial/observations`);
+}
+
+export function createCommercialObservation(projectId: string, input: CommercialObservationInput): Promise<CommercialObservation> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/commercial/observations`, { method: "POST", body: JSON.stringify(input) });
+}
+
+export function getCommercialMetrics(projectId: string): Promise<CommercialMetrics> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/commercial/metrics`);
 }
 
 export function getMemory(projectId: string, kind: MemoryRecord["kind"], id: string): Promise<MemoryRecord> {
@@ -266,6 +409,7 @@ export interface ModelSettings {
   base_url: string;
   model: string;
   timeout: number;
+  disable_thinking: boolean;
   has_api_key?: boolean;
 }
 

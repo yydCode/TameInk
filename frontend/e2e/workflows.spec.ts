@@ -17,6 +17,14 @@ const task = {
   updated_at: "2026-07-15T10:00:00Z",
 };
 const location = (line: number, character: number) => ({ byte: character, character, line, column: 1 });
+const commercialProfile = {
+  schema_version: 1, platform: "fanqie", custom_platform: null, monetization: "free_ad",
+  target_reader: "悬疑读者", core_fantasy: "破解不可能犯罪", differentiator: "线索反向误导",
+  emotional_payoffs: ["识破骗局"], opening_promise: "首章发生命案", first_thirty_chapter_promise: "破解主案",
+  update_cadence: "每日两章", title_candidates: ["已有作品"], synopsis: "侦探破解密室命案。", comparable_titles: [], minimum_commercial_score: 75,
+  targets: { click_through_rate: null, chapter_one_completion_rate: null, chapter_three_retention_rate: null, follow_rate: null, revenue_per_thousand_opens_yuan: null },
+};
+const emptyMetrics = { observations: 0, impressions: 0, opens: 0, chapter_one_completions: 0, chapter_three_completions: 0, follows: 0, read_minutes: 0, revenue_cents: 0, click_through_rate: 0, chapter_one_completion_rate: 0, chapter_three_retention_rate: 0, follow_rate: 0, average_read_minutes_per_open: 0, revenue_per_thousand_opens_yuan: 0 };
 
 async function openExistingProject(page: Page, status = "等待审批") {
   await page.goto("/");
@@ -26,6 +34,8 @@ async function openExistingProject(page: Page, status = "等待审批") {
 }
 
 test.beforeEach(async ({ page }) => {
+  let observations: object[] = [];
+  let metrics = emptyMetrics;
   await page.route("**/api/**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -43,8 +53,70 @@ test.beforeEach(async ({ page }) => {
       { number: 2, title: "误识别", start: location(3, 20), end: location(5, 40) },
     ] } });
     if (url.pathname.endsWith("/imports/book/boundaries")) return route.fulfill({ status: 201, json: { task, chapters: [] } });
+    if (url.pathname.endsWith("/commercial/profile")) return route.fulfill({ json: commercialProfile });
+    if (url.pathname.endsWith("/commercial/metrics")) return route.fulfill({ json: metrics });
+    if (url.pathname.endsWith("/commercial/observations") && request.method() === "GET") return route.fulfill({ json: observations });
+    if (url.pathname.endsWith("/commercial/observations") && request.method() === "POST") {
+      const body = request.postDataJSON();
+      const created = { id: "observation-1", ...body };
+      observations = [created];
+      metrics = { observations: 1, impressions: 100, opens: 20, chapter_one_completions: 12, chapter_three_completions: 8, follows: 4, read_minutes: 160, revenue_cents: 250, click_through_rate: 0.2, chapter_one_completion_rate: 0.6, chapter_three_retention_rate: 0.4, follow_rate: 0.2, average_read_minutes_per_open: 8, revenue_per_thousand_opens_yuan: 125 };
+      return route.fulfill({ status: 201, json: created });
+    }
     return route.fulfill({ status: 404, json: { error: { code: "NOT_FOUND", message: "not found" } } });
   });
+});
+
+test("records real commercial funnel observations", async ({ page }) => {
+  await openExistingProject(page);
+  await page.getByRole("button", { name: "商业增长" }).click();
+  await expect(page.getByRole("heading", { name: "番茄首测策略" })).toBeVisible();
+  await page.getByLabel("曝光").fill("100");
+  await page.getByLabel("打开").fill("20");
+  await page.getByLabel("首章完读").fill("12");
+  await page.getByLabel("三章完读").fill("8");
+  await page.getByLabel("追读").fill("4");
+  await page.getByLabel("阅读分钟").fill("160");
+  await page.getByLabel("收入（分）").fill("250");
+  await page.getByRole("button", { name: "记录数据" }).click();
+  await expect(page.getByText("20.0%").first()).toBeVisible();
+  await expect(page.getByText("100 曝光")).toBeVisible();
+  await expect(page.getByText("¥2.50")).toHaveCount(1);
+});
+
+test("requires a reason before overriding a low commercial score", async ({ page }) => {
+  const dimensions = ["opening_urgency", "reader_promise", "emotional_payoff", "conflict_escalation", "information_clarity", "chapter_hook", "differentiation"];
+  const audit = {
+    commercial_report: {
+      id: "report-1",
+      chapter_id: "1",
+      total_score: 42,
+      recommendation: "revise",
+      dimensions: dimensions.map((dimension) => ({ dimension, score: 42, reason: "承诺未兑现" })),
+      issues: [{ id: "issue-1", severity: "error", dimension: "reader_promise", description: "正文否定了核心代价", citation: { source: "draft", location: "chars:0-4", quote: "生成正文" }, references: [{ path: "canon/commercial.yaml", location: "full document", quote: "fanqie" }] }],
+      references: [{ path: "canon/commercial.yaml", location: "full document", quote: "fanqie" }],
+    },
+    minimum_commercial_score: 75,
+    commercial_gate_passed: false,
+  };
+  let approvalBody: object | null = null;
+  await page.route(`**/api/projects/${project.id}/tasks`, (route) => route.fulfill({ json: [task] }));
+  await page.route(`**/api/projects/${project.id}/tasks/${task.id}/drafts`, (route) => route.fulfill({ json: ["chapter.md"] }));
+  await page.route(`**/api/projects/${project.id}/drafts/${task.id}`, (route) => route.fulfill({ json: { task_id: task.id, path: "chapter.md", content: "生成正文", revision: "rev-1" } }));
+  await page.route(`**/api/projects/${project.id}/commercial/reports/${task.id}`, (route) => route.fulfill({ json: audit }));
+  await page.route(`**/api/projects/${project.id}/design/chapters/1/${task.id}/approve`, (route) => {
+    approvalBody = route.request().postDataJSON();
+    return route.fulfill({ json: { ...task, status: "completed" } });
+  });
+
+  await openExistingProject(page);
+  await expect(page.getByRole("region", { name: "商业质量审查" })).toContainText("42 / 100");
+  const approve = page.getByRole("button", { name: "覆盖门禁并确认" });
+  await expect(approve).toBeDisabled();
+  await page.getByPlaceholder("说明为什么该章可以低于门槛进入正式稿").fill("编辑确认该章用于节奏对照实验");
+  await expect(approve).toBeEnabled();
+  await approve.click();
+  await expect.poll(() => approvalBody).toEqual({ commercial_override_reason: "编辑确认该章用于节奏对照实验" });
 });
 
 test("opens an existing project and manages import boundaries", async ({ page }) => {

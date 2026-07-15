@@ -2,7 +2,14 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from app.agents.schemas import ChapterDraft, ChapterPlan, Outline, StorySetting
+from app.agents.schemas import (
+    ChapterDraft,
+    ChapterPlan,
+    CommercialDimensionScore,
+    CommercialReport,
+    Outline,
+    StorySetting,
+)
 from app.infrastructure.model import ModelConfigurationError
 from app.main import create_app
 
@@ -81,6 +88,15 @@ def test_agent_chapter_route_runs_planner_writer_and_auditors(
     tmp_path: Path, monkeypatch
 ) -> None:
     reference = [{"path": "canon/outline.md", "location": "full document", "quote": "大纲"}]
+    dimensions = [
+        "opening_urgency",
+        "reader_promise",
+        "emotional_payoff",
+        "conflict_escalation",
+        "information_clarity",
+        "chapter_hook",
+        "differentiation",
+    ]
 
     class FakeRunner:
         def invoke(self, agent: str, payload: dict[str, object]) -> object:
@@ -94,7 +110,22 @@ def test_agent_chapter_route_runs_planner_writer_and_auditors(
                 )
             if agent in {"ContinuityAuditor", "StyleCritic"}:
                 return []
-            return []
+            if agent == "RetentionAuditor":
+                return CommercialReport(
+                    id="commercial-1",
+                    chapter_id="1",
+                    total_score=80,
+                    recommendation="pass",
+                    dimensions=[
+                        CommercialDimensionScore(
+                            dimension=dimension, score=80, reason="符合承诺"
+                        )
+                        for dimension in dimensions
+                    ],
+                    issues=[],
+                    references=reference,
+                )
+            raise AssertionError(agent)
 
     monkeypatch.setattr("app.api.creation._runner", lambda project_id, request: FakeRunner())
     with TestClient(create_app(tmp_path)) as client:
@@ -111,6 +142,25 @@ def test_agent_chapter_route_runs_planner_writer_and_auditors(
         ).json()
         client.post(
             f"/api/projects/chapter-book/setting/{created['task']['id']}/approve"
+        )
+        commercial = client.post(
+            "/api/projects/chapter-book/commercial/draft",
+            json={
+                "platform": "fanqie",
+                "monetization": "free_ad",
+                "target_reader": "悬疑读者",
+                "core_fantasy": "破解不可能犯罪",
+                "differentiator": "线索反向误导",
+                "emotional_payoffs": ["识破骗局"],
+                "opening_promise": "第一章发生命案",
+                "first_thirty_chapter_promise": "破解主案",
+                "update_cadence": "每日两章",
+                "title_candidates": ["长夜"],
+                "synopsis": "侦探破解密室命案。",
+            },
+        ).json()
+        client.post(
+            f"/api/projects/chapter-book/commercial/draft/{commercial['id']}/approve"
         )
         outline = client.post(
             "/api/projects/chapter-book/design/outline", json={"content": "大纲"}
@@ -130,6 +180,7 @@ def test_agent_chapter_route_runs_planner_writer_and_auditors(
     assert generated.status_code == 201
     assert generated.json()["content"] == "生成正文"
     assert generated.json()["task"]["status"] == "awaiting_approval"
+    assert generated.json()["commercial_report"]["total_score"] == 80
 
 
 def test_agent_generation_returns_stable_configuration_error(

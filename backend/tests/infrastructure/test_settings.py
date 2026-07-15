@@ -53,6 +53,7 @@ def test_settings_repository_persists_only_non_sensitive_fields_atomically(tmp_p
     persisted = json.loads((tmp_path / "settings.json").read_text())
     assert persisted == {
         "base_url": "https://api.example.com/v1",
+        "disable_thinking": False,
         "model": "model-1",
         "timeout": 45.0,
     }

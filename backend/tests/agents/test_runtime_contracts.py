@@ -64,6 +64,8 @@ def output(
 def test_output_parses_without_context_then_validates_known_sources() -> None:
     parsed = output("canon/premise.md")
     assert validate_agent_output(parsed, manifest()) is parsed
+    excerpted = output("canon/premise.md", quote="confirmed")
+    assert validate_agent_output(excerpted, manifest()) is excerpted
     with pytest.raises(OutputContractError, match="REFERENCE_SOURCE_UNKNOWN"):
         validate_agent_output(parsed, manifest("canon/outline.md"))
     with pytest.raises(OutputContractError, match="REFERENCE_EVIDENCE_UNKNOWN"):

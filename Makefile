@@ -3,6 +3,7 @@
 install:
 	cd backend && uv sync
 	cd frontend && pnpm install --frozen-lockfile
+	cd evaluations && pnpm install --frozen-lockfile
 
 backend-dev:
 	cd backend && uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
@@ -25,5 +26,6 @@ e2e:
 
 evaluate:
 	cd backend && uv run python ../evaluations/run.py --fixture-only
+	cd evaluations && pnpm commercial:fixture
 
 verify: test check evaluate e2e

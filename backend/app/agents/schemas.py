@@ -3,6 +3,7 @@ from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.domain.commercial import CommercialProfile
 from app.domain.errors import WorkspacePathViolationError
 from app.domain.paths import validate_formal_path
 
@@ -19,9 +20,14 @@ class StrictSchema(BaseModel):
 
 
 class SourceReference(StrictSchema):
-    path: str
-    location: str
-    quote: str
+    path: str = Field(
+        description=(
+            "Confirmed formal source path supplied by the context manifest. "
+            "Never use draft paths; draft evidence belongs in citation."
+        )
+    )
+    location: str = Field(description="Exact location supplied by the context manifest")
+    quote: str = Field(description="Exact quote supplied by the context manifest")
 
     @model_validator(mode="after")
     def validate_source(self) -> Self:
@@ -34,7 +40,10 @@ class SourceReference(StrictSchema):
 
 class DraftCitation(StrictSchema):
     source: Literal["draft"]
-    location: str
+    location: str = Field(
+        pattern=r"^chars:\d+-\d+$",
+        description="Zero-based, end-exclusive character range such as chars:0-12",
+    )
     quote: str
 
     def character_range(self) -> tuple[int, int]:
@@ -54,7 +63,10 @@ class DraftCitation(StrictSchema):
 
 class ReferencedOutput(StrictSchema):
     id: str
-    references: list[SourceReference] = Field(min_length=1)
+    references: list[SourceReference] = Field(
+        min_length=1,
+        description="Use only exact confirmed references supplied by the context manifest",
+    )
 
 
 class StorySetting(ReferencedOutput):
@@ -90,6 +102,30 @@ class StyleIssue(ReferencedOutput):
     citation: DraftCitation
 
 
+CommercialDimension = Literal[
+    "opening_urgency",
+    "reader_promise",
+    "emotional_payoff",
+    "conflict_escalation",
+    "information_clarity",
+    "chapter_hook",
+    "differentiation",
+]
+
+
+class CommercialIssue(ReferencedOutput):
+    severity: Literal["warning", "error"]
+    dimension: CommercialDimension
+    description: str
+    citation: DraftCitation
+
+
+class CommercialDimensionScore(StrictSchema):
+    dimension: CommercialDimension
+    score: int = Field(ge=0, le=100)
+    reason: str
+
+
 class RevisionProposal(ReferencedOutput):
     issue_id: str
     target: str
@@ -116,6 +152,37 @@ class ContinuityReport(ReferencedOutput):
 
 class StyleReport(ReferencedOutput):
     issues: list[StyleIssue]
+
+
+class CommercialStrategy(ReferencedOutput):
+    profile: CommercialProfile
+
+
+class CommercialReport(ReferencedOutput):
+    chapter_id: str
+    total_score: int = Field(ge=0, le=100)
+    recommendation: Literal["pass", "revise"]
+    dimensions: list[CommercialDimensionScore]
+    issues: list[CommercialIssue]
+
+    @model_validator(mode="after")
+    def validate_dimensions(self) -> Self:
+        expected = {
+            "opening_urgency",
+            "reader_promise",
+            "emotional_payoff",
+            "conflict_escalation",
+            "information_clarity",
+            "chapter_hook",
+            "differentiation",
+        }
+        observed = {dimension.dimension for dimension in self.dimensions}
+        if observed != expected or len(self.dimensions) != len(expected):
+            raise ValueError("COMMERCIAL_DIMENSIONS_INVALID")
+        mean = round(sum(dimension.score for dimension in self.dimensions) / len(expected))
+        if self.total_score != mean:
+            raise ValueError("COMMERCIAL_SCORE_INVALID")
+        return self
 
 
 class MemoryUpdate(ReferencedOutput):

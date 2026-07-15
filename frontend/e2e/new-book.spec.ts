@@ -35,7 +35,7 @@ test.beforeEach(async ({ page }) => {
 
 test("creates a local project and restores its workbench", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "从一个新故事开始" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "项目概览需要一个作品" })).toBeVisible();
   await page.getByRole("button", { name: "创建第一部作品" }).click();
   await page.getByLabel("项目 ID").fill("night-river");
   await page.getByLabel("书名").fill("夜渡长河");

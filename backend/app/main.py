@@ -6,6 +6,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from app.api.commercial import router as commercial_router
 from app.api.creation import router as creation_router
 from app.api.events import router as events_router
 from app.api.health import router as health_router
@@ -55,6 +56,7 @@ def create_app(workspace_root: Path) -> FastAPI:
     application.include_router(imports_router, prefix="/api")
     application.include_router(creation_router, prefix="/api")
     application.include_router(memory_router, prefix="/api")
+    application.include_router(commercial_router, prefix="/api")
 
     @application.exception_handler(TameInkError)
     async def tame_ink_error(_: Request, error: TameInkError) -> JSONResponse:

@@ -86,5 +86,9 @@ class WorkflowGateError(TameInkError):
     code = "WORKFLOW_GATE_BLOCKED"
 
 
+class CommercialGateError(TameInkError):
+    code = "COMMERCIAL_GATE_BLOCKED"
+
+
 class MemoryProvenanceError(TameInkError):
     code = "MEMORY_PROVENANCE_INVALID"

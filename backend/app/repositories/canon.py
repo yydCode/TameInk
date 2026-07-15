@@ -5,6 +5,7 @@ from typing import Any, TypeVar
 import yaml
 from pydantic import BaseModel, ValidationError
 
+from app.domain.commercial import CommercialProfile
 from app.domain.errors import (
     CanonContentError,
     StorageReadError,
@@ -30,6 +31,10 @@ class CanonRepository:
 
     def read_project(self, project_id: str) -> Project:
         return self._validate(Project, self._read_yaml(self.project_file(project_id)))
+
+    def read_commercial(self, project_id: str) -> CommercialProfile:
+        path = self._formal_path(project_id, "canon/commercial.yaml", ".yaml")
+        return self._validate(CommercialProfile, self._read_yaml(path))
 
     def write_markdown(self, project_id: str, relative: str, content: ConfirmedContent) -> None:
         path = self._formal_path(project_id, relative, ".md")

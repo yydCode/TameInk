@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: 番茄章节商业审查真实模型评测
+prompts:
+  - file://prompts/commercial-audit.txt
+providers:
+  - id: openai:chat:{{env.TAME_INK_MODEL}}
+    config:
+      apiBaseUrl: "{{env.TAME_INK_BASE_URL}}"
+      apiKeyEnvar: OPENAI_API_KEY
+      max_tokens: 4096
+      showThinking: false
+      temperature: 0
+tests: file://fixtures/commercial_cases.yaml
+defaultTest:
+  assert:
+    - type: javascript
+      value: file://assertions/commercial-report.cjs

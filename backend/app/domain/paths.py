@@ -20,6 +20,7 @@ LEAF_DIRECTORIES = {
 }
 EXACT_FILES = {
     ("project.yaml",),
+    ("canon", "commercial.yaml"),
     ("canon", "premise.md"),
     ("canon", "outline.md"),
     ("memory", "summaries", "book.md"),

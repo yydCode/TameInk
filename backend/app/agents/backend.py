@@ -54,6 +54,12 @@ class NovelWorkspaceBackend(BackendProtocol):
         validate_formal_path(formal)
         if PurePosixPath(formal).suffix == ".md":
             return self.canon.read_markdown(self.project_id, formal).markdown
+        if formal == "canon/commercial.yaml":
+            return yaml.safe_dump(
+                self.canon.read_commercial(self.project_id).model_dump(mode="json"),
+                allow_unicode=True,
+                sort_keys=True,
+            )
         memory = self.canon.read_memory(self.project_id, formal)
         return yaml.safe_dump(memory.model_dump(mode="json"), allow_unicode=True, sort_keys=True)
 

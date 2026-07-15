@@ -7,11 +7,12 @@ Tame Ink 是面向个人本机使用的中文网络小说写作 Web 工具。当
 - 新建、打开和切换本地作品
 - 导入整本小说并人工修正章节标题、编号和边界
 - 通过 Agent 生成故事设定、全书大纲、分卷规划和章节候选稿
-- 章节连续性与风格审查、修订及用户审批门禁
+- 创建并审批番茄首测商业定位，记录真实曝光、打开、留存、追读和收入数据
+- 章节连续性、风格与七维商业留存审查，低分章节必须填写人工覆盖理由
 - 草稿自动保存、逐项差异审核和正式版本冲突处理
 - 分类浏览、搜索、修正和撤销派生记忆
 - 查看任务事件历史、取消任务和恢复中断状态
-- 在工作台配置并测试 OpenAI-compatible 模型连接
+- 在工作台配置并测试 OpenAI-compatible 模型连接，可显式关闭 thinking 以兼容结构化 Agent
 
 ## 环境要求
 
@@ -68,8 +69,11 @@ cd frontend && pnpm build
 
 ## 真实模型评测
 
-真实模型调用不会进入默认测试。需要显式设置 `OPENAI_API_KEY`、`TAME_INK_MODEL` 和 `TAME_INK_BASE_URL` 后运行：
+真实模型调用不会进入默认测试。商业留存评测复用固定案例和确定性断言，需要显式设置 `OPENAI_API_KEY`、`TAME_INK_MODEL` 和 `TAME_INK_BASE_URL` 后运行：
 
 ```bash
-cd backend && uv run python ../evaluations/run.py --live
+cd evaluations
+pnpm commercial:live
 ```
+
+DeepSeek 等在 thinking mode 下不支持强制 `tool_choice` 的模型，需要在“模型设置”中勾选“关闭模型推理模式”。评测通过只表示当前样本中的结构、判断和证据引用符合要求；作品能否产生真实收入仍必须通过发布后的运营数据验证。

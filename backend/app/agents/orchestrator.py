@@ -12,6 +12,7 @@ from app.agents.backend import NovelWorkspaceBackend
 from app.agents.context import TrustedAgentContext
 from app.agents.contracts import TaskInputContractMiddleware, ValidatedOrchestrator
 from app.agents.subagents import (
+    CreativeAgentDefinition,
     build_subagent_definitions,
     subagent_input_schemas,
     subagent_payload_schemas,
@@ -47,6 +48,7 @@ def _register_model_profile() -> None:
 def create_orchestrator(
     model: TameInkChatOpenAI,
     backend: NovelWorkspaceBackend,
+    definitions: list[CreativeAgentDefinition] | None = None,
 ) -> ValidatedOrchestrator:
     if not isinstance(model, TameInkChatOpenAI):
         raise RuntimeError("MODEL_PROVIDER_INVALID")
@@ -57,15 +59,15 @@ def create_orchestrator(
     if provider != "tame_ink_openai":
         raise RuntimeError("MODEL_PROVIDER_INVALID")
     _register_model_profile()
-    definitions = build_subagent_definitions(backend)
+    selected_definitions = definitions or build_subagent_definitions(backend)
     graph = create_deep_agent(
         model=model,
         tools=[],
         system_prompt=(
-            "你只负责委派给八个专业 Agent 并汇总候选结果，不得写入 canon 或 memory。"
+            "你只负责委派给十个专业 Agent 并汇总候选结果，不得写入 canon 或 memory。"
             "调用 task 时 description 只提交业务 payload，禁止提交 context；context 由系统注入。"
         ),
-        subagents=[definition.to_deepagent() for definition in definitions],
+        subagents=[definition.to_deepagent() for definition in selected_definitions],
         backend=backend,
         permissions=[FilesystemPermission(operations=["write"], paths=["/**"], mode="deny")],
         middleware=[
@@ -76,5 +78,7 @@ def create_orchestrator(
         ],
         context_schema=TrustedAgentContext,
     )
-    output_schemas = {definition.name: definition.output_schema for definition in definitions}
+    output_schemas = {
+        definition.name: definition.output_schema for definition in selected_definitions
+    }
     return ValidatedOrchestrator(graph, output_schemas)

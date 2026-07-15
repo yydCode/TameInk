@@ -34,10 +34,10 @@ class DatabaseRepository:
                 if row is None:
                     raise DatabaseSchemaError("schema version is missing")
                 version = str(row[0])
-            if version is None or version == "1":
+            if version is None or version in {"1", "2"}:
                 migration = f"""BEGIN IMMEDIATE;
 {schema}
-INSERT INTO metadata(key, value) VALUES ('schema_version', '2')
+INSERT INTO metadata(key, value) VALUES ('schema_version', '3')
 ON CONFLICT(key) DO UPDATE SET value = excluded.value;
 COMMIT;
 """
@@ -47,7 +47,7 @@ COMMIT;
                     if connection.in_transaction:
                         connection.rollback()
                     raise
-            elif version != "2":
+            elif version != "3":
                 raise DatabaseSchemaError(f"unsupported schema version: {version}")
 
     def rebuild(self, project_id: str) -> None:

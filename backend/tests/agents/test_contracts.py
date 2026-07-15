@@ -140,6 +140,9 @@ def test_draft_citation_has_parseable_exact_character_range() -> None:
         {"source": "draft", "location": "chars:0-2", "quote": "正文"}
     )
     assert citation.character_range() == (0, 2)
+    assert DraftCitation.model_json_schema()["properties"]["location"]["pattern"] == (
+        r"^chars:\d+-\d+$"
+    )
 
 
 @pytest.mark.parametrize("location", ["line 1", "chars:2-1", "chars:-1-2"])

@@ -5,17 +5,69 @@ import pytest
 from app.agents.schemas import (
     ChapterDraft,
     ChapterPlan,
+    CommercialDimensionScore,
+    CommercialIssue,
+    CommercialReport,
     ContinuityIssue,
     RevisionProposal,
     StyleIssue,
 )
-from app.domain.errors import StorageWriteError, WorkflowGateError
+from app.domain.commercial import CommercialProfile
+from app.domain.errors import CommercialGateError, StorageWriteError, WorkflowGateError
 from app.repositories.database import DatabaseRepository
 from app.repositories.revisions import RevisionRepository
 from app.repositories.tasks import TasksRepository
 from app.workflows.chapter import ChapterService
+from app.workflows.commercial import CommercialService
 from app.workflows.new_book import NewBookRequest, NewBookService
 from app.workflows.outline import OutlineService
+
+COMMERCIAL_DIMENSIONS = [
+    "opening_urgency",
+    "reader_promise",
+    "emotional_payoff",
+    "conflict_escalation",
+    "information_clarity",
+    "chapter_hook",
+    "differentiation",
+]
+
+
+def approve_commercial_profile(workspace, minimum_score: int = 70) -> None:
+    profile = CommercialProfile(
+        platform="fanqie",
+        monetization="free_ad",
+        target_reader="悬疑读者",
+        core_fantasy="破解不可能犯罪",
+        differentiator="线索会反向误导侦探",
+        emotional_payoffs=["识破骗局"],
+        opening_promise="第一章发生密室命案",
+        first_thirty_chapter_promise="破解主案并揭示幕后组织",
+        update_cadence="每日两章",
+        title_candidates=["长夜密室"],
+        synopsis="侦探必须在被陷害前破解密室命案。",
+        minimum_commercial_score=minimum_score,
+    )
+    service = CommercialService(workspace)
+    task = service.create("night-01", profile)
+    service.approve("night-01", task.id)
+
+
+def commercial_report(
+    reference: list[dict[str, str]], score: int = 80
+) -> CommercialReport:
+    return CommercialReport(
+        id=f"commercial-{score}",
+        chapter_id="0001",
+        total_score=score,
+        recommendation="pass" if score >= 70 else "revise",
+        dimensions=[
+            CommercialDimensionScore(dimension=dimension, score=score, reason="有正文证据")
+            for dimension in COMMERCIAL_DIMENSIONS
+        ],
+        issues=[],
+        references=reference,
+    )
 
 
 def test_chapter_cannot_start_without_approved_outline_and_volume(tmp_path: Path) -> None:
@@ -53,6 +105,7 @@ def test_chapter_approval_commits_only_issue_local_revision_and_derives_summary(
         "设定",
     )
     books.approve_setting("night-01", setting.task.id)
+    approve_commercial_profile(workspace)
     outlines = OutlineService(workspace)
     book = outlines.create_book("night-01", "大纲")
     outlines.approve_book("night-01", book.id)
@@ -139,6 +192,7 @@ def test_chapter_pipeline_runs_planner_writer_independent_auditors_and_local_rev
         "设定",
     )
     books.approve_setting("night-01", setting.task.id)
+    approve_commercial_profile(workspace)
     outlines = OutlineService(workspace)
     book = outlines.create_book("night-01", "大纲")
     outlines.approve_book("night-01", book.id)
@@ -178,6 +232,8 @@ def test_chapter_pipeline_runs_planner_writer_independent_auditors_and_local_rev
                         references=reference,
                     )
                 ]
+            if agent == "RetentionAuditor":
+                return commercial_report(reference)
             assert agent == "DraftWriter"
             return [
                 RevisionProposal(
@@ -200,12 +256,62 @@ def test_chapter_pipeline_runs_planner_writer_independent_auditors_and_local_rev
         "DraftWriter",
         "ContinuityAuditor",
         "StyleCritic",
+        "RetentionAuditor",
         "DraftWriter",
+        "RetentionAuditor",
     ]
     assert task.status == "awaiting_approval"
     from app.repositories.drafts import DraftRepository
 
     assert DraftRepository(workspace).read("night-01", task.id, "chapter.md") == "新句。保留句。"
+
+
+def test_low_commercial_score_requires_audited_override_reason(tmp_path: Path) -> None:
+    from app.repositories.workspace import WorkspaceRepository
+
+    workspace = WorkspaceRepository(tmp_path)
+    books = NewBookService(workspace)
+    setting = books.create(
+        NewBookRequest(
+            project_id="night-01", title="长夜", genre="悬疑", target_words=1, constraints="x"
+        ),
+        "设定",
+    )
+    books.approve_setting("night-01", setting.task.id)
+    approve_commercial_profile(workspace, minimum_score=80)
+    outlines = OutlineService(workspace)
+    book = outlines.create_book("night-01", "大纲")
+    outlines.approve_book("night-01", book.id)
+    volume = outlines.create_volume("night-01", "1", "分卷")
+    outlines.approve_volume("night-01", volume.id, "1")
+    report = commercial_report(
+        [{"path": "canon/outline.md", "location": "paragraph 1", "quote": "大纲"}],
+        score=60,
+    )
+    task = ChapterService(workspace).start(
+        "night-01",
+        "0001",
+        "计划",
+        "正文",
+        [],
+        commercial_report=report,
+        minimum_commercial_score=80,
+    )
+
+    with pytest.raises(CommercialGateError):
+        ChapterService(workspace).approve("night-01", task.id, "0001")
+
+    completed = ChapterService(workspace).approve(
+        "night-01", task.id, "0001", commercial_override_reason="编辑确认该章承担铺垫作用"
+    )
+
+    assert completed.status == "completed"
+    assert (
+        workspace.project_path("night-01")
+        / ".tame-ink/drafts"
+        / task.id
+        / "commercial-override.txt"
+    ).read_text() == "编辑确认该章承担铺垫作用"
 
 
 def test_chapter_pipeline_rejects_duplicate_issue_ids_across_independent_auditors() -> None:
@@ -220,6 +326,40 @@ def test_chapter_pipeline_rejects_duplicate_issue_ids_across_independent_auditor
     )
     with pytest.raises(WorkflowGateError, match="unique"):
         ChapterService.validate_audit_issues(draft, [continuity], [style])
+
+
+def test_audit_citation_location_is_derived_from_unique_exact_quote() -> None:
+    draft = "前句。只改这一句。后句。"
+    reference = [{"path": "canon/outline.md", "location": "paragraph 1", "quote": "大纲"}]
+    issue = CommercialIssue(
+        id="commercial-1",
+        severity="error",
+        dimension="reader_promise",
+        description="承诺未兑现",
+        citation={"source": "draft", "location": "chars:0-1", "quote": "只改这一句"},
+        references=reference,
+    )
+
+    [normalized] = ChapterService.normalize_audit_citations(draft, [issue])
+
+    assert normalized.citation.location == "chars:3-8"
+    assert issue.citation.location == "chars:0-1"
+    assert ChapterService.validate_audit_issues(draft, [], [], [normalized]) == [normalized]
+
+
+@pytest.mark.parametrize("draft", ["不存在目标", "重复。重复。"])
+def test_audit_citation_normalization_rejects_missing_or_ambiguous_quote(draft: str) -> None:
+    reference = [{"path": "canon/outline.md", "location": "paragraph 1", "quote": "大纲"}]
+    issue = StyleIssue(
+        id="style-1",
+        severity="warning",
+        description="表达重复",
+        citation={"source": "draft", "location": "chars:0-2", "quote": "重复"},
+        references=reference,
+    )
+
+    with pytest.raises(WorkflowGateError, match="uniquely"):
+        ChapterService.normalize_audit_citations(draft, [issue])
 
 
 def test_local_revision_rejects_unreported_issue_fabricated_citation_and_whole_chapter() -> None:

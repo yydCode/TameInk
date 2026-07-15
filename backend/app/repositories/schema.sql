@@ -53,3 +53,20 @@ CREATE TABLE IF NOT EXISTS task_events (
     data TEXT NOT NULL,
     PRIMARY KEY (task_id, sequence)
 );
+
+CREATE TABLE IF NOT EXISTS commercial_observations (
+    id TEXT PRIMARY KEY,
+    observed_at TEXT NOT NULL,
+    impressions INTEGER NOT NULL CHECK (impressions > 0),
+    opens INTEGER NOT NULL CHECK (opens > 0 AND opens <= impressions),
+    chapter_one_completions INTEGER NOT NULL CHECK (
+        chapter_one_completions >= 0 AND chapter_one_completions <= opens
+    ),
+    chapter_three_completions INTEGER NOT NULL CHECK (
+        chapter_three_completions >= 0
+        AND chapter_three_completions <= chapter_one_completions
+    ),
+    follows INTEGER NOT NULL CHECK (follows >= 0 AND follows <= opens),
+    read_minutes INTEGER NOT NULL CHECK (read_minutes >= 0),
+    revenue_cents INTEGER NOT NULL CHECK (revenue_cents >= 0)
+);

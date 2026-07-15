@@ -45,7 +45,7 @@ def test_initialization_is_repeatable_and_records_schema_version(tmp_path: Path)
             connection.execute(
                 "SELECT value FROM metadata WHERE key = 'schema_version'"
             ).fetchone()[0]
-            == "2"
+            == "3"
         )
 
 
@@ -70,7 +70,7 @@ def test_initialization_migrates_real_v1_database_without_losing_fts_data(tmp_pa
             connection.execute(
                 "SELECT value FROM metadata WHERE key = 'schema_version'"
             ).fetchone()[0]
-            == "2"
+            == "3"
         )
         assert (
             connection.execute(
@@ -92,7 +92,36 @@ def test_initialization_migrates_real_v1_database_without_losing_fts_data(tmp_pa
     } <= objects
 
 
-@pytest.mark.parametrize("version", ["0", "3", "future"])
+def test_initialization_migrates_v2_and_adds_commercial_observations(tmp_path: Path) -> None:
+    _, _, database = setup_project(tmp_path)
+    with database.connect("story-01") as connection:
+        connection.executescript(
+            """
+            CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+            INSERT INTO metadata(key, value) VALUES ('schema_version', '2');
+            CREATE VIRTUAL TABLE content_fts USING fts5(
+                path UNINDEXED, content, tokenize = 'trigram'
+            );
+            INSERT INTO content_fts(path, content) VALUES ('canon/outline.md', '保留版本二内容');
+            """
+        )
+
+    database.initialize("story-01")
+
+    with database.connect("story-01") as connection:
+        assert connection.execute(
+            "SELECT value FROM metadata WHERE key = 'schema_version'"
+        ).fetchone()[0] == "3"
+        assert connection.execute(
+            "SELECT path FROM content_fts WHERE content_fts MATCH '版本二内容'"
+        ).fetchone()[0] == "canon/outline.md"
+        assert connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' "
+            "AND name = 'commercial_observations'"
+        ).fetchone()[0] == "commercial_observations"
+
+
+@pytest.mark.parametrize("version", ["0", "4", "future"])
 def test_initialization_rejects_unknown_schema_versions(tmp_path: Path, version: str) -> None:
     _, _, database = setup_project(tmp_path)
     with database.connect("story-01") as connection:
@@ -157,7 +186,7 @@ def test_v1_migration_rolls_back_all_ddl_and_can_retry_after_failure(tmp_path: P
     with database.connect("story-01") as connection:
         assert connection.execute(
             "SELECT value FROM metadata WHERE key = 'schema_version'"
-        ).fetchone()[0] == "2"
+        ).fetchone()[0] == "3"
         objects = {
             row[0]
             for row in connection.execute(

@@ -1,12 +1,12 @@
 import { FormEvent, useEffect, useState } from "react";
-import { BookOpen, Check, ChevronRight, FilePlus2, FolderOpen, GitCompareArrows, Library, LoaderCircle, Plus, Search, Settings, Sparkles, Trash2, Upload, X } from "lucide-react";
-import { ApiError, approveChapter, approveOutline, approveSetting, approveVolume, confirmImport, correctMemory, createProject, generateChapter, generateOutline, generateSetting, generateVolume, getDraft, getHealth, getModelSettings, getProject, getTask, getTaskHistory, ImportPreview, listMemory, listProjects, listTaskDrafts, listTasks, MemoryRecord, Project, revokeMemory, saveApiKey, saveDraft, saveModelSettings, searchMemory, Task, TaskEventRecord, testModelConnection, transitionTask, uploadImport } from "./api/client";
+import { BookOpen, Check, ChevronRight, FilePlus2, FolderOpen, GitCompareArrows, Library, LoaderCircle, Plus, Search, Settings, Sparkles, Target, Trash2, Upload, X } from "lucide-react";
+import { ApiError, approveChapter, approveCommercialDraft, approveOutline, approveSetting, approveVolume, auditChapterCommercially, CommercialAudit, CommercialDimension, CommercialMetrics, CommercialObservation, CommercialObservationInput, CommercialProfile, confirmImport, correctMemory, createCommercialDraft, createCommercialObservation, createProject, generateChapter, generateCommercialProfile, generateOutline, generateSetting, generateVolume, getCommercialAudit, getCommercialDraft, getCommercialMetrics, getCommercialProfile, getDraft, getHealth, getModelSettings, getProject, getTask, getTaskHistory, ImportPreview, listCommercialObservations, listMemory, listProjects, listTaskDrafts, listTasks, MemoryRecord, Project, revokeMemory, saveApiKey, saveDraft, saveModelSettings, searchMemory, Task, TaskEventRecord, testModelConnection, transitionTask, updateCommercialDraft, uploadImport } from "./api/client";
 import { NovelEditor } from "./components/editor/NovelEditor";
 import { applyReview, reviewChanges } from "./components/editor/changeset";
 import { RunStatus } from "./features/runs/RunStatus";
 import { subscribeTaskEvents } from "./api/events";
 
-type View = "overview" | "imports" | "story" | "chapters" | "memory" | "runs" | "settings";
+type View = "overview" | "commercial" | "imports" | "story" | "chapters" | "memory" | "runs" | "settings";
 
 const emptyDraft = "# 故事设定\n\n从核心冲突、主角目标和世界规则开始。";
 const SESSION_KEY = "tame-ink.active-session";
@@ -21,6 +21,7 @@ function App() {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [draftPath, setDraftPath] = useState("setting.md");
   const [baseRevision, setBaseRevision] = useState<string | null | undefined>(undefined);
+  const [chapterAudit, setChapterAudit] = useState<CommercialAudit | null>(null);
   const [versionConflict, setVersionConflict] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -57,7 +58,10 @@ function App() {
       setOriginalDraft(session.confirmedDraft);
       setDraftPath(session.path);
       setBaseRevision(restoredDraft.revision);
-      setView("story");
+      if (session.path === "chapter.md") {
+        getCommercialAudit(session.projectId, session.taskId).then(setChapterAudit).catch(() => setChapterAudit(null));
+      }
+      setView(session.path === "chapter.md" ? "chapters" : "story");
     }).catch(() => localStorage.removeItem(SESSION_KEY));
   }, []);
 
@@ -112,6 +116,7 @@ function App() {
   const isDirty = draft !== originalDraft;
   const navItems: Array<{ id: View; label: string; icon: typeof BookOpen }> = [
     { id: "overview", label: "项目概览", icon: BookOpen },
+    { id: "commercial", label: "商业增长", icon: Target },
     { id: "imports", label: "作品导入", icon: Upload },
     { id: "story", label: "故事设计", icon: Sparkles },
     { id: "chapters", label: "章节工作台", icon: FilePlus2 },
@@ -133,6 +138,7 @@ function App() {
       const opened = await getDraft(result.project.id, result.task.id, "setting.md");
       setBaseRevision(opened.revision);
       setVersionConflict(false);
+      setChapterAudit(null);
       setShowCreate(false);
       setView("story");
     } catch (cause) {
@@ -164,6 +170,7 @@ function App() {
       setOriginalDraft(restored.content);
       setBaseRevision(restored.revision);
       setVersionConflict(false);
+      setChapterAudit(path === "chapter.md" ? await getCommercialAudit(selected.id, latest.id) : null);
       setView(path === "chapter.md" ? "chapters" : "story");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "项目打开失败");
@@ -203,6 +210,26 @@ function App() {
     }
   }
 
+  async function persistCurrentDraft() {
+    if (!project || !activeTask || baseRevision === undefined) return;
+    try {
+      const saved = await saveDraft(
+        project.id,
+        activeTask.id,
+        draftPath,
+        draft,
+        baseRevision,
+      );
+      setBaseRevision(saved.revision);
+    } catch (cause) {
+      if (cause instanceof ApiError && cause.code === "CANON_VERSION_CONFLICT") {
+        setVersionConflict(true);
+        setError("正式版本已在外部发生变化，保存已停止。请重新加载或查看本地差异。");
+      }
+      throw cause;
+    }
+  }
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -222,9 +249,9 @@ function App() {
         <main className="main-content">
           {error && <div className="alert alert-error" role="alert"><X size={16} />{error}<button type="button" onClick={() => setError(null)} aria-label="关闭错误"><X size={14} /></button></div>}
           {versionConflict && <div className="conflict-actions"><button className="button button-secondary" type="button" onClick={() => setShowDiff(true)}><GitCompareArrows size={14} />查看本地差异</button><button className="button button-primary" type="button" onClick={reloadDraft}>重新加载正式版本</button></div>}
-          {!project ? <EmptyState projects={projects} onCreate={() => setShowCreate(true)} onOpen={openProject} /> : <>
+          {!project && view === "settings" ? <><div className="content-header"><div><div className="eyebrow">模型设置</div><h2>模型设置</h2></div></div><div className="workspace-grid"><section className="editor-panel"><SettingsView onError={setError} /></section></div></> : !project ? <ProjectRequiredView view={view as Exclude<View, "settings">} projects={projects} onCreate={() => setShowCreate(true)} onOpen={openProject} /> : <>
             <div className="content-header"><div><div className="eyebrow">{navItems.find((item) => item.id === view)?.label}</div><h2>{project.title}</h2></div><div className="header-actions"><span className={`save-state ${isDirty ? "is-dirty" : ""}`}>{isDirty ? "草稿未确认" : "已保存"}</span>{isDirty && view === "story" && <button className="button button-primary" type="button" onClick={confirmCurrent}><Check size={15} />确认版本</button>}</div></div>
-            <div className="workspace-grid"><section className="editor-panel">{view === "overview" && <Overview project={project} onOpen={() => setView("chapters")} />}{view === "imports" && <ImportView project={project} onTask={setActiveTask} onError={setError} />}{view === "story" && <StoryView project={project} draft={draft} documentPath={draftPath} setDraft={setDraft} task={activeTask} onApprove={confirmCurrent} onGenerated={(task, path, content, baseline) => { setActiveTask(task); setDraftPath(path); setOriginalDraft(baseline); setDraft(content); }} onOpenChapters={() => setView("chapters")} onError={setError} />}{view === "chapters" && <ChapterView project={project} draft={draft} setDraft={setDraft} task={activeTask} onGenerated={(task, content) => { setActiveTask(task); setDraftPath("chapter.md"); setOriginalDraft(""); setDraft(content); }} onError={setError} />}{view === "memory" && <MemoryView project={project} />}{view === "runs" && <RunsView task={activeTask} project={project} onTask={setActiveTask} onError={setError} />}{view === "settings" && <SettingsView onError={setError} />}</section><aside className="context-panel"><ContextPanel project={project} task={activeTask} dirty={isDirty} onReview={() => setShowDiff(true)} /></aside></div>
+            <div className="workspace-grid"><section className="editor-panel">{view === "overview" && <Overview project={project} onOpen={() => setView("chapters")} />}{view === "commercial" && <CommercialView project={project} task={activeTask} onTask={setActiveTask} onError={setError} />}{view === "imports" && <ImportView project={project} onTask={setActiveTask} onError={setError} />}{view === "story" && <StoryView project={project} draft={draft} documentPath={draftPath} setDraft={setDraft} task={activeTask} onApprove={confirmCurrent} onGenerated={(task, path, content, baseline) => { setActiveTask(task); setDraftPath(path); setOriginalDraft(baseline); setDraft(content); }} onOpenChapters={() => setView("chapters")} onError={setError} />}{view === "chapters" && <ChapterView project={project} draft={draft} setDraft={setDraft} task={activeTask} audit={chapterAudit} onAudit={setChapterAudit} onSave={persistCurrentDraft} onGenerated={(task, content, audit) => { setActiveTask(task); setDraftPath("chapter.md"); setOriginalDraft(task.status === "completed" ? content : ""); setDraft(content); setChapterAudit(audit); }} onError={setError} />}{view === "memory" && <MemoryView project={project} />}{view === "runs" && <RunsView task={activeTask} project={project} onTask={setActiveTask} onError={setError} />}{view === "settings" && <SettingsView onError={setError} />}</section><aside className="context-panel"><ContextPanel project={project} task={activeTask} dirty={isDirty} onReview={() => setShowDiff(true)} /></aside></div>
           </>}
         </main>
       </div>
@@ -234,7 +261,17 @@ function App() {
   );
 }
 
-function EmptyState({ projects, onCreate, onOpen }: { projects: Project[]; onCreate: () => void; onOpen: (project: Project) => void }) { return <div className="empty-state"><div className="empty-icon"><BookOpen size={26} /></div><h2>{projects.length ? "打开已有作品" : "从一个新故事开始"}</h2><p>作品的设定、大纲、章节和记忆都保存在本地工作区。</p>{projects.length > 0 && <div className="recent-projects">{projects.map((project) => <button type="button" key={project.id} onClick={() => onOpen(project)}><strong>{project.title}</strong><span>{project.genre}</span></button>)}</div>}<button className="button button-primary" type="button" onClick={onCreate}><Plus size={16} />{projects.length ? "创建新作品" : "创建第一部作品"}</button></div>; }
+const projectViewLabels: Record<Exclude<View, "settings">, string> = {
+  overview: "项目概览",
+  commercial: "商业增长",
+  imports: "作品导入",
+  story: "故事设计",
+  chapters: "章节工作台",
+  memory: "记忆中心",
+  runs: "运行记录",
+};
+
+function ProjectRequiredView({ view, projects, onCreate, onOpen }: { view: Exclude<View, "settings">; projects: Project[]; onCreate: () => void; onOpen: (project: Project) => void }) { const label = projectViewLabels[view]; return <div className="empty-state"><div className="empty-icon"><BookOpen size={26} /></div><span className="eyebrow">{label}</span><h2>{projects.length ? `打开作品以进入${label}` : `${label}需要一个作品`}</h2><p>请先打开本地作品，或新建作品后继续。</p>{projects.length > 0 && <div className="recent-projects">{projects.map((project) => <button type="button" key={project.id} onClick={() => onOpen(project)}><strong>{project.title}</strong><span>{project.genre}</span></button>)}</div>}<button className="button button-primary" type="button" onClick={onCreate}><Plus size={16} />{projects.length ? "创建新作品" : "创建第一部作品"}</button></div>; }
 
 function Overview({ project, onOpen }: { project: Project; onOpen: () => void }) { return <div className="overview-view"><div className="welcome-band"><div><span className="eyebrow">作品概览</span><h3>{project.title}</h3><p>{project.constraints ?? "尚未填写创作约束"}</p></div><button className="button button-secondary" type="button" onClick={onOpen}>打开章节工作台<ChevronRight size={15} /></button></div><div className="metric-grid"><Metric label="目标字数" value={project.target_words ? `${Math.round(project.target_words / 10000)} 万字` : "未设置"} /><Metric label="当前章节" value="尚未开始" /><Metric label="待处理伏笔" value="0" /></div><div className="next-step"><Sparkles size={18} /><div><strong>下一步：确认故事设定</strong><span>先完善核心冲突和世界规则，再开始生成全书大纲。</span></div><button className="icon-button" type="button" onClick={() => onOpen()} aria-label="继续"><ChevronRight size={17} /></button></div></div>; }
 function Metric({ label, value }: { label: string; value: string }) { return <div className="metric"><span>{label}</span><strong>{value}</strong></div>; }
@@ -277,15 +314,191 @@ function StoryView({ project, draft, documentPath, setDraft, task, onApprove, on
   return <div className="editor-view"><div className="section-heading"><div><span className="eyebrow">故事设计</span><h3>{title}</h3></div><div className="header-actions">{task?.status === "awaiting_approval" && <button className="button button-secondary" type="button" onClick={onApprove}><Check size={15} />确认当前草稿</button>}<button className="button button-primary" type="button" onClick={generateCurrent} disabled={busy || !task}>{busy ? <LoaderCircle className="spin" size={15} /> : <Sparkles size={15} />}{nextLabel}</button></div></div><label className="field-label" htmlFor="story-instruction">Agent 指令</label><textarea id="story-instruction" className="plan-input" value={instruction} onChange={(event) => setInstruction(event.target.value)} /><NovelEditor markdown={draft} onChange={setDraft} /><div className="editor-footer"><span>Markdown · 自动保存到草稿区</span>{task && <RunStatus status={task.status} connection="connected" />}</div></div>;
 }
 
-function ChapterView({ project, draft, setDraft, task, onGenerated, onError }: { project: Project; draft: string; setDraft: (value: string) => void; task: Task | null; onGenerated: (task: Task, content: string) => void; onError: (message: string) => void }) {
+const emptyCommercialMetrics: CommercialMetrics = {
+  observations: 0,
+  impressions: 0,
+  opens: 0,
+  chapter_one_completions: 0,
+  chapter_three_completions: 0,
+  follows: 0,
+  read_minutes: 0,
+  revenue_cents: 0,
+  click_through_rate: 0,
+  chapter_one_completion_rate: 0,
+  chapter_three_retention_rate: 0,
+  follow_rate: 0,
+  average_read_minutes_per_open: 0,
+  revenue_per_thousand_opens_yuan: 0,
+};
+
+function defaultCommercialProfile(project: Project): CommercialProfile {
+  return {
+    schema_version: 1,
+    platform: "fanqie",
+    custom_platform: null,
+    monetization: "free_ad",
+    target_reader: `喜欢${project.genre ?? "网络小说"}、追求快节奏回报的读者`,
+    core_fantasy: "",
+    differentiator: "",
+    emotional_payoffs: [""],
+    opening_promise: "",
+    first_thirty_chapter_promise: "",
+    update_cadence: "每日两章，每章 2200 字",
+    title_candidates: [project.title],
+    synopsis: "",
+    comparable_titles: [],
+    minimum_commercial_score: 70,
+    targets: {
+      click_through_rate: null,
+      chapter_one_completion_rate: null,
+      chapter_three_retention_rate: null,
+      follow_rate: null,
+      revenue_per_thousand_opens_yuan: null,
+    },
+  };
+}
+
+function CommercialView({ project, task, onTask, onError }: { project: Project; task: Task | null; onTask: (task: Task) => void; onError: (message: string) => void }) {
+  const [profile, setProfile] = useState<CommercialProfile>(() => defaultCommercialProfile(project));
+  const [confirmed, setConfirmed] = useState(false);
+  const [candidateTaskId, setCandidateTaskId] = useState<string | null>(null);
+  const [metrics, setMetrics] = useState<CommercialMetrics>(emptyCommercialMetrics);
+  const [observations, setObservations] = useState<CommercialObservation[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [instruction, setInstruction] = useState("为番茄免费阅读设计可验证的书名、简介、前三章承诺和前三十章节奏，不虚构行业数据。");
+  const [observation, setObservation] = useState<CommercialObservationInput>({
+    observed_at: new Date().toISOString().slice(0, 10),
+    impressions: 1,
+    opens: 1,
+    chapter_one_completions: 0,
+    chapter_three_completions: 0,
+    follows: 0,
+    read_minutes: 0,
+    revenue_cents: 0,
+  });
+
+  useEffect(() => {
+    Promise.all([
+      getCommercialProfile(project.id),
+      getCommercialMetrics(project.id),
+      listCommercialObservations(project.id),
+    ]).then(([stored, storedMetrics, storedObservations]) => {
+      if (stored) {
+        setProfile(stored);
+        setConfirmed(true);
+      } else {
+        setProfile(defaultCommercialProfile(project));
+        setConfirmed(false);
+      }
+      setMetrics(storedMetrics);
+      setObservations(storedObservations);
+    }).catch((cause) => onError(cause instanceof Error ? cause.message : "商业数据读取失败"));
+  }, [project, onError]);
+
+  useEffect(() => {
+    if (!task || task.status !== "awaiting_approval") return;
+    listTaskDrafts(project.id, task.id).then((paths) => {
+      if (!paths.includes("commercial.yaml")) return;
+      getCommercialDraft(project.id, task.id).then((candidate) => {
+        setProfile(candidate);
+        setCandidateTaskId(task.id);
+      }).catch((cause) => onError(cause instanceof Error ? cause.message : "商业候选读取失败"));
+    }).catch(() => undefined);
+  }, [project.id, task, onError]);
+
+  async function generate() {
+    setBusy(true);
+    try {
+      const generated = await generateCommercialProfile(project.id, {
+        platform: profile.platform,
+        monetization: profile.monetization,
+        target_reader: profile.target_reader,
+        core_fantasy: profile.core_fantasy,
+        differentiator: profile.differentiator,
+        comparable_titles: profile.comparable_titles,
+        instruction,
+      });
+      setProfile(generated.profile);
+      setCandidateTaskId(generated.task.id);
+      setConfirmed(false);
+      onTask(generated.task);
+    } catch (cause) {
+      onError(cause instanceof Error ? cause.message : "商业定位生成失败");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirm() {
+    setBusy(true);
+    try {
+      let taskId = candidateTaskId;
+      if (taskId) {
+        await updateCommercialDraft(project.id, taskId, profile);
+      } else {
+        const created = await createCommercialDraft(project.id, profile);
+        taskId = created.id;
+        onTask(created);
+      }
+      const completed = await approveCommercialDraft(project.id, taskId);
+      setCandidateTaskId(null);
+      setConfirmed(true);
+      onTask(completed);
+    } catch (cause) {
+      onError(cause instanceof Error ? cause.message : "商业定位确认失败");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function record(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    try {
+      await createCommercialObservation(project.id, observation);
+      const [nextMetrics, nextObservations] = await Promise.all([
+        getCommercialMetrics(project.id),
+        listCommercialObservations(project.id),
+      ]);
+      setMetrics(nextMetrics);
+      setObservations(nextObservations);
+    } catch (cause) {
+      onError(cause instanceof Error ? cause.message : "运营数据保存失败");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const ready = [profile.target_reader, profile.core_fantasy, profile.differentiator, profile.opening_promise, profile.first_thirty_chapter_promise, profile.update_cadence, profile.synopsis].every((value) => value.trim()) && profile.emotional_payoffs.every((value) => value.trim()) && profile.title_candidates.every((value) => value.trim()) && (profile.platform !== "custom" || Boolean(profile.custom_platform?.trim()));
+  const percent = (value: number) => `${(value * 100).toFixed(1)}%`;
+  return <div className="commercial-view"><div className="section-heading"><div><span className="eyebrow">商业增长</span><h3>番茄首测策略</h3></div><div className="header-actions"><span className={`commercial-state ${confirmed ? "is-confirmed" : ""}`}>{confirmed ? "正式定位已确认" : "候选定位"}</span><button className="button button-secondary" type="button" onClick={generate} disabled={busy || !profile.core_fantasy.trim() || !profile.differentiator.trim()}>{busy ? <LoaderCircle className="spin" size={15} /> : <Sparkles size={15} />}AI 生成定位</button><button className="button button-primary" type="button" onClick={confirm} disabled={busy || !ready}><Check size={15} />确认商业定位</button></div></div><section className="commercial-section"><div className="commercial-section-title"><h4>平台与读者承诺</h4><span>门槛 {profile.minimum_commercial_score} 分</span></div><div className="platform-segments" role="group" aria-label="目标平台">{(["fanqie", "qidian", "jinjiang", "custom"] as const).map((platform) => <button key={platform} className={profile.platform === platform ? "is-active" : ""} type="button" onClick={() => setProfile({ ...profile, platform, custom_platform: platform === "custom" ? "" : null, monetization: platform === "fanqie" ? "free_ad" : platform === "custom" ? "custom" : "paid_subscription" })}>{platform === "fanqie" ? "番茄" : platform === "qidian" ? "起点" : platform === "jinjiang" ? "晋江" : "自定义"}</button>)}</div>{profile.platform === "custom" && <label>平台名称<input value={profile.custom_platform ?? ""} onChange={(event) => setProfile({ ...profile, custom_platform: event.target.value })} /></label>}<div className="commercial-form-grid"><label>目标读者<textarea value={profile.target_reader} onChange={(event) => setProfile({ ...profile, target_reader: event.target.value })} /></label><label>核心欲望<textarea value={profile.core_fantasy} onChange={(event) => setProfile({ ...profile, core_fantasy: event.target.value })} /></label><label>差异化机制<textarea value={profile.differentiator} onChange={(event) => setProfile({ ...profile, differentiator: event.target.value })} /></label><label>情绪回报<textarea value={profile.emotional_payoffs.join("\n")} onChange={(event) => setProfile({ ...profile, emotional_payoffs: event.target.value.split("\n") })} /></label><label>首章承诺<textarea value={profile.opening_promise} onChange={(event) => setProfile({ ...profile, opening_promise: event.target.value })} /></label><label>前三十章承诺<textarea value={profile.first_thirty_chapter_promise} onChange={(event) => setProfile({ ...profile, first_thirty_chapter_promise: event.target.value })} /></label><label>候选书名<textarea value={profile.title_candidates.join("\n")} onChange={(event) => setProfile({ ...profile, title_candidates: event.target.value.split("\n") })} /></label><label>对标作品<textarea value={profile.comparable_titles.join("\n")} onChange={(event) => setProfile({ ...profile, comparable_titles: event.target.value ? event.target.value.split("\n") : [] })} /></label><label className="span-two">作品简介<textarea value={profile.synopsis} onChange={(event) => setProfile({ ...profile, synopsis: event.target.value })} /></label><label>更新节奏<input value={profile.update_cadence} onChange={(event) => setProfile({ ...profile, update_cadence: event.target.value })} /></label><label>商业门槛<input type="number" min="0" max="100" value={profile.minimum_commercial_score} onChange={(event) => setProfile({ ...profile, minimum_commercial_score: Number(event.target.value) })} /></label></div><label>MarketStrategist 指令<textarea className="commercial-instruction" value={instruction} onChange={(event) => setInstruction(event.target.value)} /></label></section><section className="commercial-section"><div className="commercial-section-title"><h4>真实运营漏斗</h4><span>{metrics.observations} 个观察周期</span></div><div className="metric-grid commercial-metrics"><Metric label="点击率" value={percent(metrics.click_through_rate)} /><Metric label="首章完读" value={percent(metrics.chapter_one_completion_rate)} /><Metric label="三章留存" value={percent(metrics.chapter_three_retention_rate)} /><Metric label="追读率" value={percent(metrics.follow_rate)} /><Metric label="每次打开时长" value={`${metrics.average_read_minutes_per_open.toFixed(1)} 分钟`} /><Metric label="千次打开收入" value={`¥${metrics.revenue_per_thousand_opens_yuan.toFixed(2)}`} /></div><form className="observation-form" onSubmit={record}><label>日期<input type="date" value={observation.observed_at} onChange={(event) => setObservation({ ...observation, observed_at: event.target.value })} /></label>{([['impressions', '曝光'], ['opens', '打开'], ['chapter_one_completions', '首章完读'], ['chapter_three_completions', '三章完读'], ['follows', '追读'], ['read_minutes', '阅读分钟'], ['revenue_cents', '收入（分）']] as const).map(([field, label]) => <label key={field}>{label}<input type="number" min={field === "impressions" || field === "opens" ? 1 : 0} value={observation[field]} onChange={(event) => setObservation({ ...observation, [field]: Number(event.target.value) })} /></label>)}<button className="button button-primary" type="submit" disabled={busy}><Plus size={15} />记录数据</button></form>{observations.length > 0 && <div className="observation-list">{observations.map((item) => <div key={item.id}><time>{item.observed_at}</time><span>{item.impressions} 曝光</span><span>{item.opens} 打开</span><span>{item.chapter_three_completions} 三章完读</span><strong>¥{(item.revenue_cents / 100).toFixed(2)}</strong></div>)}</div>}</section></div>;
+}
+
+const commercialDimensionLabels: Record<CommercialDimension, string> = {
+  opening_urgency: "开篇紧迫感",
+  reader_promise: "读者承诺",
+  emotional_payoff: "情绪回报",
+  conflict_escalation: "冲突升级",
+  information_clarity: "信息清晰度",
+  chapter_hook: "章节钩子",
+  differentiation: "差异化",
+};
+
+function ChapterView({ project, draft, setDraft, task, audit, onAudit, onSave, onGenerated, onError }: { project: Project; draft: string; setDraft: (value: string) => void; task: Task | null; audit: CommercialAudit | null; onAudit: (audit: CommercialAudit | null) => void; onSave: () => Promise<void>; onGenerated: (task: Task, content: string, audit: CommercialAudit | null) => void; onError: (message: string) => void }) {
   const [instruction, setInstruction] = useState("承接上一章状态推进主线，并在结尾留下明确钩子。");
   const [chapterId, setChapterId] = useState("1");
   const [busy, setBusy] = useState(false);
+  const [overrideReason, setOverrideReason] = useState("");
   async function start() {
     setBusy(true);
     try {
       const result = await generateChapter(project.id, chapterId, instruction);
-      onGenerated(result.task, result.content);
+      onGenerated(result.task, result.content, {
+        commercial_report: result.commercial_report,
+        minimum_commercial_score: result.minimum_commercial_score,
+        commercial_gate_passed: result.commercial_gate_passed,
+      });
+      setOverrideReason("");
     } catch (cause) {
       onError(cause instanceof Error ? cause.message : "章节 Agent 生成失败");
     } finally {
@@ -296,14 +509,35 @@ function ChapterView({ project, draft, setDraft, task, onGenerated, onError }: {
     if (!task) return;
     setBusy(true);
     try {
-      onGenerated(await approveChapter(project.id, chapterId, task.id), draft);
+      await onSave();
+      const completed = await approveChapter(
+        project.id,
+        chapterId,
+        task.id,
+        audit?.commercial_gate_passed === false ? overrideReason : undefined,
+      );
+      onGenerated(completed, draft, audit);
     } catch (cause) {
       onError(cause instanceof Error ? cause.message : "章节确认失败");
     } finally {
       setBusy(false);
     }
   }
-  return <div className="editor-view"><div className="section-heading"><div><span className="eyebrow">逐章创作</span><label className="chapter-number-label" htmlFor="chapter-id">第</label><input id="chapter-id" className="chapter-number" value={chapterId} onChange={(event) => setChapterId(event.target.value.replace(/\D/g, ""))} inputMode="numeric" aria-label="章节编号" /><span className="chapter-number-label">章</span></div><div className="header-actions">{task?.status === "awaiting_approval" && <button className="button button-secondary" type="button" onClick={approve} disabled={busy}><Check size={15} />确认章节</button>}<button className="button button-primary" type="button" onClick={start} disabled={busy}>{busy ? <LoaderCircle className="spin" size={15} /> : <Sparkles size={15} />}Agent 生成章节</button></div></div><label className="field-label" htmlFor="chapter-plan">Agent 指令</label><textarea id="chapter-plan" className="plan-input" value={instruction} onChange={(event) => setInstruction(event.target.value)} /><NovelEditor markdown={draft} onChange={setDraft} /><div className="editor-footer"><span>当前任务：{task ? task.status : "尚未启动"}</span><span>项目：{project.id}</span></div></div>;
+  async function auditCurrent() {
+    if (!task) return;
+    setBusy(true);
+    try {
+      await onSave();
+      onAudit(await auditChapterCommercially(project.id, chapterId, task.id));
+      setOverrideReason("");
+    } catch (cause) {
+      onError(cause instanceof Error ? cause.message : "商业审查失败");
+    } finally {
+      setBusy(false);
+    }
+  }
+  const overrideRequired = audit?.commercial_gate_passed === false;
+  return <div className="editor-view"><div className="section-heading"><div><span className="eyebrow">逐章创作</span><label className="chapter-number-label" htmlFor="chapter-id">第</label><input id="chapter-id" className="chapter-number" value={chapterId} onChange={(event) => setChapterId(event.target.value.replace(/\D/g, ""))} inputMode="numeric" aria-label="章节编号" /><span className="chapter-number-label">章</span></div><div className="header-actions">{task?.status === "awaiting_approval" && <button className="button button-secondary" type="button" onClick={auditCurrent} disabled={busy}><Target size={15} />重新商业审查</button>}{task?.status === "awaiting_approval" && <button className="button button-secondary" type="button" onClick={approve} disabled={busy || (overrideRequired && !overrideReason.trim())}><Check size={15} />{overrideRequired ? "覆盖门禁并确认" : "确认章节"}</button>}<button className="button button-primary" type="button" onClick={start} disabled={busy}>{busy ? <LoaderCircle className="spin" size={15} /> : <Sparkles size={15} />}Agent 生成章节</button></div></div>{audit && <section className={`commercial-audit ${audit.commercial_gate_passed ? "is-pass" : "is-blocked"}`} aria-label="商业质量审查"><div className="commercial-audit-heading"><div><span className="eyebrow">留存审查</span><strong>{audit.commercial_report.total_score} / 100</strong></div><span>{audit.commercial_gate_passed ? "达到确认门槛" : `低于 ${audit.minimum_commercial_score} 分门槛`}</span></div><div className="commercial-score-grid">{audit.commercial_report.dimensions.map((dimension) => <div key={dimension.dimension}><span>{commercialDimensionLabels[dimension.dimension]}</span><progress max="100" value={dimension.score} /><strong>{dimension.score}</strong></div>)}</div>{audit.commercial_report.issues.length > 0 && <div className="commercial-issues">{audit.commercial_report.issues.map((issue) => <div key={issue.id}><strong>{commercialDimensionLabels[issue.dimension]}</strong><span>{issue.description}</span><q>{issue.citation.quote}</q></div>)}</div>}{overrideRequired && <label className="commercial-override">人工覆盖理由<textarea value={overrideReason} onChange={(event) => setOverrideReason(event.target.value)} placeholder="说明为什么该章可以低于门槛进入正式稿" /></label>}</section>}<label className="field-label" htmlFor="chapter-plan">Agent 指令</label><textarea id="chapter-plan" className="plan-input" value={instruction} onChange={(event) => setInstruction(event.target.value)} /><NovelEditor markdown={draft} onChange={setDraft} /><div className="editor-footer"><span>当前任务：{task ? task.status : "尚未启动"}</span><span>项目：{project.id}</span></div></div>;
 }
 
 function ImportView({ project, onTask, onError }: { project: Project; onTask: (task: Task) => void; onError: (message: string) => void }) {
@@ -400,7 +634,7 @@ function RunsView({ task, project, onTask, onError }: { task: Task | null; proje
   }
   return <div className="runs-view"><div className="section-heading"><div><span className="eyebrow">运行记录</span><h3>任务活动</h3></div></div>{tasks.length ? <div className="run-list">{tasks.map((item) => <div className="run-entry" key={item.id}><div className="run-card"><div><strong>{item.kind === "write" ? "创作任务" : "读取任务"}</strong><span>{item.id}</span><small>{new Date(item.updated_at).toLocaleString("zh-CN")}</small></div><div className="run-actions"><RunStatus status={item.status} connection="connected" /><button className="button button-secondary" type="button" onClick={() => inspect(item)}>事件</button>{item.status === "interrupted" && <button className="button button-secondary" type="button" onClick={() => act(item, "start")}>恢复</button>}{["pending", "running", "awaiting_approval", "interrupted"].includes(item.status) && <button className="button button-secondary" type="button" onClick={() => act(item, "cancel")}>取消</button>}</div></div>{selectedTask === item.id && <ol className="event-history">{history.map((event) => <li key={event.sequence}><span>{event.sequence}</span><strong>{event.type}</strong><time>{new Date(event.timestamp).toLocaleTimeString("zh-CN")}</time></li>)}</ol>}</div>)}</div> : <div className="memory-empty">{project.title} 还没有运行记录。</div>}</div>;
 }
-function SettingsView({ onError }: { onError: (message: string) => void }) { const [settings, setSettings] = useState({ base_url: "", model: "", timeout: 30 }); const [apiKey, setApiKey] = useState(""); const [status, setStatus] = useState("未验证"); useEffect(() => { getModelSettings().then((value) => setSettings({ base_url: value.base_url, model: value.model, timeout: value.timeout })).catch(() => undefined); }, []); async function save() { try { await saveModelSettings(settings); if (apiKey) { await saveApiKey(apiKey); setApiKey(""); } setStatus("已保存"); } catch (cause) { onError(cause instanceof Error ? cause.message : "模型设置保存失败"); } } async function connect() { setStatus("正在验证"); try { await testModelConnection(); setStatus("连接正常"); } catch (cause) { setStatus("连接失败"); onError(cause instanceof Error ? cause.message : "模型连接失败"); } } return <div className="placeholder-view settings-form"><Settings size={24} /><h3>模型设置</h3><p>只配置一个 OpenAI-compatible 接口，API Key 由系统密钥环保存且不会回显。</p><label>Base URL<input value={settings.base_url} onChange={(event) => setSettings({ ...settings, base_url: event.target.value })} placeholder="https://api.example.com/v1" /></label><label>模型名<input value={settings.model} onChange={(event) => setSettings({ ...settings, model: event.target.value })} /></label><label>超时（秒）<input type="number" min="1" value={settings.timeout} onChange={(event) => setSettings({ ...settings, timeout: Number(event.target.value) })} /></label><label>API Key<input type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} autoComplete="new-password" placeholder="未填写则保留现有密钥" /></label><div className="settings-actions"><button className="button button-secondary" type="button" onClick={save}>保存设置</button><button className="button button-primary" type="button" onClick={connect}>测试连接</button><span>{status}</span></div></div>; }
+function SettingsView({ onError }: { onError: (message: string) => void }) { const [settings, setSettings] = useState({ base_url: "", model: "", timeout: 30, disable_thinking: false }); const [apiKey, setApiKey] = useState(""); const [status, setStatus] = useState("未验证"); useEffect(() => { getModelSettings().then((value) => setSettings({ base_url: value.base_url, model: value.model, timeout: value.timeout, disable_thinking: value.disable_thinking })).catch(() => undefined); }, []); async function save() { try { await saveModelSettings(settings); if (apiKey) { await saveApiKey(apiKey); setApiKey(""); } setStatus("已保存"); } catch (cause) { onError(cause instanceof Error ? cause.message : "模型设置保存失败"); } } async function connect() { setStatus("正在验证"); try { await testModelConnection(); setStatus("连接正常"); } catch (cause) { setStatus("连接失败"); onError(cause instanceof Error ? cause.message : "模型连接失败"); } } return <div className="placeholder-view settings-form"><Settings size={24} /><h3>模型设置</h3><p>只配置一个 OpenAI-compatible 接口，API Key 由系统密钥环保存且不会回显。</p><label>Base URL<input value={settings.base_url} onChange={(event) => setSettings({ ...settings, base_url: event.target.value })} placeholder="https://api.example.com/v1" /></label><label>模型名<input value={settings.model} onChange={(event) => setSettings({ ...settings, model: event.target.value })} /></label><label>超时（秒）<input type="number" min="1" value={settings.timeout} onChange={(event) => setSettings({ ...settings, timeout: Number(event.target.value) })} /></label><label className="settings-toggle"><input type="checkbox" checked={settings.disable_thinking} onChange={(event) => setSettings({ ...settings, disable_thinking: event.target.checked })} /><span>关闭模型推理模式，兼容强制结构化 Agent 输出</span></label><label>API Key<input type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} autoComplete="new-password" placeholder="未填写则保留现有密钥" /></label><div className="settings-actions"><button className="button button-secondary" type="button" onClick={save}>保存设置</button><button className="button button-primary" type="button" onClick={connect}>测试连接</button><span>{status}</span></div></div>; }
 function ContextPanel({ project, task, dirty, onReview }: { project: Project; task: Task | null; dirty: boolean; onReview: () => void }) { return <><div className="panel-heading"><div><span className="eyebrow">Agent 面板</span><h3>上下文</h3></div><Search size={16} /></div><div className="context-block"><span className="context-label">当前项目</span><strong>{project.title}</strong><span className="muted">{project.genre ?? "未设置题材"}</span></div><div className="context-block"><span className="context-label">任务状态</span>{task ? <RunStatus status={task.status} connection="connected" /> : <span className="muted">暂无活动任务</span>}</div><div className="context-block"><span className="context-label">版本门禁</span><div className="gate-row"><span className={`gate-dot ${dirty ? "gate-dot--warn" : ""}`} />{dirty ? "等待用户确认" : "正式内容未修改"}</div>{dirty && <button className="button button-secondary" type="button" onClick={onReview}><GitCompareArrows size={14} />查看差异</button>}</div><div className="source-list"><span className="context-label">已加载来源</span><span>project.yaml</span><span>canon/world/setting.md</span><span>memory/（确认后生成）</span></div></>; }
 
 function DiffDialog({ before, after, onClose, onApply }: { before: string; after: string; onClose: () => void; onApply: (content: string) => void }) {

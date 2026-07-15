@@ -18,6 +18,7 @@ class ModelSettings(BaseModel):
     base_url: str
     model: str
     timeout: float = Field(gt=0, le=600)
+    disable_thinking: bool = False
 
     @field_validator("base_url")
     @classmethod

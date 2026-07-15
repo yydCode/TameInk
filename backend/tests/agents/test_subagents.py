@@ -14,23 +14,25 @@ from tests.agents.fake_model import ScriptedOpenAIModel, ScriptedTameInkModel
 from tests.agents.test_backend import make_backend
 
 EXPECTED_NAMES = {
+    "MarketStrategist",
     "StoryArchitect",
     "OutlineArchitect",
     "ChapterPlanner",
     "DraftWriter",
     "ContinuityAuditor",
     "StyleCritic",
+    "RetentionAuditor",
     "MemoryCurator",
     "ImportAnalyst",
 }
 
 
-def test_eight_subagents_have_independent_contracts_and_minimal_permissions(tmp_path: Path) -> None:
+def test_ten_subagents_have_independent_contracts_and_minimal_permissions(tmp_path: Path) -> None:
     backend, _, _, _ = make_backend(tmp_path)
     definitions = build_subagent_definitions(backend)
 
     assert {definition.name for definition in definitions} == EXPECTED_NAMES
-    assert len({definition.system_prompt for definition in definitions}) == 8
+    assert len({definition.system_prompt for definition in definitions}) == 10
     assert all(definition.output_schema is not None for definition in definitions)
     assert all(not hasattr(definition, "input_schema") for definition in definitions)
     writers = [
@@ -94,7 +96,7 @@ def test_orchestrator_rejects_uncontrolled_provider_before_registration_or_graph
     assert calls == []
 
 
-def test_orchestrator_real_graph_has_only_eight_agents_and_no_execute(tmp_path: Path) -> None:
+def test_orchestrator_real_graph_has_only_ten_agents_and_no_execute(tmp_path: Path) -> None:
     backend, _, _, _ = make_backend(tmp_path)
     model = ScriptedTameInkModel(
         api_key=SecretStr("test-key"),

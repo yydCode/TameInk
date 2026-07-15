@@ -26,6 +26,9 @@ class TameInkChatOpenAI(ChatOpenAI):
 def build_model(settings: ModelSettings, api_key: str | None) -> TameInkChatOpenAI:
     if api_key is None or not api_key.strip():
         raise ModelConfigurationError("MODEL_API_KEY_MISSING")
+    provider_options: dict[str, Any] = {}
+    if settings.disable_thinking:
+        provider_options["extra_body"] = {"thinking": {"type": "disabled"}}
     return TameInkChatOpenAI(
         api_key=SecretStr(api_key),
         base_url=settings.base_url,
@@ -33,6 +36,7 @@ def build_model(settings: ModelSettings, api_key: str | None) -> TameInkChatOpen
         timeout=settings.timeout,
         max_retries=0,
         use_responses_api=False,
+        **provider_options,
     )
 
 

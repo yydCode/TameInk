@@ -22,3 +22,6 @@ dist/
 # Local writing data
 workspace/*
 !workspace/.gitkeep
+.tame-ink-workspace/
+.playwright-cli/
+output/

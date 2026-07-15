@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: 番茄章节商业审查固定评测
+prompts:
+  - file://prompts/commercial-audit.txt
+providers:
+  - id: file://providers/offline.cjs
+tests: file://fixtures/commercial_cases.yaml
+defaultTest:
+  assert:
+    - type: javascript
+      value: file://assertions/commercial-report.cjs

@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict
 
 from app.agents.runtime import DeepAgentRunner
-from app.agents.schemas import Outline, StorySetting
+from app.agents.schemas import CommercialReport, Outline, StorySetting
 from app.domain.errors import TameInkError
 from app.domain.task import Task
 from app.infrastructure.model import ModelConfigurationError
@@ -15,6 +15,7 @@ from app.repositories.database import DatabaseRepository
 from app.repositories.drafts import DraftRepository
 from app.repositories.tasks import TasksRepository
 from app.workflows.chapter import ChapterService
+from app.workflows.commercial import CommercialService
 from app.workflows.outline import OutlineService
 
 router = APIRouter(prefix="/projects/{project_id}/design", tags=["creation"])
@@ -54,6 +55,24 @@ class GeneratedTaskResponse(BaseModel):
     content: str
 
 
+class GeneratedChapterResponse(GeneratedTaskResponse):
+    commercial_report: CommercialReport
+    minimum_commercial_score: int
+    commercial_gate_passed: bool
+
+
+class ChapterApprovalRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    commercial_override_reason: str | None = None
+
+
+class CommercialAuditResponse(BaseModel):
+    commercial_report: CommercialReport
+    minimum_commercial_score: int
+    commercial_gate_passed: bool
+
+
 @router.post("/outline", response_model=Task, status_code=status.HTTP_201_CREATED)
 def create_outline(project_id: str, payload: ContentRequest, request: Request) -> Task:
     return OutlineService(request.app.state.workspace).create_book(project_id, payload.content)
@@ -90,8 +109,19 @@ def start_chapter(
 
 
 @router.post("/chapters/{chapter_id}/{task_id}/approve", response_model=Task)
-def approve_chapter(project_id: str, chapter_id: str, task_id: str, request: Request) -> Task:
-    return ChapterService(request.app.state.workspace).approve(project_id, task_id, chapter_id)
+def approve_chapter(
+    project_id: str,
+    chapter_id: str,
+    task_id: str,
+    request: Request,
+    payload: ChapterApprovalRequest | None = None,
+) -> Task:
+    return ChapterService(request.app.state.workspace).approve(
+        project_id,
+        task_id,
+        chapter_id,
+        commercial_override_reason=(payload.commercial_override_reason if payload else None),
+    )
 
 
 def _runner(project_id: str, request: Request) -> DeepAgentRunner:
@@ -197,7 +227,7 @@ async def generate_volume(
 
 @router.post(
     "/agent/chapters/{chapter_id}",
-    response_model=GeneratedTaskResponse,
+    response_model=GeneratedChapterResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def generate_chapter(
@@ -205,13 +235,73 @@ async def generate_chapter(
     chapter_id: str,
     payload: GenerateRequest,
     request: Request,
-) -> GeneratedTaskResponse:
-    def run() -> GeneratedTaskResponse:
+) -> GeneratedChapterResponse:
+    def run() -> GeneratedChapterResponse:
         workspace = request.app.state.workspace
-        task = ChapterService(workspace, runner=_runner(project_id, request)).run(
-            project_id, chapter_id, payload.instruction
-        )
+        service = ChapterService(workspace, runner=_runner(project_id, request))
+        task = service.run(project_id, chapter_id, payload.instruction)
         content = DraftRepository(workspace).read(project_id, task.id, "chapter.md")
-        return GeneratedTaskResponse(task=task, content=content)
+        report = service.read_commercial_report(project_id, task.id)
+        profile = CommercialService(workspace).read(project_id)
+        if report is None or profile is None:
+            raise RuntimeError("AGENT_OUTPUT_INVALID")
+        return GeneratedChapterResponse(
+            task=task,
+            content=content,
+            commercial_report=report,
+            minimum_commercial_score=profile.minimum_commercial_score,
+            commercial_gate_passed=service.commercial_gate_passed(
+                report, profile.minimum_commercial_score
+            ),
+        )
+
+    return await _run_agent(run)
+
+
+@router.post(
+    "/agent/chapters/{chapter_id}/{task_id}/commercial-audit",
+    response_model=CommercialAuditResponse,
+)
+async def audit_chapter_commercially(
+    project_id: str,
+    chapter_id: str,
+    task_id: str,
+    request: Request,
+) -> CommercialAuditResponse:
+    def run() -> CommercialAuditResponse:
+        workspace = request.app.state.workspace
+        task = TasksRepository(DatabaseRepository(workspace), project_id).get(task_id)
+        if task.status != "awaiting_approval":
+            raise RuntimeError("COMMERCIAL_AUDIT_TASK_INVALID")
+        profile = CommercialService(workspace).read(project_id)
+        if profile is None:
+            raise RuntimeError("COMMERCIAL_PROFILE_MISSING")
+        draft = DraftRepository(workspace).read(project_id, task_id, "chapter.md")
+        output = _runner(project_id, request).invoke(
+            "RetentionAuditor",
+            {
+                "project_id": project_id,
+                "chapter_id": chapter_id,
+                "draft": draft,
+                "instruction": "re-audit the current user-edited chapter candidate",
+            },
+        )
+        if not isinstance(output, CommercialReport) or output.chapter_id != chapter_id:
+            raise RuntimeError("AGENT_OUTPUT_INVALID")
+        output = ChapterService.normalize_commercial_report(draft, output)
+        ChapterService.validate_audit_issues(draft, [], [], output.issues)
+        service = ChapterService(workspace)
+        passed = service.store_commercial_report(
+            project_id,
+            task_id,
+            chapter_id,
+            output,
+            profile.minimum_commercial_score,
+        )
+        return CommercialAuditResponse(
+            commercial_report=output,
+            minimum_commercial_score=profile.minimum_commercial_score,
+            commercial_gate_passed=passed,
+        )
 
     return await _run_agent(run)

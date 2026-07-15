@@ -1,0 +1,11 @@
+{
+  "name": "tame-ink-evaluations",
+  "private": true,
+  "scripts": {
+    "commercial:fixture": "promptfoo eval -c promptfooconfig.yaml --no-cache",
+    "commercial:live": "promptfoo eval -c promptfooconfig.live.yaml --no-cache"
+  },
+  "devDependencies": {
+    "promptfoo": "0.121.19"
+  }
+}

@@ -77,8 +77,8 @@ def test_initialize_migrates_schema_and_preserves_rebuild(tmp_path: Path) -> Non
             )
         }
 
-    assert version == "2"
-    assert {"tasks", "task_events", "content_fts"} <= tables
+    assert version == "3"
+    assert {"tasks", "task_events", "content_fts", "commercial_observations"} <= tables
 
 
 def test_create_persists_task_and_first_event(tmp_path: Path) -> None:
