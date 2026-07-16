@@ -38,6 +38,15 @@ class DraftContentResponse(BaseModel):
     revision: str | None
 
 
+class WorkflowStatus(BaseModel):
+    """Confirmed creative milestones required before chapter generation."""
+
+    setting_confirmed: bool
+    outline_confirmed: bool
+    volume_one_confirmed: bool
+    commercial_confirmed: bool
+
+
 @router.post("", status_code=status.HTTP_201_CREATED)
 def create_project(payload: CreateProjectRequest, request: Request) -> dict[str, object]:
     workspace: WorkspaceRepository = request.app.state.workspace
@@ -58,6 +67,24 @@ def list_projects(request: Request) -> list[Project]:
 def get_project(project_id: str, request: Request) -> Project:
     workspace: WorkspaceRepository = request.app.state.workspace
     return CanonRepository(workspace).read_project(project_id)
+
+
+@router.get("/{project_id}/workflow-status", response_model=WorkflowStatus)
+def get_workflow_status(project_id: str, request: Request) -> WorkflowStatus:
+    workspace: WorkspaceRepository = request.app.state.workspace
+    # Resolve through the workspace repository so the endpoint keeps the same path checks as writes.
+    return WorkflowStatus(
+        setting_confirmed=workspace.resolve_project_path(
+            project_id, "canon/world/setting.md"
+        ).is_file(),
+        outline_confirmed=workspace.resolve_project_path(project_id, "canon/outline.md").is_file(),
+        volume_one_confirmed=workspace.resolve_project_path(
+            project_id, "canon/volumes/1.md"
+        ).is_file(),
+        commercial_confirmed=workspace.resolve_project_path(
+            project_id, "canon/commercial.yaml"
+        ).is_file(),
+    )
 
 
 @router.get("/{project_id}/drafts/{task_id}", response_model=DraftContentResponse)

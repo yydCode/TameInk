@@ -31,6 +31,15 @@ describe("API client", () => {
     await expect(createProject({ project_id: "../bad", title: "x", genre: "x", target_words: 1, constraints: "x", setting_draft: "x" })).rejects.toMatchObject({ code: "WORKSPACE_PATH_VIOLATION", status: 400 });
   });
 
+  it("translates workflow gate errors into an actionable message", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: { code: "WORKFLOW_GATE_BLOCKED", message: "request could not be processed" } }), { status: 400 })));
+
+    await expect(createProject({ project_id: "guided-book", title: "x", genre: "x", target_words: 1, constraints: "x", setting_draft: "x" })).rejects.toMatchObject({
+      code: "WORKFLOW_GATE_BLOCKED",
+      message: "当前操作尚未满足创作流程前置条件，请先完成并确认引导中的内容。",
+    });
+  });
+
   it("sends commercial generation, observation, and override payloads exactly", async () => {
     const fetcher = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
     vi.stubGlobal("fetch", fetcher);

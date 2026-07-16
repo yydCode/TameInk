@@ -25,6 +25,39 @@ def test_projects_create_and_read(tmp_path: Path) -> None:
     assert fetched.json()["id"] == "night-01"
 
 
+def test_workflow_status_only_reports_confirmed_content(tmp_path: Path) -> None:
+    with TestClient(create_app(tmp_path)) as client:
+        created = client.post(
+            "/api/projects",
+            json={
+                "project_id": "guided-book",
+                "title": "引导书",
+                "genre": "悬疑",
+                "target_words": 1000,
+                "constraints": "第三人称",
+                "setting_draft": "设定草稿",
+            },
+        ).json()
+        task_id = created["task"]["id"]
+
+        before = client.get("/api/projects/guided-book/workflow-status")
+        client.post(f"/api/projects/guided-book/setting/{task_id}/approve")
+        after_setting = client.get("/api/projects/guided-book/workflow-status")
+
+    assert before.json() == {
+        "setting_confirmed": False,
+        "outline_confirmed": False,
+        "volume_one_confirmed": False,
+        "commercial_confirmed": False,
+    }
+    assert after_setting.json() == {
+        "setting_confirmed": True,
+        "outline_confirmed": False,
+        "volume_one_confirmed": False,
+        "commercial_confirmed": False,
+    }
+
+
 def test_projects_list_returns_saved_projects(tmp_path: Path) -> None:
     with TestClient(create_app(tmp_path)) as client:
         for project_id, title in [("book-a", "甲书"), ("book-b", "乙书")]:

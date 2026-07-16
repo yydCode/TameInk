@@ -42,6 +42,7 @@ test.beforeEach(async ({ page }) => {
     if (url.pathname === "/api/health") return route.fulfill({ json: { status: "ok", service: "tame-ink-api", version: "0.1.0" } });
     if (url.pathname === "/api/projects" && request.method() === "GET") return route.fulfill({ json: [project] });
     if (url.pathname === `/api/projects/${project.id}`) return route.fulfill({ json: project });
+    if (url.pathname === `/api/projects/${project.id}/workflow-status`) return route.fulfill({ json: { setting_confirmed: true, outline_confirmed: true, volume_one_confirmed: true, commercial_confirmed: true } });
     if (url.pathname === `/api/projects/${project.id}/tasks`) return route.fulfill({ json: [task] });
     if (url.pathname.endsWith(`/tasks/${task.id}/drafts`)) return route.fulfill({ json: ["setting.md"] });
     if (url.pathname.endsWith(`/drafts/${task.id}`)) return route.fulfill({ json: { task_id: task.id, path: "setting.md", content: "# 原设定\n\n旧句。中段。旧尾。", revision: "rev-1" } });
@@ -82,6 +83,18 @@ test("records real commercial funnel observations", async ({ page }) => {
   await expect(page.getByText("20.0%").first()).toBeVisible();
   await expect(page.getByText("100 曝光")).toBeVisible();
   await expect(page.getByText("¥2.50")).toHaveCount(1);
+});
+
+test("explains missing chapter prerequisites and navigates to the next action", async ({ page }) => {
+  await page.route(`**/api/projects/${project.id}/workflow-status`, (route) => route.fulfill({ json: { setting_confirmed: false, outline_confirmed: false, volume_one_confirmed: false, commercial_confirmed: false } }));
+
+  await openExistingProject(page);
+  await page.getByRole("button", { name: "章节工作台" }).click();
+
+  await expect(page.getByRole("region", { name: "章节生成前置条件" })).toContainText("请先确认故事设定");
+  await expect(page.getByRole("button", { name: "Agent 生成章节" })).toBeDisabled();
+  await page.getByRole("button", { name: "前往完成" }).click();
+  await expect(page.getByRole("heading", { name: "核心设定" })).toBeVisible();
 });
 
 test("requires a reason before overriding a low commercial score", async ({ page }) => {

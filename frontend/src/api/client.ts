@@ -13,6 +13,13 @@ export interface Project {
   constraints: string | null;
 }
 
+export interface WorkflowStatus {
+  setting_confirmed: boolean;
+  outline_confirmed: boolean;
+  volume_one_confirmed: boolean;
+  commercial_confirmed: boolean;
+}
+
 export type TaskStatus =
   | "pending"
   | "running"
@@ -141,6 +148,20 @@ export class ApiError extends Error {
   }
 }
 
+const apiErrorMessages: Record<string, string> = {
+  WORKFLOW_GATE_BLOCKED: "当前操作尚未满足创作流程前置条件，请先完成并确认引导中的内容。",
+  COMMERCIAL_GATE_BLOCKED: "商业质量未达到确认门槛，请修改章节或填写人工覆盖理由。",
+  ACTIVE_TASK_CONFLICT: "已有写入任务正在进行或等待确认，请先完成、取消或处理该任务。",
+  MODEL_API_KEY_MISSING: "尚未配置模型 API Key，请前往“模型设置”保存后再试。",
+  MODEL_SETTINGS_NOT_FOUND: "尚未保存模型设置，请前往“模型设置”完成配置。",
+  MODEL_SETTINGS_INVALID: "模型设置无效，请检查 Base URL、模型名称和 API Key。",
+  MODEL_SETTINGS_READ_FAILED: "模型设置无法读取，请检查本地配置后重试。",
+};
+
+function friendlyApiErrorMessage(code: string | undefined, fallback: string): string {
+  return code ? apiErrorMessages[code] ?? fallback : fallback;
+}
+
 async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(path, {
     ...init,
@@ -150,7 +171,10 @@ async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> 
   if (!response.ok) {
     const body = payload as { error?: { message?: string; code?: string }; detail?: { message?: string; code?: string } } | undefined;
     throw new ApiError(
-      body?.error?.message ?? body?.detail?.message ?? `Request failed with status ${response.status}`,
+      friendlyApiErrorMessage(
+        body?.error?.code ?? body?.detail?.code,
+        body?.error?.message ?? body?.detail?.message ?? `请求失败（${response.status}）`,
+      ),
       response.status,
       body?.error?.code ?? body?.detail?.code,
     );
@@ -171,6 +195,10 @@ export function createProject(input: {
 
 export function getProject(projectId: string): Promise<Project> {
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}`);
+}
+
+export function getWorkflowStatus(projectId: string): Promise<WorkflowStatus> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/workflow-status`);
 }
 
 export function listProjects(): Promise<Project[]> { return requestJson("/api/projects"); }
