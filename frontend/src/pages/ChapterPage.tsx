@@ -46,13 +46,8 @@ type AuditReports = {
     citation: { quote: string };
   }>;
 };
-type EvidenceTab =
-  | "plan"
-  | "continuity"
-  | "style"
-  | "commercial"
-  | "memory"
-  | "context";
+// 右侧信息面板的标签类型，按规划/审查/伏笔/来源四类组织
+type EvidenceTab = "plan" | "audit" | "foreshadow" | "context";
 
 export function ChapterPage() {
   const { projectId = "", chapterId } = useParams();
@@ -267,6 +262,10 @@ export function ChapterPage() {
       workflow.data?.commercial_confirmed &&
       snapshot.data?.volumes.length,
   );
+  // 审查标签的问题计数（连续性 + 文风），用于在标签按钮上显示徽章
+  const auditIssueCount =
+    (reports.data?.continuity?.length ?? 0) +
+    (reports.data?.style?.length ?? 0);
 
   if (!project.data)
     return <div className="loading-state">读取章节工作台...</div>;
@@ -447,14 +446,7 @@ export function ChapterPage() {
         <aside className="evidence-rail">
           <div className="evidence-tabs">
             {(
-              [
-                "plan",
-                "continuity",
-                "style",
-                "commercial",
-                "memory",
-                "context",
-              ] as EvidenceTab[]
+              ["plan", "audit", "foreshadow", "context"] as EvidenceTab[]
             ).map((value) => (
               <button
                 key={value}
@@ -464,14 +456,15 @@ export function ChapterPage() {
               >
                 {
                   {
-                    plan: "计划",
-                    continuity: "连续性",
-                    style: "文风",
-                    commercial: "商业",
-                    memory: "记忆",
+                    plan: "规划",
+                    audit: "审查",
+                    foreshadow: "伏笔",
                     context: "来源",
                   }[value]
                 }
+                {value === "audit" && auditIssueCount > 0 && (
+                  <span className="evidence-badge">{auditIssueCount}</span>
+                )}
               </button>
             ))}
           </div>
@@ -492,6 +485,47 @@ export function ChapterPage() {
         </aside>
       </div>
     </div>
+  );
+}
+
+// 审查报告中的单条问题项（连续性 / 文风共用同一结构）
+interface AuditIssue {
+  id: string;
+  severity: string;
+  description: string;
+  citation: { quote: string };
+}
+
+// 审查区块：标题 + 问题列表（或空态文案），用于连续性与文风两类问题
+function AuditSection({
+  title,
+  items,
+  emptyText,
+}: {
+  title: string;
+  items: AuditIssue[];
+  emptyText: string;
+}) {
+  return (
+    <section className="audit-section">
+      <div className="audit-section-title">
+        <h4>{title}</h4>
+        {items.length > 0 && (
+          <span className="audit-count">{items.length}</span>
+        )}
+      </div>
+      {items.length ? (
+        items.map((item) => (
+          <article className="issue-row" key={item.id}>
+            <strong>{item.severity}</strong>
+            <p>{item.description}</p>
+            <q>{item.citation.quote}</q>
+          </article>
+        ))
+      ) : (
+        <p className="muted">{emptyText}</p>
+      )}
+    </section>
   );
 }
 
@@ -529,72 +563,68 @@ function EvidenceContent({
         <pre>{plan ?? "任务完成后显示计划。"}</pre>
       </div>
     );
-  if (tab === "continuity" || tab === "style") {
-    const items = reports?.[tab] ?? [];
+  if (tab === "audit")
     return (
-      <div className="evidence-content">
-        <h3>{tab === "continuity" ? "连续性审查" : "文风审查"}</h3>
-        {items.length ? (
-          items.map((item) => (
-            <article className="issue-row" key={item.id}>
-              <strong>{item.severity}</strong>
-              <p>{item.description}</p>
-              <q>{item.citation.quote}</q>
-            </article>
-          ))
-        ) : (
-          <p className="muted">没有报告问题。</p>
-        )}
-      </div>
-    );
-  }
-  if (tab === "commercial")
-    return (
-      <div className="evidence-content" role="region" aria-label="商业质量审查">
-        <h3>商业质量</h3>
-        {audit ? (
-          <>
-            <div className="score-line">
-              <strong>{audit.commercial_report.total_score}</strong>
-              <span>
-                / 100 ·{" "}
-                {audit.commercial_gate_passed
-                  ? "达到确认门槛"
-                  : `低于 ${audit.minimum_commercial_score} 分`}
-              </span>
-            </div>
-            {audit.commercial_report.dimensions.map((item) => (
-              <div className="dimension-row" key={item.dimension}>
-                <span>{item.dimension}</span>
-                <progress max="100" value={item.score} />
-                <strong>{item.score}</strong>
+      <div className="evidence-content" role="region" aria-label="统一审查">
+        <h3>审查</h3>
+        <AuditSection
+          title="连续性问题"
+          items={reports?.continuity ?? []}
+          emptyText="没有报告问题。"
+        />
+        <AuditSection
+          title="文风问题"
+          items={reports?.style ?? []}
+          emptyText="没有报告问题。"
+        />
+        <section className="audit-section">
+          <div className="audit-section-title">
+            <h4>商业评分</h4>
+          </div>
+          {audit ? (
+            <>
+              <div className="score-line">
+                <strong>{audit.commercial_report.total_score}</strong>
+                <span>
+                  / 100 ·{" "}
+                  {audit.commercial_gate_passed
+                    ? "达到确认门槛"
+                    : `低于 ${audit.minimum_commercial_score} 分`}
+                </span>
               </div>
-            ))}
-            <button
-              className="button button-secondary"
-              type="button"
-              disabled={reauditPending}
-              onClick={onReaudit}
-            >
-              <RefreshCw size={14} />
-              重新审查当前正文
-            </button>
-            {!audit.commercial_gate_passed && (
-              <label>
-                人工覆盖理由
-                <textarea
-                  value={overrideReason}
-                  onChange={(event) => setOverrideReason(event.target.value)}
-                />
-              </label>
-            )}
-          </>
-        ) : (
-          <p className="muted">审查完成后显示评分。</p>
-        )}
+              {audit.commercial_report.dimensions.map((item) => (
+                <div className="dimension-row" key={item.dimension}>
+                  <span>{item.dimension}</span>
+                  <progress max="100" value={item.score} />
+                  <strong>{item.score}</strong>
+                </div>
+              ))}
+              <button
+                className="button button-secondary"
+                type="button"
+                disabled={reauditPending}
+                onClick={onReaudit}
+              >
+                <RefreshCw size={14} />
+                重新审查当前正文
+              </button>
+              {!audit.commercial_gate_passed && (
+                <label>
+                  人工覆盖理由
+                  <textarea
+                    value={overrideReason}
+                    onChange={(event) => setOverrideReason(event.target.value)}
+                  />
+                </label>
+              )}
+            </>
+          ) : (
+            <p className="muted">审查完成后显示评分。</p>
+          )}
+        </section>
       </div>
     );
-  if (tab === "memory")
+  if (tab === "foreshadow")
     return (
       <div className="evidence-content">
         <h3>记忆候选</h3>
