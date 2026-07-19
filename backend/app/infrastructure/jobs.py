@@ -9,6 +9,7 @@ from peewee import SqliteDatabase  # type: ignore[import-untyped]
 
 from app.agents.runtime import DeepAgentRunner
 from app.agents.schemas import CommercialReport, CommercialStrategy, Outline, StorySetting
+from app.domain.diagnostics import TaskLogLevel
 from app.domain.errors import TameInkError, WorkflowGateError
 from app.domain.task import Task, TaskStatus
 from app.infrastructure.secrets import ApiKeyStore, SecretStoreError
@@ -82,6 +83,13 @@ class DurableAgentQueue:
             ),
             overwrite=False,
         )
+        TasksRepository(DatabaseRepository(workspace), project_id).append_log(
+            task_id,
+            TaskLogLevel.INFO,
+            "queue",
+            "queue.enqueued",
+            details={"job_kind": kind.value},
+        )
         self._execute(str(self.workspace_root), project_id, task_id, kind.value, payload)
 
 
@@ -99,6 +107,13 @@ def execute_agent_job(
     drafts = DraftRepository(workspace)
     kind = AgentJobKind(kind_value)
     task = service.get(task_id)
+    service.repository.append_log(
+        task_id,
+        TaskLogLevel.INFO,
+        "worker",
+        "worker.claimed",
+        details={"job_kind": kind.value, "status": task.status.value},
+    )
     if task.status is TaskStatus.PENDING:
         service.start(task_id)
     elif task.status is TaskStatus.AWAITING_APPROVAL:
@@ -113,13 +128,25 @@ def execute_agent_job(
 
     holder: dict[str, DeepAgentRunner] = {}
 
-    def before(agent: str) -> None:
+    def before(agent: str, diagnostics: dict[str, object] | None = None) -> None:
         if service.cancellation_requested(task_id):
             raise AgentCancellationRequested
         service.repository.append_event(task_id, "agent.stage.started", {"agent": agent})
+        service.repository.append_log(
+            task_id,
+            TaskLogLevel.INFO,
+            "agent",
+            "agent.stage.started",
+            agent=agent,
+            details=diagnostics,
+        )
 
-    def after(agent: str, error_code: str | None) -> None:
-        data: dict[str, object] = {"agent": agent}
+    def after(
+        agent: str,
+        error_code: str | None,
+        diagnostics: dict[str, object] | None = None,
+    ) -> None:
+        data: dict[str, object] = {"agent": agent, **(diagnostics or {})}
         event_type = "agent.stage.completed"
         if error_code is not None:
             data["error_code"] = error_code
@@ -141,6 +168,14 @@ def execute_agent_job(
                     ):
                         data[key] = latest.get(key)
         service.repository.append_event(task_id, event_type, data)
+        service.repository.append_log(
+            task_id,
+            TaskLogLevel.ERROR if error_code is not None else TaskLogLevel.INFO,
+            "agent",
+            event_type,
+            agent=agent,
+            details=data,
+        )
         if error_code is None and service.cancellation_requested(task_id):
             raise AgentCancellationRequested
 
@@ -157,8 +192,22 @@ def execute_agent_job(
         _run_job(kind, payload, workspace, project_id, task_id, runner)
         if service.cancellation_requested(task_id):
             raise AgentCancellationRequested
+        service.repository.append_log(
+            task_id,
+            TaskLogLevel.INFO,
+            "worker",
+            "worker.completed",
+            details={"job_kind": kind.value},
+        )
     except AgentCancellationRequested:
         drafts.discard_candidates(project_id, task_id)
+        service.repository.append_log(
+            task_id,
+            TaskLogLevel.WARNING,
+            "worker",
+            "worker.cancelled",
+            details={"job_kind": kind.value, "cancel_requested": True},
+        )
         if service.get(task_id).status is TaskStatus.RUNNING:
             service.cancel_requested_task(task_id)
     except Exception as error:
@@ -169,6 +218,17 @@ def execute_agent_job(
         else:
             candidate = str(error)
             code = candidate if candidate.startswith("MODEL_") else type(error).__name__
+        service.repository.append_log(
+            task_id,
+            TaskLogLevel.ERROR,
+            "worker",
+            "worker.failed",
+            details={
+                "job_kind": kind.value,
+                "error_code": code,
+                "error_type": type(error).__name__,
+            },
+        )
         if service.get(task_id).status is TaskStatus.RUNNING:
             service.fail(task_id, code, "agent job failed")
 
@@ -204,6 +264,7 @@ def _run_job(
         if not isinstance(output, StorySetting):
             raise WorkflowGateError("StoryArchitect returned invalid output")
         DraftRepository(workspace).write(project_id, task_id, "setting.md", output.content)
+        _log_artifact(workspace, project_id, task_id, "setting.md", output.content)
         return _tasks(workspace, project_id).await_approval(task_id)
     if kind in {AgentJobKind.BOOK_OUTLINE, AgentJobKind.VOLUME_OUTLINE}:
         outline_kind = "book" if kind is AgentJobKind.BOOK_OUTLINE else "volume"
@@ -222,6 +283,7 @@ def _run_job(
             else f"volume-{_text(payload, 'volume_id')}.md"
         )
         DraftRepository(workspace).write(project_id, task_id, name, output.content)
+        _log_artifact(workspace, project_id, task_id, name, output.content)
         return _tasks(workspace, project_id).await_approval(task_id)
     if kind is AgentJobKind.CHAPTER:
         return ChapterService(workspace, runner=runner).run_for_task(
@@ -252,6 +314,13 @@ def _run_job(
         ) or output.profile.monetization != brief.get("monetization"):
             raise WorkflowGateError("MarketStrategist changed fixed commercial fields")
         CommercialService(workspace).write_draft(project_id, task_id, output.profile)
+        _tasks(workspace, project_id).repository.append_log(
+            task_id,
+            TaskLogLevel.INFO,
+            "workflow",
+            "workflow.candidate_written",
+            details={"artifact": "commercial-profile", "artifact_count": 1},
+        )
         return _tasks(workspace, project_id).await_approval(task_id)
     if kind is AgentJobKind.COMMERCIAL_AUDIT:
         profile = CommercialService(workspace).read(project_id)
@@ -281,6 +350,26 @@ def _run_job(
 
 def _tasks(workspace: WorkspaceRepository, project_id: str) -> TaskService:
     return TaskService(TasksRepository(DatabaseRepository(workspace), project_id))
+
+
+def _log_artifact(
+    workspace: WorkspaceRepository,
+    project_id: str,
+    task_id: str,
+    artifact: str,
+    content: str,
+) -> None:
+    _tasks(workspace, project_id).repository.append_log(
+        task_id,
+        TaskLogLevel.INFO,
+        "workflow",
+        "workflow.candidate_written",
+        details={
+            "artifact": artifact,
+            "artifact_count": 1,
+            "bytes_written": len(content.encode("utf-8")),
+        },
+    )
 
 
 def _text(payload: dict[str, Any], key: str) -> str:

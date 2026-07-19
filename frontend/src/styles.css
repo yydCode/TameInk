@@ -246,6 +246,25 @@ label { display: grid; gap: 6px; color: #59645c; font-size: 10px; font-weight: 7
 .trace-row code { color: var(--blue); }
 .event-history { margin: 0; padding: 0; list-style: none; }
 .event-history li { display: grid; grid-template-columns: 24px 1fr auto; gap: 6px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 8px; }
+.diagnostic-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 18px; }
+.diagnostic-heading h3 { margin: 0; }
+.diagnostic-heading > div { display: flex; align-items: center; gap: 5px; }
+.diagnostic-heading select { width: auto; min-height: 28px; padding: 3px 6px; font-size: 9px; }
+.diagnostic-heading .icon-button { width: 28px; min-height: 28px; }
+.diagnostic-status { margin: 6px 0 0; color: var(--green-dark); font-size: 9px; }
+.diagnostic-log-list { margin: 6px 0 0; padding: 0; list-style: none; }
+.diagnostic-log { position: relative; padding: 9px 0 9px 11px; border-bottom: 1px solid var(--line); border-left: 2px solid var(--blue); }
+.diagnostic-log--warning { border-left-color: var(--rust); }
+.diagnostic-log--error { border-left-color: var(--danger); }
+.diagnostic-log > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 7px; }
+.diagnostic-log strong { font-size: 9px; }
+.diagnostic-log span, .diagnostic-log time { color: var(--muted); font-size: 8px; }
+.diagnostic-log time { grid-column: 2; grid-row: 1 / span 2; }
+.diagnostic-log dl { display: grid; gap: 3px; margin: 7px 0 0; }
+.diagnostic-log dl > div { display: grid; grid-template-columns: 98px minmax(0, 1fr); gap: 6px; font: 8px/1.45 "SFMono-Regular", Consolas, monospace; }
+.diagnostic-log dt { color: var(--muted); }
+.diagnostic-log dd { margin: 0; overflow-wrap: anywhere; }
+.diagnostic-more { width: 100%; margin-top: 9px; }
 .pagination { display: flex; align-items: center; justify-content: center; gap: 9px; padding: 10px; }
 .pagination span { font-size: 9px; }
 

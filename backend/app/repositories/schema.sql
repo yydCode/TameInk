@@ -71,6 +71,21 @@ CREATE TABLE IF NOT EXISTS task_events (
     PRIMARY KEY (task_id, sequence)
 );
 
+CREATE TABLE IF NOT EXISTS task_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    project_id TEXT NOT NULL,
+    timestamp TEXT NOT NULL,
+    level TEXT NOT NULL CHECK (level IN ('info', 'warning', 'error')),
+    component TEXT NOT NULL CHECK (length(trim(component)) > 0),
+    event TEXT NOT NULL CHECK (length(trim(event)) > 0),
+    agent TEXT,
+    details TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS task_logs_by_task_id
+ON task_logs(task_id, id);
+
 CREATE TABLE IF NOT EXISTS commercial_observations (
     id TEXT PRIMARY KEY,
     observed_at TEXT NOT NULL,

@@ -5,6 +5,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, Request, status
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
+from app.domain.diagnostics import TaskDiagnosticLog, TaskLogLevel
 from app.domain.errors import WorkflowGateError, WorkspacePathViolationError
 from app.domain.paths import validate_formal_path
 from app.domain.task import Task, TaskEvent, TaskKind, TaskPurpose
@@ -76,6 +77,13 @@ class TaskRunManifest(BaseModel):
     agent_runs: list[AgentRunTrace]
 
 
+class TaskLogsResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    items: list[TaskDiagnosticLog]
+    next_after_id: int | None
+
+
 def task_service(request: Request, project_id: str) -> TaskService:
     workspace: WorkspaceRepository = request.app.state.workspace
     database = DatabaseRepository(workspace)
@@ -134,6 +142,21 @@ def read_task_run(
 @router.get("/{task_id}/history", response_model=list[TaskEvent])
 def task_history(task_id: str, service: Service) -> list[TaskEvent]:
     return service.events(task_id)
+
+
+@router.get("/{task_id}/logs", response_model=TaskLogsResponse)
+def task_logs(
+    task_id: str,
+    service: Service,
+    after_id: int = 0,
+    limit: int = 100,
+    level: TaskLogLevel | None = None,
+) -> TaskLogsResponse:
+    if after_id < 0 or not 1 <= limit <= 200:
+        raise WorkflowGateError("task log pagination is invalid")
+    items = service.logs(task_id, after_id=after_id, limit=limit, level=level)
+    next_after_id = items[-1].id if len(items) == limit else None
+    return TaskLogsResponse(items=items, next_after_id=next_after_id)
 
 
 def operation(name: str) -> Callable[[str, TaskService], Task]:

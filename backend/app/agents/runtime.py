@@ -63,8 +63,8 @@ class DeepAgentRunner:
         project_id: str,
         settings: SettingsRepository,
         secrets: ApiKeyStore,
-        before_invoke: Callable[[str], None] | None = None,
-        after_invoke: Callable[[str, str | None], None] | None = None,
+        before_invoke: Callable[[str, dict[str, object]], None] | None = None,
+        after_invoke: Callable[[str, str | None, dict[str, object]], None] | None = None,
     ) -> None:
         self.workspace = workspace
         self.project_id = project_id
@@ -96,9 +96,20 @@ class DeepAgentRunner:
         return self.context_compiler.request_for(agent, payload)
 
     def invoke(self, agent: str, payload: dict[str, object]) -> object:
+        started = time.perf_counter()
+        try:
+            self.manifest = self.context_builder.build(self._context_request(agent, payload))
+        except Exception as error:
+            if self.after_invoke is not None:
+                self.after_invoke(
+                    agent,
+                    type(error).__name__,
+                    {"phase": "context_compile", "duration_ms": elapsed_ms(started)},
+                )
+            raise
+        diagnostics = self._diagnostic_context(started)
         if self.before_invoke is not None:
-            self.before_invoke(agent)
-        self.manifest = self.context_builder.build(self._context_request(agent, payload))
+            self.before_invoke(agent, diagnostics)
         backend = NovelWorkspaceBackend(
             self.canon,
             self.drafts,
@@ -121,11 +132,30 @@ class DeepAgentRunner:
             )
         except Exception as error:
             if self.after_invoke is not None:
-                self.after_invoke(agent, type(error).__name__)
+                self.after_invoke(
+                    agent,
+                    type(error).__name__,
+                    {**self._diagnostic_context(started), "phase": "agent_execute"},
+                )
             raise
         if self.after_invoke is not None:
-            self.after_invoke(agent, None)
+            self.after_invoke(
+                agent,
+                None,
+                {**self._diagnostic_context(started), "phase": "agent_execute"},
+            )
         return output
+
+    def _diagnostic_context(self, started: float) -> dict[str, object]:
+        return {
+            "stage": self.manifest.stage,
+            "source_count": len(self.manifest.sources),
+            "retrieved_count": len(self.manifest.retrieved),
+            "query_count": len(self.manifest.queries),
+            "total_characters": self.manifest.total_characters,
+            "source_paths": sorted(self.manifest.allowed_paths()),
+            "duration_ms": elapsed_ms(started),
+        }
 
     def _invoke_stage(
         self,

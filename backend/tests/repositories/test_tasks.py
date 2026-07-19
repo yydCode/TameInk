@@ -6,6 +6,7 @@ from uuid import uuid4
 import pytest
 from pydantic import ValidationError
 
+from app.domain.diagnostics import TaskLogLevel
 from app.domain.errors import ActiveTaskConflictError, InvalidTaskTransitionError
 from app.domain.task import Task, TaskEvent, TaskKind, TaskPurpose, TaskStatus
 from app.repositories.database import DatabaseRepository
@@ -82,8 +83,14 @@ def test_initialize_migrates_schema_and_preserves_rebuild(tmp_path: Path) -> Non
             )
         }
 
-    assert version == "5"
-    assert {"tasks", "task_events", "content_fts", "commercial_observations"} <= tables
+    assert version == "6"
+    assert {
+        "tasks",
+        "task_events",
+        "task_logs",
+        "content_fts",
+        "commercial_observations",
+    } <= tables
 
 
 def test_create_persists_task_and_first_event(tmp_path: Path) -> None:
@@ -131,6 +138,45 @@ def test_transition_and_event_append_are_atomic(tmp_path: Path) -> None:
     assert [(event.sequence, event.type) for event in tasks.events(task.id)] == [
         (1, "task.created"),
         (2, "task.started"),
+    ]
+
+
+def test_diagnostic_logs_are_paginated_and_drop_non_allowlisted_content(tmp_path: Path) -> None:
+    tasks = repository(tmp_path)
+    task = tasks.create(new_task(kind=TaskKind.READ), "task.created")
+
+    first = tasks.append_log(
+        task.id,
+        TaskLogLevel.INFO,
+        "agent",
+        "agent.stage.started",
+        agent="DraftWriter",
+        details={
+            "stage": "drafting",
+            "source_count": 4,
+            "source_paths": ["canon/outline.md", "memory/summaries/book.md"],
+            "prompt": "不得保存的正文",
+            "api_key": "不得保存的密钥",
+            "unrelated": "不得保存的字段",
+        },
+    )
+    second = tasks.append_log(
+        task.id,
+        TaskLogLevel.ERROR,
+        "worker",
+        "worker.failed",
+        details={"error_code": "MODEL_RESPONSE_INVALID", "error_type": "ValueError"},
+    )
+
+    assert first.details == {
+        "stage": "drafting",
+        "source_count": 4,
+        "source_paths": ["canon/outline.md", "memory/summaries/book.md"],
+    }
+    assert [entry.id for entry in tasks.logs(task.id, limit=1)] == [first.id]
+    assert [entry.id for entry in tasks.logs(task.id, after_id=first.id)] == [second.id]
+    assert [entry.level for entry in tasks.logs(task.id, level=TaskLogLevel.ERROR)] == [
+        TaskLogLevel.ERROR
     ]
 
 

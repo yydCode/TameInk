@@ -3,6 +3,7 @@ import sqlite3
 from datetime import UTC, datetime
 from typing import Any
 
+from app.domain.diagnostics import TaskDiagnosticLog, TaskLogLevel
 from app.domain.errors import (
     ActiveTaskConflictError,
     InvalidTaskTransitionError,
@@ -158,6 +159,95 @@ class TasksRepository:
             timestamp=timestamp,
             data=data,
         )
+
+    def append_log(
+        self,
+        task_id: str,
+        level: TaskLogLevel,
+        component: str,
+        event: str,
+        *,
+        agent: str | None = None,
+        details: dict[str, Any] | None = None,
+    ) -> TaskDiagnosticLog:
+        safe_details = _safe_details(details or {})
+        connection = self.database.connect(self.project_id)
+        try:
+            connection.isolation_level = None
+            connection.execute("BEGIN IMMEDIATE")
+            exists = connection.execute("SELECT 1 FROM tasks WHERE id = ?", (task_id,)).fetchone()
+            if exists is None:
+                raise TaskNotFoundError(task_id)
+            timestamp = datetime.now(UTC)
+            cursor = connection.execute(
+                """INSERT INTO task_logs(
+                    task_id, project_id, timestamp, level, component, event, agent, details
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    task_id,
+                    self.project_id,
+                    timestamp.isoformat(),
+                    level.value,
+                    component,
+                    event,
+                    agent,
+                    json.dumps(safe_details, ensure_ascii=False, separators=(",", ":")),
+                ),
+            )
+            if cursor.lastrowid is None:
+                raise RuntimeError("task diagnostic log id is missing")
+            log_id = int(cursor.lastrowid)
+            connection.commit()
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+        return TaskDiagnosticLog(
+            id=log_id,
+            task_id=task_id,
+            project_id=self.project_id,
+            timestamp=timestamp,
+            level=level,
+            component=component,
+            event=event,
+            agent=agent,
+            details=safe_details,
+        )
+
+    def logs(
+        self,
+        task_id: str,
+        *,
+        after_id: int = 0,
+        limit: int = 100,
+        level: TaskLogLevel | None = None,
+    ) -> list[TaskDiagnosticLog]:
+        query = """SELECT id, task_id, project_id, timestamp, level,
+        component, event, agent, details FROM task_logs
+        WHERE task_id = ? AND id > ?"""
+        parameters: list[object] = [task_id, after_id]
+        if level is not None:
+            query += " AND level = ?"
+            parameters.append(level.value)
+        query += " ORDER BY id LIMIT ?"
+        parameters.append(limit)
+        with self.database.connect(self.project_id) as connection:
+            rows = connection.execute(query, parameters).fetchall()
+        return [
+            TaskDiagnosticLog(
+                id=int(row[0]),
+                task_id=str(row[1]),
+                project_id=str(row[2]),
+                timestamp=datetime.fromisoformat(str(row[3])),
+                level=TaskLogLevel(str(row[4])),
+                component=str(row[5]),
+                event=str(row[6]),
+                agent=None if row[7] is None else str(row[7]),
+                details=_safe_details(json.loads(str(row[8]))),
+            )
+            for row in rows
+        ]
 
     def request_cancel(self, task_id: str) -> Task:
         connection = self.database.connect(self.project_id)
@@ -323,3 +413,65 @@ class TasksRepository:
             ),
         )
         return timestamp
+
+
+_SAFE_STRING_FIELDS = {
+    "agent",
+    "artifact",
+    "error_code",
+    "error_type",
+    "job_kind",
+    "model",
+    "phase",
+    "skill",
+    "stage",
+    "status",
+}
+_SAFE_INTEGER_FIELDS = {
+    "artifact_count",
+    "bytes_written",
+    "duration_ms",
+    "input_tokens",
+    "output_tokens",
+    "query_count",
+    "retrieved_count",
+    "source_count",
+    "total_characters",
+    "total_tokens",
+}
+_SAFE_FLOAT_FIELDS = {"input_cost_cny", "output_cost_cny", "total_cost_cny"}
+_SAFE_BOOLEAN_FIELDS = {"commercial_gate_passed", "cancel_requested"}
+_SAFE_PATH_LIST_FIELDS = {"source_paths"}
+
+
+def _safe_details(details: dict[str, Any]) -> dict[str, Any]:
+    """Keep only a small diagnostics allowlist so text content cannot leak into logs."""
+
+    result: dict[str, Any] = {}
+    for key, value in details.items():
+        if key in _SAFE_STRING_FIELDS and isinstance(value, str):
+            compact = value.strip()
+            if compact and "\n" not in compact and len(compact) <= 128:
+                result[key] = compact
+        elif key in _SAFE_INTEGER_FIELDS and isinstance(value, int) and not isinstance(value, bool):
+            if value >= 0:
+                result[key] = value
+        elif (
+            key in _SAFE_FLOAT_FIELDS
+            and isinstance(value, (int, float))
+            and not isinstance(value, bool)
+        ):
+            result[key] = round(float(value), 8)
+        elif key in _SAFE_BOOLEAN_FIELDS and isinstance(value, bool):
+            result[key] = value
+        elif key in _SAFE_PATH_LIST_FIELDS and isinstance(value, list):
+            paths = [
+                item
+                for item in value[:32]
+                if isinstance(item, str)
+                and item.strip() == item
+                and 1 <= len(item) <= 256
+                and all(character.isalnum() or character in "._-/" for character in item)
+            ]
+            result[key] = paths
+    return result

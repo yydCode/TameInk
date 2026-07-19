@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from app.domain.diagnostics import TaskLogLevel
 from app.domain.task import TaskKind
 from app.main import create_app
 from app.repositories.database import DatabaseRepository
@@ -125,6 +126,50 @@ def test_task_run_is_empty_without_manifest_and_rejects_invalid_trace(
     assert response.status_code == 400
     assert response.json()["error"]["code"] == "WORKFLOW_GATE_BLOCKED"
     assert "invalid" not in response.text
+
+
+def test_task_logs_are_paginated_and_never_expose_prompt_or_secret(client: TestClient) -> None:
+    task = create_task(client, "read")
+    repository = TasksRepository(DatabaseRepository(client.app.state.workspace), "story-01")
+    first = repository.append_log(
+        str(task["id"]),
+        TaskLogLevel.INFO,
+        "agent",
+        "agent.stage.started",
+        agent="StoryArchitect",
+        details={"stage": "architecture", "prompt": "正文不得出现", "api_key": "secret"},
+    )
+    second = repository.append_log(
+        str(task["id"]),
+        TaskLogLevel.ERROR,
+        "worker",
+        "worker.failed",
+        details={"error_code": "MODEL_RESPONSE_INVALID"},
+    )
+
+    endpoint = f"/api/projects/story-01/tasks/{task['id']}/logs"
+    first_page = client.get(f"{endpoint}?after_id=1&limit=1")
+    assert first_page.status_code == 200
+    first_payload = first_page.json()
+    assert first_payload["next_after_id"] == first.id
+    assert first_payload["items"] == [
+        {
+            "id": first.id,
+            "task_id": task["id"],
+            "project_id": "story-01",
+            "timestamp": first_payload["items"][0]["timestamp"],
+            "level": "info",
+            "component": "agent",
+            "event": "agent.stage.started",
+            "agent": "StoryArchitect",
+            "details": {"stage": "architecture"},
+        }
+    ]
+    second_page = client.get(f"{endpoint}?after_id={first.id}&level=error")
+    assert second_page.json()["items"][0]["id"] == second.id
+    assert "正文" not in first_page.text
+    assert "secret" not in first_page.text
+    assert client.get(f"{endpoint}?limit=0").status_code == 400
 
 
 def test_api_maps_domain_errors_without_sqlite_details(client: TestClient) -> None:

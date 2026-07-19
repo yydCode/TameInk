@@ -13,6 +13,7 @@ from app.agents.schemas import (
     RevisionProposal,
     StyleIssue,
 )
+from app.domain.diagnostics import TaskLogLevel
 from app.domain.errors import CommercialGateError, WorkflowGateError
 from app.domain.revision import RevisionWrite
 from app.domain.task import Task, TaskKind, TaskPurpose
@@ -302,6 +303,25 @@ class ChapterService:
                 }
             ),
         )
+        artifacts = ["plan.md", "chapter.md", "run.json"]
+        if commercial_report is not None:
+            artifacts.append("commercial-report.json")
+        if memory_candidates is not None:
+            artifacts.append("memory-candidates.json")
+        if audit_reports is not None:
+            artifacts.append("audit-reports.json")
+        service.repository.append_log(
+            task_id,
+            TaskLogLevel.INFO,
+            "workflow",
+            "workflow.chapter_candidate_written",
+            details={
+                "artifact": "chapter.md",
+                "artifact_count": len(artifacts),
+                "bytes_written": len(draft.encode("utf-8")),
+                "commercial_gate_passed": commercial_gate_passed is True,
+            },
+        )
         return service.await_approval(task_id)
 
     def _require_prerequisites(self, project_id: str, volume_id: str) -> None:
@@ -365,6 +385,17 @@ class ChapterService:
                 revisions.current_revision(project_id),
             )
             DatabaseRepository(self.workspace).rebuild(project_id)
+            service.repository.append_log(
+                task_id,
+                TaskLogLevel.INFO,
+                "workflow",
+                "workflow.chapter_confirmed",
+                details={
+                    "artifact": f"canon/chapters/{chapter_id}.md",
+                    "artifact_count": 1,
+                    "bytes_written": len(content.encode("utf-8")),
+                },
+            )
         except Exception:
             service.fail(task_id)
             raise
@@ -414,6 +445,17 @@ class ChapterService:
             report.model_dump_json(indent=2),
         )
         drafts.write(project_id, task_id, "run.json", json.dumps(manifest))
+        TasksRepository(DatabaseRepository(self.workspace), project_id).append_log(
+            task_id,
+            TaskLogLevel.INFO,
+            "workflow",
+            "workflow.commercial_report_written",
+            details={
+                "artifact": "commercial-report.json",
+                "artifact_count": 1,
+                "commercial_gate_passed": passed,
+            },
+        )
         return passed
 
     @staticmethod

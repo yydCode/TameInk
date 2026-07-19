@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
+from app.domain.diagnostics import TaskDiagnosticLog, TaskLogLevel
 from app.domain.errors import InvalidTaskTransitionError
 from app.domain.task import Task, TaskEvent, TaskKind, TaskPurpose, TaskStatus
 from app.repositories.tasks import TasksRepository
@@ -37,7 +38,15 @@ class TaskService:
             created_at=now,
             updated_at=now,
         )
-        return self.repository.create(task, "task.created")
+        created = self.repository.create(task, "task.created")
+        self.repository.append_log(
+            created.id,
+            TaskLogLevel.INFO,
+            "task",
+            "task.created",
+            details={"status": created.status.value},
+        )
+        return created
 
     def get(self, task_id: str) -> Task:
         return self.repository.get(task_id)
@@ -45,6 +54,17 @@ class TaskService:
     def events(self, task_id: str, after: int = 0) -> list[TaskEvent]:
         self.get(task_id)
         return self.repository.events(task_id, after)
+
+    def logs(
+        self,
+        task_id: str,
+        *,
+        after_id: int = 0,
+        limit: int = 100,
+        level: TaskLogLevel | None = None,
+    ) -> list[TaskDiagnosticLog]:
+        self.get(task_id)
+        return self.repository.logs(task_id, after_id=after_id, limit=limit, level=level)
 
     def start(self, task_id: str) -> Task:
         return self._transition(task_id, TaskStatus.RUNNING, "task.started")
@@ -67,7 +87,15 @@ class TaskService:
     def cancel(self, task_id: str) -> Task:
         task = self.get(task_id)
         if task.status is TaskStatus.RUNNING:
-            return self.repository.request_cancel(task_id)
+            requested = self.repository.request_cancel(task_id)
+            self.repository.append_log(
+                task_id,
+                TaskLogLevel.WARNING,
+                "task",
+                "task.cancel_requested",
+                details={"status": requested.status.value, "cancel_requested": True},
+            )
+            return requested
         return self._transition(task_id, TaskStatus.CANCELLED, "task.cancelled")
 
     def cancellation_requested(self, task_id: str) -> bool:
@@ -87,6 +115,13 @@ class TaskService:
     ) -> Task:
         if error_code is not None:
             self.repository.record_error(task_id, error_code, error_message or "task failed")
+            self.repository.append_log(
+                task_id,
+                TaskLogLevel.ERROR,
+                "task",
+                "task.error_recorded",
+                details={"error_code": error_code},
+            )
         return self._transition(task_id, TaskStatus.FAILED, "task.failed")
 
     def retry(self, task_id: str) -> Task:
@@ -124,4 +159,19 @@ class TaskService:
     def _transition(self, task_id: str, target: TaskStatus, event_type: str) -> Task:
         current = self.get(task_id)
         transition_task(current.status, target)
-        return self.repository.transition(task_id, current.status, target, event_type)
+        updated = self.repository.transition(task_id, current.status, target, event_type)
+        level = (
+            TaskLogLevel.ERROR
+            if target is TaskStatus.FAILED
+            else TaskLogLevel.WARNING
+            if target in {TaskStatus.CANCELLED, TaskStatus.INTERRUPTED}
+            else TaskLogLevel.INFO
+        )
+        self.repository.append_log(
+            task_id,
+            level,
+            "task",
+            "task.status_changed",
+            details={"status": target.value},
+        )
+        return updated

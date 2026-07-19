@@ -6,6 +6,8 @@ export const queryKeys = {
   workflow: (projectId: string) => ["workflow", projectId] as const,
   tasks: (projectId: string) => ["tasks", projectId] as const,
   task: (projectId: string, taskId: string) => ["task", projectId, taskId] as const,
+  taskLogs: (projectId: string, taskId: string, level: string) =>
+    ["task-logs", projectId, taskId, level] as const,
   document: (projectId: string, path: string) => ["document", projectId, path] as const,
   commercial: (projectId: string) => ["commercial", projectId] as const,
   memory: (projectId: string) => ["memory", projectId] as const,

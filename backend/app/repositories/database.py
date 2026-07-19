@@ -37,7 +37,7 @@ class DatabaseRepository:
             if version is None or version in {"1", "2"}:
                 migration = f"""BEGIN IMMEDIATE;
 {schema}
-INSERT INTO metadata(key, value) VALUES ('schema_version', '5')
+INSERT INTO metadata(key, value) VALUES ('schema_version', '6')
 ON CONFLICT(key) DO UPDATE SET value = excluded.value;
 COMMIT;
 """
@@ -50,9 +50,13 @@ COMMIT;
             elif version == "3":
                 self._migrate_v3_to_v4(connection)
                 self._migrate_v4_to_v5(connection)
+                self._migrate_v5_to_v6(connection)
             elif version == "4":
                 self._migrate_v4_to_v5(connection)
-            elif version != "5":
+                self._migrate_v5_to_v6(connection)
+            elif version == "5":
+                self._migrate_v5_to_v6(connection)
+            elif version != "6":
                 raise DatabaseSchemaError(f"unsupported schema version: {version}")
 
     @staticmethod
@@ -94,6 +98,31 @@ ON tasks(project_id)
 WHERE kind = 'write'
   AND status IN ('pending', 'running', 'awaiting_approval');
 UPDATE metadata SET value = '5' WHERE key = 'schema_version';
+COMMIT;
+"""
+        try:
+            connection.executescript(migration)
+        except sqlite3.Error:
+            if connection.in_transaction:
+                connection.rollback()
+            raise
+
+    @staticmethod
+    def _migrate_v5_to_v6(connection: sqlite3.Connection) -> None:
+        migration = """BEGIN IMMEDIATE;
+CREATE TABLE IF NOT EXISTS task_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    project_id TEXT NOT NULL,
+    timestamp TEXT NOT NULL,
+    level TEXT NOT NULL CHECK (level IN ('info', 'warning', 'error')),
+    component TEXT NOT NULL CHECK (length(trim(component)) > 0),
+    event TEXT NOT NULL CHECK (length(trim(event)) > 0),
+    agent TEXT,
+    details TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS task_logs_by_task_id ON task_logs(task_id, id);
+UPDATE metadata SET value = '6' WHERE key = 'schema_version';
 COMMIT;
 """
         try:

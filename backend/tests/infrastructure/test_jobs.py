@@ -31,6 +31,9 @@ def test_sql_queue_persists_job_and_request_without_running_it(tmp_path: Path) -
     request = DraftRepository(workspace).read("queue-book", task.id, "request.json")
     assert "book_outline" in request
     assert "生成大纲" in request
+    logs = service.logs(task.id)
+    assert (logs[-1].component, logs[-1].event) == ("queue", "queue.enqueued")
+    assert logs[-1].details == {"job_kind": "book_outline"}
 
 
 def test_running_job_cancels_after_current_model_boundary_and_discards_candidate(
@@ -90,4 +93,13 @@ def test_running_job_cancels_after_current_model_boundary_and_discards_candidate
         "task.cancel_requested",
         "agent.stage.completed",
         "task.cancelled",
+    ]
+    assert [
+        (entry.component, entry.event) for entry in service.logs(created.task.id)[-5:]
+    ] == [
+        ("agent", "agent.stage.started"),
+        ("task", "task.cancel_requested"),
+        ("agent", "agent.stage.completed"),
+        ("worker", "worker.cancelled"),
+        ("task", "task.status_changed"),
     ]

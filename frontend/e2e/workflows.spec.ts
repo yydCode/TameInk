@@ -286,6 +286,29 @@ test.beforeEach(async ({ page }) => {
           },
         ],
       });
+    if (path.endsWith(`/tasks/${failedTask.id}/logs`))
+      return route.fulfill({
+        json: {
+          items: [
+            {
+              id: 41,
+              task_id: failedTask.id,
+              project_id: project.id,
+              timestamp: failedTask.updated_at,
+              level: "error",
+              component: "worker",
+              event: "worker.failed",
+              agent: null,
+              details: {
+                job_kind: "book_outline",
+                error_code: "AGENT_RUN_FAILED",
+                error_type: "RuntimeError",
+              },
+            },
+          ],
+          next_after_id: null,
+        },
+      });
     if (path.endsWith(`/tasks/${failedTask.id}/retry`)) {
       const retry = {
         ...failedTask,
@@ -427,6 +450,8 @@ test("shows errors and creates linked retries", async ({ page }) => {
     .first()
     .click();
   await expect(page.getByText("AGENT_RUN_FAILED").last()).toBeVisible();
+  await expect(page.getByText("Worker 执行失败")).toBeVisible();
+  await expect(page.getByText("job_kind")).toBeVisible();
   await page.getByRole("button", { name: "重试任务" }).click();
   await expect(page.getByText("等待开始").first()).toBeVisible();
 });

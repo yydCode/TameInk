@@ -100,6 +100,25 @@ export interface TaskRunManifest {
   agent_runs: AgentRunTrace[];
 }
 
+export type TaskLogLevel = "info" | "warning" | "error";
+
+export interface TaskDiagnosticLog {
+  id: number;
+  task_id: string;
+  project_id: string;
+  timestamp: string;
+  level: TaskLogLevel;
+  component: string;
+  event: string;
+  agent: string | null;
+  details: Record<string, string | number | boolean | string[]>;
+}
+
+export interface TaskLogsResponse {
+  items: TaskDiagnosticLog[];
+  next_after_id: number | null;
+}
+
 export interface MemoryRecord {
   id: string;
   kind: "fact" | "event" | "relationship" | "foreshadowing";
@@ -305,6 +324,19 @@ export function getTask(projectId: string, taskId: string): Promise<Task> {
 
 export function getTaskRun(projectId: string, taskId: string): Promise<TaskRunManifest> {
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}/tasks/${taskId}/run`);
+}
+
+export function getTaskLogs(
+  projectId: string,
+  taskId: string,
+  options: { afterId?: number; level?: TaskLogLevel } = {},
+): Promise<TaskLogsResponse> {
+  const search = new URLSearchParams({ limit: "100" });
+  if (options.afterId) search.set("after_id", String(options.afterId));
+  if (options.level) search.set("level", options.level);
+  return requestJson(
+    `/api/projects/${encodeURIComponent(projectId)}/tasks/${taskId}/logs?${search.toString()}`,
+  );
 }
 
 export function getDraft(projectId: string, taskId: string, path: string): Promise<{ task_id: string; path: string; content: string; revision: string | null }> {

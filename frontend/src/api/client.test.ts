@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { approveChapter, createCommercialObservation, createProject, generateCommercialProfile, getTaskRun } from "./client";
+import { approveChapter, createCommercialObservation, createProject, generateCommercialProfile, getTaskLogs, getTaskRun } from "./client";
 
 describe("API client", () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -79,5 +79,17 @@ describe("API client", () => {
 
     await expect(getTaskRun("book 1", "task-1")).resolves.toEqual(manifest);
     expect(fetcher).toHaveBeenCalledWith("/api/projects/book%201/tasks/task-1/run", expect.any(Object));
+  });
+
+  it("reads task logs with a cursor and level filter", async () => {
+    const payload = { items: [], next_after_id: null };
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify(payload), { status: 200 }));
+    vi.stubGlobal("fetch", fetcher);
+
+    await expect(getTaskLogs("book 1", "task-1", { afterId: 42, level: "error" })).resolves.toEqual(payload);
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/projects/book%201/tasks/task-1/logs?limit=100&after_id=42&level=error",
+      expect.any(Object),
+    );
   });
 });
