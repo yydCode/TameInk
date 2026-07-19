@@ -33,9 +33,54 @@ export interface Task {
   id: string;
   project_id: string;
   kind: "read" | "write";
+  purpose: "manual" | "setting" | "commercial" | "book_outline" | "volume_outline" | "chapter" | "import" | "commercial_audit" | "memory_curation" | "export";
   status: TaskStatus;
+  subject_id: string | null;
+  volume_id: string | null;
+  chapter_id: string | null;
+  parent_task_id: string | null;
+  retry_of_task_id: string | null;
+  cancel_requested_at: string | null;
+  error_code: string | null;
+  error_message: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  duration_ms: number | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface ProjectDocument {
+  path: string;
+  kind: "setting" | "outline" | "commercial" | "volume" | "chapter";
+  title: string;
+  word_count: number;
+  updated_at: string;
+}
+
+export interface ChapterNode extends ProjectDocument {
+  kind: "chapter";
+  id: string;
+  volume_id: string | null;
+}
+
+export interface VolumeNode extends ProjectDocument {
+  kind: "volume";
+  id: string;
+  chapters: ChapterNode[];
+}
+
+export interface ProjectSnapshot {
+  project: Project;
+  documents: ProjectDocument[];
+  volumes: VolumeNode[];
+  unassigned_chapters: ChapterNode[];
+  stats: {
+    total_words: number;
+    chapter_count: number;
+    volume_count: number;
+    active_foreshadow_count: number;
+  };
 }
 
 export interface AgentRunTrace {
@@ -62,6 +107,15 @@ export interface MemoryRecord {
   source: string;
   location: string;
   quote: string;
+  content?: string | null;
+}
+
+export interface MemoryCandidate {
+  stable_id: string;
+  kind: MemoryRecord["kind"];
+  operation: "create" | "update" | "close";
+  content: string;
+  citation: { source: "draft"; location: string; quote: string };
 }
 
 export interface CommercialTargets {
@@ -112,6 +166,7 @@ export interface CommercialReport {
     dimension: CommercialDimension;
     description: string;
     citation: { source: "draft"; location: string; quote: string };
+    references?: Array<{ path: string; location: string; quote: string }>;
   }>;
 }
 
@@ -214,6 +269,14 @@ export function getProject(projectId: string): Promise<Project> {
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}`);
 }
 
+export function getProjectSnapshot(projectId: string): Promise<ProjectSnapshot> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/snapshot`);
+}
+
+export function getDocument(projectId: string, path: string): Promise<{ path: string; content: string; revision: string | null }> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/documents?path=${encodeURIComponent(path)}`);
+}
+
 export function getWorkflowStatus(projectId: string): Promise<WorkflowStatus> {
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}/workflow-status`);
 }
@@ -230,6 +293,10 @@ export function listTaskDrafts(projectId: string, taskId: string): Promise<strin
 
 export function transitionTask(projectId: string, taskId: string, action: "start" | "cancel" | "fail"): Promise<Task> {
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}/tasks/${taskId}/${action}`, { method: "POST" });
+}
+
+export function retryTask(projectId: string, taskId: string): Promise<Task> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/tasks/${taskId}/retry`, { method: "POST" });
 }
 
 export function getTask(projectId: string, taskId: string): Promise<Task> {
@@ -281,38 +348,31 @@ export function approveVolume(projectId: string, volumeId: string, taskId: strin
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}/design/volumes/${encodeURIComponent(volumeId)}/${taskId}/approve`, { method: "POST" });
 }
 
-export interface GeneratedTask {
-  task: Task;
-  content: string;
-}
-
-export interface GeneratedChapter extends GeneratedTask, CommercialAudit {}
-
-export function generateSetting(projectId: string, taskId: string, instruction: string): Promise<GeneratedTask> {
+export function generateSetting(projectId: string, taskId: string, instruction: string): Promise<Task> {
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}/design/agent/setting/${taskId}`, {
     method: "POST",
     body: JSON.stringify({ instruction }),
   });
 }
 
-export function generateOutline(projectId: string, instruction: string): Promise<GeneratedTask> {
+export function generateOutline(projectId: string, instruction: string): Promise<Task> {
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}/design/agent/outline`, {
     method: "POST",
     body: JSON.stringify({ instruction }),
   });
 }
 
-export function generateVolume(projectId: string, volumeId: string, instruction: string): Promise<GeneratedTask> {
+export function generateVolume(projectId: string, volumeId: string, instruction: string): Promise<Task> {
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}/design/agent/volumes/${encodeURIComponent(volumeId)}`, {
     method: "POST",
     body: JSON.stringify({ instruction }),
   });
 }
 
-export function generateChapter(projectId: string, chapterId: string, instruction: string): Promise<GeneratedChapter> {
+export function generateChapter(projectId: string, chapterId: string, instruction: string, volumeId = "1"): Promise<Task> {
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}/design/agent/chapters/${encodeURIComponent(chapterId)}`, {
     method: "POST",
-    body: JSON.stringify({ instruction }),
+    body: JSON.stringify({ instruction, volume_id: volumeId }),
   });
 }
 
@@ -327,14 +387,14 @@ export function startChapter(
   });
 }
 
-export function approveChapter(projectId: string, chapterId: string, taskId: string, commercialOverrideReason?: string): Promise<Task> {
+export function approveChapter(projectId: string, chapterId: string, taskId: string, commercialOverrideReason?: string, acceptedMemoryIds: string[] = []): Promise<Task> {
   return requestJson(
     `/api/projects/${encodeURIComponent(projectId)}/design/chapters/${encodeURIComponent(chapterId)}/${taskId}/approve`,
-    { method: "POST", body: JSON.stringify({ commercial_override_reason: commercialOverrideReason ?? null }) },
+    { method: "POST", body: JSON.stringify({ commercial_override_reason: commercialOverrideReason ?? null, accepted_memory_ids: acceptedMemoryIds }) },
   );
 }
 
-export function auditChapterCommercially(projectId: string, chapterId: string, taskId: string): Promise<CommercialAudit> {
+export function auditChapterCommercially(projectId: string, chapterId: string, taskId: string): Promise<Task> {
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}/design/agent/chapters/${encodeURIComponent(chapterId)}/${taskId}/commercial-audit`, { method: "POST" });
 }
 
@@ -370,7 +430,7 @@ export function generateCommercialProfile(projectId: string, input: {
   differentiator: string;
   comparable_titles: string[];
   instruction: string;
-}): Promise<{ task: Task; profile: CommercialProfile }> {
+}): Promise<Task> {
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}/commercial/agent`, { method: "POST", body: JSON.stringify(input) });
 }
 
@@ -396,6 +456,10 @@ export function searchMemory(projectId: string, query: string): Promise<Array<{ 
 
 export function listMemory(projectId: string): Promise<MemoryRecord[]> {
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}/memory`);
+}
+
+export function listMemoryCandidates(projectId: string, taskId: string): Promise<MemoryCandidate[]> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/tasks/${taskId}/memory-candidates`);
 }
 
 export function correctMemory(projectId: string, record: MemoryRecord): Promise<MemoryRecord> {
@@ -454,12 +518,25 @@ export function confirmImport(projectId: string, importId: string, preview: Impo
   });
 }
 
+export function approveImport(projectId: string, importId: string, taskId: string): Promise<Task> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/imports/${encodeURIComponent(importId)}/${taskId}/approve`, { method: "POST" });
+}
+
+export interface Revision { id: string; message: string }
+export interface RevisionDiff { path: string; status: "added" | "modified" | "deleted"; patch: string }
+export function listRevisions(projectId: string): Promise<Revision[]> { return requestJson(`/api/projects/${encodeURIComponent(projectId)}/revisions`); }
+export function compareRevisions(projectId: string, base: string, target: string): Promise<RevisionDiff[]> { return requestJson(`/api/projects/${encodeURIComponent(projectId)}/revisions/diff?base=${encodeURIComponent(base)}&target=${encodeURIComponent(target)}`); }
+export function restoreRevision(projectId: string, revisionId: string, expectedRevision: string): Promise<Revision> { return requestJson(`/api/projects/${encodeURIComponent(projectId)}/revisions/${revisionId}/restore`, { method: "POST", body: JSON.stringify({ expected_revision: expectedRevision }) }); }
+
+export interface UsageSummary { project_id: string; model: string | null; request_count: number; input_tokens: number; output_tokens: number; total_tokens: number; total_cost_cny: number; pricing_configured: boolean }
+export function getProjectUsage(projectId: string): Promise<UsageSummary> { return requestJson(`/api/projects/${encodeURIComponent(projectId)}/usage`); }
+
 export interface ModelSettings {
   base_url: string;
   model: string;
   timeout: number;
   disable_thinking: boolean;
-  has_api_key?: boolean;
+  has_api_key: boolean;
 }
 
 export function getModelSettings(): Promise<ModelSettings> { return requestJson("/api/settings"); }

@@ -47,14 +47,24 @@ make install
 
 ## 运行
 
-分别在两个终端启动后端和前端：
+开发环境必须同时运行 API、单进程任务 worker 和前端。可以在一个终端启动：
+
+```bash
+make dev
+```
+
+也可以分别在三个终端启动，便于单独查看日志：
 
 ```bash
 make backend-dev
+make backend-worker
 make frontend-dev
 ```
 
-前端地址为 `http://127.0.0.1:5173`，后端健康检查为 `http://127.0.0.1:8000/api/health`。前端无法连接后端时会显示“后端离线”。
+前端地址为 `http://127.0.0.1:5173`，后端健康检查为
+`http://127.0.0.1:8000/api/health`。Agent 请求由 API 返回 `202 + Task` 后进入持久队列，
+没有运行 `backend-worker` 时任务会停留在 `pending`。worker 固定为单进程，模型调用不自动
+重试、不切换模型。前端无法连接后端时会显示“后端离线”。
 
 ## 测试与检查
 
@@ -79,10 +89,12 @@ make e2e-live
 ```
 
 live 报告和 token 用量记录位于 `output/live/`。也可以设置
-`TAME_INK_USAGE_LOG`，让多个显式 live 命令共享同一份预算记录。价格缺失、模型响应
+`TAME_INK_USAGE_LOG`，让多个显式 live 命令共享同一份预算记录。`e2e-live` 使用独占端口
+`8010`（API）和 `5180`（前端），端口被占用时直接失败。价格缺失、模型响应
 缺少 token usage、Schema 错误、连接失败或预算超限都会立即失败，不会按字符数估算、
 自动重试或切换模型。`e2e-live` 只把模型设置复制到临时 workspace，测试结束后删除临时
-作品，不修改当前作品目录和全局 Keyring。
+作品，不修改当前作品目录和全局 Keyring。报告包含模型、脱敏 Base URL、调用数、Agent
+来源、token 和费用汇总；浏览器 console error、任务失败或商业门槛未通过都会使验收失败。
 
 也可以分别运行：
 

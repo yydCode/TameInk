@@ -194,6 +194,11 @@ class ChapterService:
             commercial_report=final_commercial,
             minimum_commercial_score=commercial_profile.minimum_commercial_score,
             memory_candidates=memory,
+            audit_reports={
+                "continuity": [issue.model_dump(mode="json") for issue in continuity],
+                "style": [issue.model_dump(mode="json") for issue in style],
+                "initial_commercial": commercial.model_dump(mode="json"),
+            },
         )
 
     def start(
@@ -207,6 +212,7 @@ class ChapterService:
         commercial_report: CommercialReport | None = None,
         minimum_commercial_score: int | None = None,
         memory_candidates: MemoryCuration | None = None,
+        audit_reports: dict[str, object] | None = None,
     ) -> Task:
         if (commercial_report is None) != (minimum_commercial_score is None):
             raise WorkflowGateError(
@@ -233,6 +239,7 @@ class ChapterService:
             commercial_report,
             minimum_commercial_score,
             memory_candidates,
+            audit_reports,
         )
 
     def _store_candidate(
@@ -247,6 +254,7 @@ class ChapterService:
         commercial_report: CommercialReport | None,
         minimum_commercial_score: int | None,
         memory_candidates: MemoryCuration | None,
+        audit_reports: dict[str, object] | None,
     ) -> Task:
         service = TaskService(TasksRepository(DatabaseRepository(self.workspace), project_id))
         drafts = DraftRepository(self.workspace)
@@ -271,6 +279,13 @@ class ChapterService:
                 task_id,
                 "memory-candidates.json",
                 memory_candidates.model_dump_json(indent=2),
+            )
+        if audit_reports is not None:
+            drafts.write(
+                project_id,
+                task_id,
+                "audit-reports.json",
+                json.dumps(audit_reports, ensure_ascii=False, indent=2),
             )
         drafts.write(
             project_id,

@@ -1,4 +1,4 @@
-.PHONY: install backend-dev backend-worker frontend-dev test check e2e evaluate evaluate-live e2e-live verify
+.PHONY: install backend-dev backend-worker frontend-dev dev test check e2e evaluate evaluate-live e2e-live verify
 
 install:
 	cd backend && uv sync
@@ -13,6 +13,9 @@ backend-worker:
 
 frontend-dev:
 	cd frontend && pnpm dev
+
+dev:
+	@$(MAKE) backend-dev & api=$$!; $(MAKE) backend-worker & worker=$$!; $(MAKE) frontend-dev & frontend=$$!; trap 'kill $$api $$worker $$frontend 2>/dev/null' INT TERM EXIT; wait
 
 test:
 	cd backend && uv run pytest

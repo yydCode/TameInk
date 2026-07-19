@@ -33,6 +33,7 @@ class GenerateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     instruction: str
+    volume_id: str = "1"
 
 
 class ChapterApprovalRequest(BaseModel):
@@ -157,7 +158,7 @@ def generate_chapter(
     payload: GenerateRequest,
     request: Request,
 ) -> Task:
-    volume_id = "1"
+    volume_id = payload.volume_id
     task = _create_agent_task(
         request,
         project_id,

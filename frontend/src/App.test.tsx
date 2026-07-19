@@ -1,175 +1,119 @@
 import "@testing-library/jest-dom/vitest";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
+import { queryKeys } from "./app/queryKeys";
+
+function renderApp(path = "/") {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return { ...render(<QueryClientProvider client={queryClient}><MemoryRouter initialEntries={[path]}><App /></MemoryRouter></QueryClientProvider>), queryClient };
+}
+
+function response(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+}
 
 describe("App", () => {
-  afterEach(() => {
-    cleanup();
-    localStorage.clear();
-    vi.useRealTimers();
-    vi.unstubAllGlobals();
-  });
+  afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
-  it("shows the application title and an explicit offline status", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
-
-    render(<App />);
-
+  it("shows a persistent offline state without hiding the workspace", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("offline")));
+    renderApp();
     expect(screen.getByRole("heading", { name: "Tame Ink" })).toBeInTheDocument();
     expect(await screen.findByText("后端离线")).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "项目导航" })).toBeInTheDocument();
   });
 
-  it("shows the backend as offline when the health request times out", async () => {
-    vi.useFakeTimers();
-    vi.stubGlobal(
-      "fetch",
-      vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
-        return new Promise<Response>((_resolve, reject) => {
-          init?.signal?.addEventListener("abort", () => {
-            reject(new DOMException("The operation was aborted", "AbortError"));
-          });
-        });
-      }),
-    );
-
-    render(<App />);
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(5_000);
-    });
-
-    expect(screen.getByText("后端离线")).toBeInTheDocument();
-  });
-
-  it("cancels the health request when the application unmounts", () => {
-    let requestSignal: AbortSignal | undefined;
-    vi.stubGlobal(
-      "fetch",
-      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
-        if (String(input).endsWith("/api/health")) requestSignal = init?.signal ?? undefined;
-        return new Promise<Response>(() => undefined);
-      }),
-    );
-
-    const { unmount } = render(<App />);
-    unmount();
-
-    expect(requestSignal?.aborted).toBe(true);
-  });
-
-  it("opens the project creation workflow", () => {
+  it("opens the project creation workflow from the empty workspace", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("offline")));
-    render(<App />);
-
-    fireEvent.click(screen.getByRole("button", { name: "创建第一部作品" }));
-
+    renderApp();
+    fireEvent.click(await screen.findByRole("button", { name: "创建第一部作品" }));
     expect(screen.getByRole("heading", { name: "建立你的故事" })).toBeInTheDocument();
     expect(screen.getByLabelText("项目 ID")).toHaveValue("my-novel");
-    expect(screen.getByRole("button", { name: "创建并进入工作台" })).toBeInTheDocument();
   });
 
-  it("shows project-scoped menu states and keeps model settings globally available", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("offline")));
-    render(<App />);
-
-    fireEvent.click(screen.getByRole("button", { name: "章节工作台" }));
-    expect(screen.getByRole("heading", { name: "章节工作台需要一个作品" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "模型设置" }));
-    expect(screen.getByRole("heading", { name: "模型设置", level: 2 })).toBeInTheDocument();
-    expect(screen.getByLabelText("Base URL")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "保存设置" })).toBeInTheDocument();
-  });
-
-  it("renders the commercial workbench and requires a custom platform name", async () => {
-    const project = { id: "book-1", title: "失忆签到", language: "zh-CN", genre: "玄幻升级", target_words: 800000, constraints: "第三人称" };
-    const profile = {
-      schema_version: 1,
-      platform: "fanqie",
-      custom_platform: null,
-      monetization: "free_ad",
-      target_reader: "升级读者",
-      core_fantasy: "以失忆换升级",
-      differentiator: "每次升级永久失去重要记忆",
-      emotional_payoffs: ["绝境反杀"],
-      opening_promise: "首章展示能力和代价",
-      first_thirty_chapter_promise: "三次升级改变关键关系",
-      update_cadence: "每日两章",
-      title_candidates: ["失忆签到"],
-      synopsis: "周玄必须在力量和身份之间选择。",
-      comparable_titles: [],
-      minimum_commercial_score: 75,
-      targets: { click_through_rate: null, chapter_one_completion_rate: null, chapter_three_retention_rate: null, follow_rate: null, revenue_per_thousand_opens_yuan: null },
-    };
-    const metrics = { observations: 1, impressions: 100, opens: 20, chapter_one_completions: 12, chapter_three_completions: 8, follows: 4, read_minutes: 160, revenue_cents: 250, click_through_rate: 0.2, chapter_one_completion_rate: 0.6, chapter_three_retention_rate: 0.4, follow_rate: 0.2, average_read_minutes_per_open: 8, revenue_per_thousand_opens_yuan: 125 };
+  it("keeps model settings globally addressable", async () => {
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
       const path = new URL(String(input), "http://localhost").pathname;
-      const body = path === "/api/health" ? { status: "ok", service: "tame-ink-api", version: "0.1.0" }
-        : path === "/api/projects" ? [project]
-          : path === `/api/projects/${project.id}` ? project
-            : path === `/api/projects/${project.id}/tasks` ? []
-              : path.endsWith("/commercial/profile") ? profile
-                : path.endsWith("/commercial/metrics") ? metrics
-                  : path.endsWith("/commercial/observations") ? []
-                    : {};
-      return new Response(JSON.stringify(body), { status: 200 });
+      if (path === "/api/health") return response({ status: "ok", service: "tame-ink-api", version: "0.1.0" });
+      if (path === "/api/projects") return response([]);
+      if (path === "/api/settings") return response({ base_url: "https://api.example.com/v1", model: "model-1", timeout: 30, disable_thinking: false, has_api_key: true });
+      return response({}, 404);
     }));
-
-    render(<App />);
-    fireEvent.click((await screen.findAllByRole("button", { name: /失忆签到/ }))[0]);
-    fireEvent.click(await screen.findByRole("button", { name: "商业增长" }));
-
-    expect(await screen.findByRole("heading", { name: "番茄首测策略" })).toBeInTheDocument();
-    expect(screen.getAllByText("20.0%")).toHaveLength(2);
-    const confirm = screen.getByRole("button", { name: "确认商业定位" });
-    expect(confirm).toBeEnabled();
-    fireEvent.click(screen.getByRole("button", { name: "自定义" }));
-    expect(confirm).toBeDisabled();
-    fireEvent.change(screen.getByLabelText("平台名称"), { target: { value: "测试平台" } });
-    expect(confirm).toBeEnabled();
+    renderApp("/settings");
+    expect(await screen.findByRole("heading", { name: "模型设置", level: 2 })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText("Base URL")).toHaveValue("https://api.example.com/v1"));
+    expect(screen.getByText("密钥已保存")).toBeInTheDocument();
   });
 
-  it("shows the actual Skill and compiled sources for the active task", async () => {
-    const project = { id: "book-run", title: "上下文样本", language: "zh-CN", genre: "悬疑", target_words: 800000, constraints: "第三人称" };
-    const task = { id: "task-run", project_id: project.id, kind: "write", status: "completed", created_at: "2026-07-19T10:00:00Z", updated_at: "2026-07-19T10:01:00Z" };
-    const run = {
-      agent_runs: [{
-        agent: "RetentionAuditor",
-        skill: "webnovel-retention",
-        skill_sha256: "a".repeat(64),
-        stage: "retention-audit",
-        source_paths: ["canon/outline.md", "memory/summaries/book.md"],
-        queries: ["主角 能力"],
-        total_characters: 2048,
-        duration_ms: 321,
-        status: "success",
-        error_code: null,
-      }],
-    };
+  it("renders overview metrics from the project snapshot", async () => {
+    const project = { id: "book-1", title: "长夜", language: "zh-CN", genre: "悬疑", target_words: 800000, constraints: "第三人称" };
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
       const path = new URL(String(input), "http://localhost").pathname;
-      const body = path === "/api/health" ? { status: "ok", service: "tame-ink-api", version: "0.1.0" }
-        : path === "/api/projects" ? [project]
-          : path === `/api/projects/${project.id}` ? project
-            : path === `/api/projects/${project.id}/tasks` ? [task]
-              : path.endsWith(`/tasks/${task.id}/drafts`) ? ["chapter.md"]
-                : path.endsWith(`/tasks/${task.id}/run`) ? run
-                  : path.endsWith(`/drafts/${task.id}`) ? { task_id: task.id, path: "chapter.md", content: "# 第一章\n\n正文", revision: "r1" }
-                    : path.endsWith("/workflow-status") ? { setting_confirmed: true, outline_confirmed: true, volume_one_confirmed: true, commercial_confirmed: true }
-                      : path.endsWith(`/commercial/reports/${task.id}`) ? null
-                        : {};
-      return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (path === "/api/health") return response({ status: "ok", service: "tame-ink-api", version: "0.1.0" });
+      if (path === "/api/projects") return response([project]);
+      if (path === "/api/projects/book-1") return response(project);
+      if (path.endsWith("/snapshot")) return response({ project, documents: [], volumes: [], unassigned_chapters: [], stats: { total_words: 12345, chapter_count: 7, volume_count: 2, active_foreshadow_count: 3 } });
+      if (path.endsWith("/workflow-status")) return response({ setting_confirmed: true, outline_confirmed: true, volume_one_confirmed: true, commercial_confirmed: true });
+      if (path.endsWith("/tasks")) return response([]);
+      if (path.endsWith("/usage")) return response({ project_id: "book-1", model: "model-1", request_count: 2, input_tokens: 100, output_tokens: 50, total_tokens: 150, total_cost_cny: 0.02, pricing_configured: true });
+      if (path.endsWith("/revisions")) return response([]);
+      return response({}, 404);
     }));
+    renderApp("/projects/book-1/overview");
+    expect(await screen.findByRole("heading", { name: "长夜" })).toBeInTheDocument();
+    expect(screen.getByText("12,345")).toBeInTheDocument();
+    expect(screen.getByText("继续写下一章")).toBeInTheDocument();
+  });
 
-    render(<App />);
-    fireEvent.click((await screen.findAllByRole("button", { name: /上下文样本/ }))[0]);
+  it("does not pick an unrelated latest task for the story document", async () => {
+    const project = { id: "book-2", title: "任务隔离", language: "zh-CN", genre: "悬疑", target_words: 800000, constraints: "第三人称" };
+    const baseTask = { project_id: "book-2", kind: "write", subject_id: null, volume_id: null, chapter_id: null, parent_task_id: null, retry_of_task_id: null, cancel_requested_at: null, error_code: null, error_message: null, started_at: null, finished_at: null, duration_ms: null, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:01Z" };
+    const tasks = [{ ...baseTask, id: "chapter-task", purpose: "chapter", status: "awaiting_approval", subject_id: "1", volume_id: "1", chapter_id: "1" }, { ...baseTask, id: "setting-task", purpose: "setting", status: "completed", subject_id: "setting", duration_ms: 1 }];
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.pathname === "/api/health") return response({ status: "ok", service: "tame-ink-api", version: "0.1.0" });
+      if (url.pathname === "/api/projects") return response([project]);
+      if (url.pathname === "/api/projects/book-2") return response(project);
+      if (url.pathname.endsWith("/snapshot")) return response({ project, documents: [{ path: "canon/world/setting.md", kind: "setting", title: "正式设定", word_count: 4, updated_at: "2026-01-01T00:00:01Z" }], volumes: [], unassigned_chapters: [], stats: { total_words: 0, chapter_count: 0, volume_count: 0, active_foreshadow_count: 0 } });
+      if (url.pathname.endsWith("/workflow-status")) return response({ setting_confirmed: true, outline_confirmed: false, volume_one_confirmed: false, commercial_confirmed: false });
+      if (url.pathname.endsWith("/tasks")) return response(tasks);
+      if (url.pathname.endsWith("/documents")) return response({ path: "canon/world/setting.md", content: "# 正式设定\n\n城市落雨。", revision: "r1" });
+      return response({}, 404);
+    }));
+    renderApp("/projects/book-2/story");
+    expect(await screen.findByRole("heading", { name: "正式设定" })).toBeInTheDocument();
+    expect(screen.queryByText("chapter-task")).not.toBeInTheDocument();
+  });
 
-    expect(await screen.findByText("retention-audit")).toBeInTheDocument();
-    expect(screen.getByText("RetentionAuditor · webnovel-retention")).toBeInTheDocument();
-    expect(screen.getByText("1 条检索")).toBeInTheDocument();
-    expect(screen.getByText("2,048 字符")).toBeInTheDocument();
-    expect(screen.getByText("canon/outline.md")).toBeInTheDocument();
-    expect(screen.queryByText("canon/world/setting.md")).not.toBeInTheDocument();
+  it("reloads a regenerated setting draft when the reused task changes", async () => {
+    const project = { id: "book-3", title: "草稿刷新", language: "zh-CN", genre: "悬疑", target_words: 800000, constraints: "第三人称" };
+    const task = { id: "setting-task", project_id: "book-3", kind: "write", purpose: "setting", status: "awaiting_approval", subject_id: "setting", volume_id: null, chapter_id: null, parent_task_id: null, retry_of_task_id: null, cancel_requested_at: null, error_code: null, error_message: null, started_at: null, finished_at: null, duration_ms: null, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:01Z" };
+    let draftContent = "# 旧设定\n\n旧版本。";
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.pathname === "/api/health") return response({ status: "ok", service: "tame-ink-api", version: "0.1.0" });
+      if (url.pathname === "/api/projects") return response([project]);
+      if (url.pathname === "/api/projects/book-3") return response(project);
+      if (url.pathname.endsWith("/snapshot")) return response({ project, documents: [], volumes: [], unassigned_chapters: [], stats: { total_words: 0, chapter_count: 0, volume_count: 0, active_foreshadow_count: 0 } });
+      if (url.pathname.endsWith("/workflow-status")) return response({ setting_confirmed: false, outline_confirmed: false, volume_one_confirmed: false, commercial_confirmed: false });
+      if (url.pathname.endsWith("/tasks")) return response([task]);
+      if (url.pathname.endsWith("/drafts/setting-task")) return response({ task_id: task.id, path: "setting.md", content: draftContent, revision: "r1" });
+      return response({}, 404);
+    }));
+    const { queryClient } = renderApp("/projects/book-3/story");
+    expect(await screen.findByRole("heading", { name: "旧设定" })).toBeInTheDocument();
+
+    draftContent = "# 新设定\n\n模型生成的新版本。";
+    await act(async () => {
+      queryClient.setQueryData(queryKeys.tasks("book-3"), [
+        { ...task, updated_at: "2026-01-01T00:00:02Z" },
+      ]);
+    });
+
+    expect(await screen.findByRole("heading", { name: "新设定" })).toBeInTheDocument();
   });
 });

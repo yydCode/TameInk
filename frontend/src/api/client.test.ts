@@ -69,7 +69,7 @@ describe("API client", () => {
 
     expect(fetcher).toHaveBeenNthCalledWith(1, "/api/projects/book-1/commercial/agent", expect.objectContaining({ method: "POST", body: JSON.stringify(brief) }));
     expect(fetcher).toHaveBeenNthCalledWith(2, "/api/projects/book-1/commercial/observations", expect.objectContaining({ method: "POST", body: JSON.stringify(observation) }));
-    expect(fetcher).toHaveBeenNthCalledWith(3, "/api/projects/book-1/design/chapters/1/task-1/approve", expect.objectContaining({ method: "POST", body: JSON.stringify({ commercial_override_reason: "编辑确认用于对照实验" }) }));
+    expect(fetcher).toHaveBeenNthCalledWith(3, "/api/projects/book-1/design/chapters/1/task-1/approve", expect.objectContaining({ method: "POST", body: JSON.stringify({ commercial_override_reason: "编辑确认用于对照实验", accepted_memory_ids: [] }) }));
   });
 
   it("reads the validated task run manifest", async () => {
