@@ -51,19 +51,31 @@ class ChapterService:
             raise WorkflowGateError("approved commercial profile is required")
         plan = self.runner.invoke(
             "ChapterPlanner",
-            {"project_id": project_id, "chapter_id": chapter_id, "instruction": instruction},
+            {
+                "project_id": project_id,
+                "chapter_id": chapter_id,
+                "volume_id": volume_id,
+                "instruction": instruction,
+            },
         )
         if not isinstance(plan, ChapterPlan) or plan.chapter_id != chapter_id:
             raise WorkflowGateError("ChapterPlanner returned an invalid chapter plan")
         draft = self.runner.invoke(
             "DraftWriter",
-            {"project_id": project_id, "chapter_id": chapter_id, "plan": plan.model_dump()},
+            {
+                "project_id": project_id,
+                "chapter_id": chapter_id,
+                "volume_id": volume_id,
+                "plan": plan.model_dump(),
+            },
         )
         if not isinstance(draft, ChapterDraft) or draft.chapter_id != chapter_id:
             raise WorkflowGateError("DraftWriter returned an invalid chapter draft")
         audit_payload: dict[str, object] = {
             "project_id": project_id,
             "chapter_id": chapter_id,
+            "volume_id": volume_id,
+            "plan": plan.model_dump(),
             "draft": draft.markdown,
         }
         continuity = self.runner.invoke("ContinuityAuditor", audit_payload)
@@ -80,15 +92,15 @@ class ChapterService:
         continuity = self.normalize_audit_citations(draft.markdown, continuity)
         style = self.normalize_audit_citations(draft.markdown, style)
         commercial = self.normalize_commercial_report(draft.markdown, commercial)
-        issues = self.validate_audit_issues(
-            draft.markdown, continuity, style, commercial.issues
-        )
+        issues = self.validate_audit_issues(draft.markdown, continuity, style, commercial.issues)
         if issues:
             revisions = self.runner.invoke(
                 "DraftWriter",
                 {
                     "project_id": project_id,
                     "chapter_id": chapter_id,
+                    "volume_id": volume_id,
+                    "plan": plan.model_dump(),
                     "draft": draft.markdown,
                     "issues": [issue.model_dump() for issue in issues],
                     "instruction": "revise only the cited passages for reported issue IDs",
@@ -106,6 +118,8 @@ class ChapterService:
             {
                 "project_id": project_id,
                 "chapter_id": chapter_id,
+                "volume_id": volume_id,
+                "plan": plan.model_dump(),
                 "draft": revised,
                 "instruction": (
                     "score the revised candidate without assuming prior issues are fixed"
@@ -181,6 +195,7 @@ class ChapterService:
                     "volume_id": volume_id,
                     "commercial_gate_passed": commercial_gate_passed,
                     "minimum_commercial_score": minimum_commercial_score,
+                    "agent_runs": getattr(self.runner, "run_traces", lambda: [])(),
                 }
             ),
         )
@@ -222,7 +237,9 @@ class ChapterService:
                         content=content,
                         message=message,
                     ),
-                    *MemoryService.summary_writes(chapter_id, stored_volume_id, content),
+                    *MemoryService(self.workspace).summary_writes_for_project(
+                        project_id, chapter_id, stored_volume_id, content
+                    ),
                 ],
                 revisions.current_revision(project_id),
             )
@@ -232,9 +249,7 @@ class ChapterService:
             raise
         return service.complete(task_id)
 
-    def read_commercial_report(
-        self, project_id: str, task_id: str
-    ) -> CommercialReport | None:
+    def read_commercial_report(self, project_id: str, task_id: str) -> CommercialReport | None:
         drafts = DraftRepository(self.workspace)
         if "commercial-report.json" not in drafts.list_files(project_id, task_id):
             return None
@@ -270,9 +285,7 @@ class ChapterService:
         return passed
 
     @staticmethod
-    def commercial_gate_passed(
-        report: CommercialReport, minimum_commercial_score: int
-    ) -> bool:
+    def commercial_gate_passed(report: CommercialReport, minimum_commercial_score: int) -> bool:
         return report.total_score >= minimum_commercial_score and not any(
             issue.severity == "error" for issue in report.issues
         )
@@ -319,9 +332,7 @@ class ChapterService:
         return issues
 
     @staticmethod
-    def normalize_audit_citations(
-        draft: str, issues: Sequence[AuditIssueT]
-    ) -> list[AuditIssueT]:
+    def normalize_audit_citations(draft: str, issues: Sequence[AuditIssueT]) -> list[AuditIssueT]:
         normalized: list[AuditIssueT] = []
         for issue in issues:
             quote = issue.citation.quote
@@ -337,9 +348,7 @@ class ChapterService:
         return normalized
 
     @classmethod
-    def normalize_commercial_report(
-        cls, draft: str, report: CommercialReport
-    ) -> CommercialReport:
+    def normalize_commercial_report(cls, draft: str, report: CommercialReport) -> CommercialReport:
         return report.model_copy(
             update={"issues": cls.normalize_audit_citations(draft, report.issues)}
         )

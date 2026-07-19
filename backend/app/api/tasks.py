@@ -1,9 +1,12 @@
+import json
 from collections.abc import Callable
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Request, status
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
+from app.domain.errors import WorkflowGateError, WorkspacePathViolationError
+from app.domain.paths import validate_formal_path
 from app.domain.task import Task, TaskEvent, TaskKind
 from app.repositories.database import DatabaseRepository
 from app.repositories.drafts import DraftRepository
@@ -18,6 +21,54 @@ class CreateTaskRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     kind: TaskKind
+
+
+class AgentRunTrace(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    agent: str = Field(min_length=1, max_length=64)
+    skill: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+    skill_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    stage: str = Field(min_length=1, max_length=64)
+    source_paths: list[str] = Field(min_length=1, max_length=64)
+    queries: list[str] = Field(max_length=48)
+    total_characters: int = Field(ge=0)
+    duration_ms: int = Field(ge=0)
+    status: Literal["success", "failed"]
+    error_code: str | None = Field(max_length=128)
+
+    @field_validator("source_paths")
+    @classmethod
+    def validate_source_paths(cls, values: list[str]) -> list[str]:
+        if len(set(values)) != len(values):
+            raise ValueError("agent run source paths must be unique")
+        for value in values:
+            try:
+                validate_formal_path(value)
+            except WorkspacePathViolationError as error:
+                raise ValueError("agent run source path is invalid") from error
+        return values
+
+    @field_validator("queries")
+    @classmethod
+    def validate_queries(cls, values: list[str]) -> list[str]:
+        if len(set(values)) != len(values):
+            raise ValueError("agent run queries must be unique")
+        if any(value != value.strip() or not 2 <= len(value) <= 64 for value in values):
+            raise ValueError("agent run query is invalid")
+        return values
+
+    @model_validator(mode="after")
+    def validate_status(self) -> "AgentRunTrace":
+        if (self.status == "success") != (self.error_code is None):
+            raise ValueError("agent run status and error code disagree")
+        return self
+
+
+class TaskRunManifest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    agent_runs: list[AgentRunTrace]
 
 
 def task_service(request: Request, project_id: str) -> TaskService:
@@ -50,6 +101,23 @@ def list_task_drafts(
 ) -> list[str]:
     service.get(task_id)
     return DraftRepository(request.app.state.workspace).list_files(project_id, task_id)
+
+
+@router.get("/{task_id}/run", response_model=TaskRunManifest)
+def read_task_run(
+    project_id: str, task_id: str, request: Request, service: Service
+) -> TaskRunManifest:
+    service.get(task_id)
+    drafts = DraftRepository(request.app.state.workspace)
+    if "run.json" not in drafts.list_files(project_id, task_id):
+        return TaskRunManifest(agent_runs=[])
+    try:
+        stored = json.loads(drafts.read(project_id, task_id, "run.json"))
+        if not isinstance(stored, dict) or "agent_runs" not in stored:
+            raise ValueError("agent run manifest is missing")
+        return TaskRunManifest.model_validate({"agent_runs": stored["agent_runs"]})
+    except (json.JSONDecodeError, TypeError, ValueError, ValidationError) as error:
+        raise WorkflowGateError("stored agent run manifest is invalid") from error
 
 
 @router.get("/{task_id}/history", response_model=list[TaskEvent])

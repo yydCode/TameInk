@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { approveChapter, createCommercialObservation, createProject, generateCommercialProfile } from "./client";
+import { approveChapter, createCommercialObservation, createProject, generateCommercialProfile, getTaskRun } from "./client";
 
 describe("API client", () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -70,5 +70,14 @@ describe("API client", () => {
     expect(fetcher).toHaveBeenNthCalledWith(1, "/api/projects/book-1/commercial/agent", expect.objectContaining({ method: "POST", body: JSON.stringify(brief) }));
     expect(fetcher).toHaveBeenNthCalledWith(2, "/api/projects/book-1/commercial/observations", expect.objectContaining({ method: "POST", body: JSON.stringify(observation) }));
     expect(fetcher).toHaveBeenNthCalledWith(3, "/api/projects/book-1/design/chapters/1/task-1/approve", expect.objectContaining({ method: "POST", body: JSON.stringify({ commercial_override_reason: "编辑确认用于对照实验" }) }));
+  });
+
+  it("reads the validated task run manifest", async () => {
+    const manifest = { agent_runs: [{ agent: "ChapterPlanner", skill: "webnovel-chapter-planning" }] };
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify(manifest), { status: 200 }));
+    vi.stubGlobal("fetch", fetcher);
+
+    await expect(getTaskRun("book 1", "task-1")).resolves.toEqual(manifest);
+    expect(fetcher).toHaveBeenCalledWith("/api/projects/book%201/tasks/task-1/run", expect.any(Object));
   });
 });

@@ -41,6 +41,7 @@ REFERENCE = {"path": "canon/premise.md", "location": "paragraph 2", "quote": "�
                 "id": "plan-1",
                 "chapter_id": "chapter-1",
                 "content": "内容",
+                "context_intent": {"keywords": ["已确认事实"]},
                 "references": [REFERENCE],
             },
         ),

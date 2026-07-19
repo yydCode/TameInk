@@ -38,6 +38,23 @@ export interface Task {
   updated_at: string;
 }
 
+export interface AgentRunTrace {
+  agent: string;
+  skill: string;
+  skill_sha256: string;
+  stage: string;
+  source_paths: string[];
+  queries: string[];
+  total_characters: number;
+  duration_ms: number;
+  status: "success" | "failed";
+  error_code: string | null;
+}
+
+export interface TaskRunManifest {
+  agent_runs: AgentRunTrace[];
+}
+
 export interface MemoryRecord {
   id: string;
   kind: "fact" | "event" | "relationship" | "foreshadowing";
@@ -217,6 +234,10 @@ export function transitionTask(projectId: string, taskId: string, action: "start
 
 export function getTask(projectId: string, taskId: string): Promise<Task> {
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}/tasks/${taskId}`);
+}
+
+export function getTaskRun(projectId: string, taskId: string): Promise<TaskRunManifest> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/tasks/${taskId}/run`);
 }
 
 export function getDraft(projectId: string, taskId: string, path: string): Promise<{ task_id: string; path: string; content: string; revision: string | null }> {

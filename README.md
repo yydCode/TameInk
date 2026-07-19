@@ -14,6 +14,24 @@ Tame Ink 是面向个人本机使用的中文网络小说写作 Web 工具。当
 - 查看任务事件历史、取消任务和恢复中断状态
 - 在工作台配置并测试 OpenAI-compatible 模型连接，可显式关闭 thinking 以兼容结构化 Agent
 
+## Agent 与长篇上下文架构
+
+章节创作由确定性工作流控制，按顺序调用 `ChapterPlanner`、`DraftWriter`、
+`ContinuityAuditor`、`StyleCritic` 和 `RetentionAuditor`。每个阶段只运行一个受控
+DeepAgent，必须先读取对应的 `skills/webnovel-*` Skill，再按严格 Schema 输出；不允许
+Shell、任意网络请求、作品文件写入、隐式重试或绕过 Skill 的直接模型调用。
+
+上下文由可信代码在每个阶段动态编译，而不是把整部百万字正文发送给模型。编译器只选择
+作品配置、已确认商业定位、设定、大纲、当前卷、全书/分卷滚动摘要、最近三章摘要，以及
+章节计划明确要求的 FTS 检索片段，并执行来源数和字符数预算。Agent 只能读取本次
+`context_manifest` 白名单中的正式作品文件；模型选中的证据路径会转成可校验引用。
+
+章节审批后才写入正式正文和不可变章节摘要，同时更新有界的全书与分卷滚动摘要。任务的
+阶段、Skill 哈希、来源路径、检索词数量、上下文字符数、耗时和状态会写入 `run.json`，
+并通过只读 `/api/projects/{project_id}/tasks/{task_id}/run` 接口显示在 Agent 面板；接口
+不返回 API Key、完整 Prompt 或正文。模型商业评分只是编辑门禁，作品是否赚钱仍必须由
+发布后的曝光、打开、留存、追读和收入数据验证。
+
 ## 环境要求
 
 - Python 3.12+

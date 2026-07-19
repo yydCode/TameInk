@@ -136,7 +136,17 @@ class UsageCaptureHandler(BaseCallbackHandler):
         self.usage: TokenUsage | None = None
 
     def on_llm_end(self, response: LLMResult, **_: Any) -> None:
-        self.usage = extract_token_usage(response)
+        observed = extract_token_usage(response)
+        if observed is None:
+            return
+        if self.usage is None:
+            self.usage = observed
+            return
+        self.usage = TokenUsage(
+            input_tokens=self.usage.input_tokens + observed.input_tokens,
+            output_tokens=self.usage.output_tokens + observed.output_tokens,
+            total_tokens=self.usage.total_tokens + observed.total_tokens,
+        )
 
     def require(self) -> TokenUsage:
         if self.usage is None:

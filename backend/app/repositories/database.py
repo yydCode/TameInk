@@ -66,21 +66,29 @@ COMMIT;
             )
 
     def search(self, project_id: str, query: str) -> list[str]:
-        if len(query.strip()) < 3:
-            raise SearchQueryError("FTS query must contain at least three characters")
+        return self._search(project_id, query, query)
+
+    def search_literal(self, project_id: str, query: str) -> list[str]:
+        escaped = query.replace('"', '""')
+        return self._search(project_id, query, f'"{escaped}"')
+
+    def _search(self, project_id: str, display_query: str, match_query: str) -> list[str]:
+        if len(display_query.strip()) < 2:
+            raise SearchQueryError("FTS query must contain at least two characters")
         try:
             with self.connect(project_id) as connection:
                 rows = connection.execute(
-                    "SELECT path FROM content_fts WHERE content_fts MATCH ? ORDER BY path", (query,)
+                    "SELECT path FROM content_fts WHERE content_fts MATCH ? ORDER BY path",
+                    (match_query,),
                 ).fetchall()
         except sqlite3.OperationalError as error:
             message = str(error)
             if (
                 "fts5: syntax error" in message
                 or "unterminated string" in message
-                or self._query_references_missing_column(query, message)
+                or self._query_references_missing_column(match_query, message)
             ):
-                raise SearchQueryError(query) from error
+                raise SearchQueryError(display_query) from error
             raise
         return [str(row[0]) for row in rows]
 

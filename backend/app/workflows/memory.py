@@ -118,26 +118,32 @@ class MemoryService:
         revisions = RevisionRepository(self.workspace)
         revisions.confirm_batch(
             project_id,
-            self.summary_writes(chapter_id, volume_id, chapter_text),
+            self.summary_writes_for_project(project_id, chapter_id, volume_id, chapter_text),
             revisions.current_revision(project_id),
         )
         DatabaseRepository(self.workspace).rebuild(project_id)
 
     @staticmethod
     def summary_writes(
-        chapter_id: str, volume_id: str, chapter_text: str
+        chapter_id: str,
+        volume_id: str,
+        chapter_text: str,
+        *,
+        existing_book: str = "",
+        existing_volume: str = "",
     ) -> list[RevisionWrite]:
         excerpt = chapter_text.strip()[:1000]
+        rollup_excerpt = excerpt[:500]
         message = f"确认：章节 {chapter_id}"
         return [
             RevisionWrite(
                 path="memory/summaries/book.md",
-                content=f"已确认章节 {chapter_id}：{excerpt}\n",
+                content=MemoryService._rolling_summary(existing_book, chapter_id, rollup_excerpt),
                 message=message,
             ),
             RevisionWrite(
                 path=f"memory/summaries/volumes/{volume_id}.md",
-                content=f"章节 {chapter_id}：{excerpt}\n",
+                content=MemoryService._rolling_summary(existing_volume, chapter_id, rollup_excerpt),
                 message=message,
             ),
             RevisionWrite(
@@ -146,6 +152,41 @@ class MemoryService:
                 message=message,
             ),
         ]
+
+    def summary_writes_for_project(
+        self, project_id: str, chapter_id: str, volume_id: str, chapter_text: str
+    ) -> list[RevisionWrite]:
+        return self.summary_writes(
+            chapter_id,
+            volume_id,
+            chapter_text,
+            existing_book=self._read_summary(project_id, "memory/summaries/book.md"),
+            existing_volume=self._read_summary(
+                project_id, f"memory/summaries/volumes/{volume_id}.md"
+            ),
+        )
+
+    def _read_summary(self, project_id: str, relative: str) -> str:
+        path = self.workspace.resolve_project_path(project_id, relative)
+        if not path.is_file():
+            return ""
+        return path.read_text(encoding="utf-8")
+
+    @staticmethod
+    def _rolling_summary(existing: str, chapter_id: str, excerpt: str) -> str:
+        heading = f"## 章节 {chapter_id}"
+        blocks = [
+            block.strip()
+            for block in re.split(r"(?=^## 章节 )", existing, flags=re.MULTILINE)
+            if block.strip() and not block.strip().startswith(heading)
+        ]
+        selected = [f"{heading}\n{excerpt}"]
+        for block in blocks:
+            candidate = "\n\n".join([*selected, block]) + "\n"
+            if len(candidate) > 8000:
+                break
+            selected.append(block)
+        return "\n\n".join(selected) + "\n"
 
     def _confirm(self, project_id: str, relative: str, record: MemoryRecord, message: str) -> None:
         revisions = RevisionRepository(self.workspace)

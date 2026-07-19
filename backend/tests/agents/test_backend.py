@@ -45,6 +45,34 @@ def test_backend_reads_canon_through_repository_and_writes_only_current_draft(
     assert drafts.read("story-01", task_id, "chapter.md") == "draft"
 
 
+def test_backend_scopes_formal_reads_but_keeps_builtin_skills_read_only(
+    tmp_path: Path,
+) -> None:
+    backend, canon, drafts, task_id = make_backend(tmp_path)
+    canon.write_markdown("story-01", "canon/premise.md", ConfirmedContent(markdown="premise"))
+    canon.write_markdown("story-01", "canon/outline.md", ConfirmedContent(markdown="outline"))
+    skill_root = tmp_path / "builtin-skills"
+    skill = skill_root / "chapter" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_text("skill instructions", encoding="utf-8")
+    scoped = NovelWorkspaceBackend(
+        canon,
+        drafts,
+        "story-01",
+        task_id,
+        skill_root=skill_root,
+        read_allowlist=frozenset({"canon/outline.md"}),
+    )
+
+    assert scoped.read("/canon/outline.md").file_data is not None
+    assert scoped.read("/canon/premise.md").error == "WORKSPACE_PATH_VIOLATION"
+    assert scoped.read("/skills/chapter/SKILL.md").file_data == {
+        "content": "skill instructions",
+        "encoding": "utf-8",
+    }
+    assert scoped.write("/skills/chapter/SKILL.md", "changed").error == ("WORKSPACE_PATH_VIOLATION")
+
+
 @pytest.mark.parametrize(
     "path",
     [

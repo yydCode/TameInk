@@ -23,7 +23,7 @@ _PROFILE_LOCK = Lock()
 _PROFILE_REGISTERED = False
 
 
-def _register_model_profile() -> None:
+def register_model_profile() -> None:
     global _PROFILE_REGISTERED  # noqa: PLW0603
     with _PROFILE_LOCK:
         if _PROFILE_REGISTERED:
@@ -31,7 +31,7 @@ def _register_model_profile() -> None:
         register_harness_profile(
             "tame_ink_openai",
             HarnessProfile(
-                excluded_tools=frozenset({"execute"}),
+                excluded_tools=frozenset({"edit_file", "execute", "write_file", "write_todos"}),
                 general_purpose_subagent=GeneralPurposeSubagentProfile(enabled=False),
                 tool_description_overrides={
                     "task": (
@@ -58,7 +58,7 @@ def create_orchestrator(
         raise RuntimeError("MODEL_PROVIDER_INVALID") from error
     if provider != "tame_ink_openai":
         raise RuntimeError("MODEL_PROVIDER_INVALID")
-    _register_model_profile()
+    register_model_profile()
     selected_definitions = definitions or build_subagent_definitions(backend)
     graph = create_deep_agent(
         model=model,

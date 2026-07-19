@@ -129,4 +129,47 @@ describe("App", () => {
     fireEvent.change(screen.getByLabelText("平台名称"), { target: { value: "测试平台" } });
     expect(confirm).toBeEnabled();
   });
+
+  it("shows the actual Skill and compiled sources for the active task", async () => {
+    const project = { id: "book-run", title: "上下文样本", language: "zh-CN", genre: "悬疑", target_words: 800000, constraints: "第三人称" };
+    const task = { id: "task-run", project_id: project.id, kind: "write", status: "completed", created_at: "2026-07-19T10:00:00Z", updated_at: "2026-07-19T10:01:00Z" };
+    const run = {
+      agent_runs: [{
+        agent: "RetentionAuditor",
+        skill: "webnovel-retention",
+        skill_sha256: "a".repeat(64),
+        stage: "retention-audit",
+        source_paths: ["canon/outline.md", "memory/summaries/book.md"],
+        queries: ["主角 能力"],
+        total_characters: 2048,
+        duration_ms: 321,
+        status: "success",
+        error_code: null,
+      }],
+    };
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const path = new URL(String(input), "http://localhost").pathname;
+      const body = path === "/api/health" ? { status: "ok", service: "tame-ink-api", version: "0.1.0" }
+        : path === "/api/projects" ? [project]
+          : path === `/api/projects/${project.id}` ? project
+            : path === `/api/projects/${project.id}/tasks` ? [task]
+              : path.endsWith(`/tasks/${task.id}/drafts`) ? ["chapter.md"]
+                : path.endsWith(`/tasks/${task.id}/run`) ? run
+                  : path.endsWith(`/drafts/${task.id}`) ? { task_id: task.id, path: "chapter.md", content: "# 第一章\n\n正文", revision: "r1" }
+                    : path.endsWith("/workflow-status") ? { setting_confirmed: true, outline_confirmed: true, volume_one_confirmed: true, commercial_confirmed: true }
+                      : path.endsWith(`/commercial/reports/${task.id}`) ? null
+                        : {};
+      return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    render(<App />);
+    fireEvent.click((await screen.findAllByRole("button", { name: /上下文样本/ }))[0]);
+
+    expect(await screen.findByText("retention-audit")).toBeInTheDocument();
+    expect(screen.getByText("RetentionAuditor · webnovel-retention")).toBeInTheDocument();
+    expect(screen.getByText("1 条检索")).toBeInTheDocument();
+    expect(screen.getByText("2,048 字符")).toBeInTheDocument();
+    expect(screen.getByText("canon/outline.md")).toBeInTheDocument();
+    expect(screen.queryByText("canon/world/setting.md")).not.toBeInTheDocument();
+  });
 });

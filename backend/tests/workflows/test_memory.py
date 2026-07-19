@@ -105,6 +105,33 @@ def test_memory_can_be_read_corrected_and_is_immediately_searchable(tmp_path: Pa
     assert memory.read("story-01", "meeting", "fact") == corrected
     assert corrected.status == "active"
     assert corrected.location == "line 2, column 1, char 5"
-    assert [hit.path for hit in SearchRepository(workspace, DatabaseRepository(workspace)).search(
-        "story-01", "长街重逢"
-    )] == ["canon/chapters/0001.md", "memory/facts/meeting.yaml"]
+    assert [
+        hit.path
+        for hit in SearchRepository(workspace, DatabaseRepository(workspace)).search(
+            "story-01", "长街重逢"
+        )
+    ] == ["canon/chapters/0001.md", "memory/facts/meeting.yaml"]
+
+
+def test_rolling_summaries_keep_recent_chapters_and_immutable_chapter_files(
+    tmp_path: Path,
+) -> None:
+    workspace = WorkspaceRepository(tmp_path)
+    workspace.create_project("story-01")
+    canon = CanonRepository(workspace)
+    memory = MemoryService(workspace)
+    first = memory.summary_writes_for_project("story-01", "1", "1", "第一章状态")
+    for write in first:
+        canon.write_markdown("story-01", write.path, ConfirmedContent(markdown=write.content))
+    second = memory.summary_writes_for_project("story-01", "2", "1", "第二章状态")
+    for write in second:
+        canon.write_markdown("story-01", write.path, ConfirmedContent(markdown=write.content))
+
+    book = canon.read_markdown("story-01", "memory/summaries/book.md").markdown
+    volume = canon.read_markdown("story-01", "memory/summaries/volumes/1.md").markdown
+    assert book.startswith("## 章节 2\n第二章状态")
+    assert "## 章节 1\n第一章状态" in book
+    assert "## 章节 1\n第一章状态" in volume
+    assert (
+        canon.read_markdown("story-01", "memory/summaries/chapters/1.md").markdown == "第一章状态\n"
+    )

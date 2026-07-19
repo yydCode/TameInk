@@ -24,8 +24,14 @@ class SearchRepository:
         self.database = database
 
     def search(self, project_id: str, query: str) -> list[SearchHit]:
+        return self._hits(project_id, self.database.search(project_id, query), query)
+
+    def search_literal(self, project_id: str, query: str) -> list[SearchHit]:
+        return self._hits(project_id, self.database.search_literal(project_id, query), query)
+
+    def _hits(self, project_id: str, paths: list[str], query: str) -> list[SearchHit]:
         hits: list[SearchHit] = []
-        for path in self.database.search(project_id, query):
+        for path in paths:
             validate_formal_path(path)
             source = self.workspace.resolve_project_path(project_id, path)
             if not source.is_file():

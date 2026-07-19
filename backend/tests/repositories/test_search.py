@@ -35,4 +35,21 @@ def test_search_rejects_short_fts_query_stably(tmp_path: Path) -> None:
     database.initialize("story-01")
 
     with pytest.raises(SearchQueryError):
-        SearchRepository(workspace, database).search("story-01", "雨夜")
+        SearchRepository(workspace, database).search("story-01", "雨")
+
+
+def test_literal_search_treats_fts_operators_as_text(tmp_path: Path) -> None:
+    workspace = WorkspaceRepository(tmp_path)
+    workspace.create_project("story-01")
+    canon = CanonRepository(workspace)
+    canon.write_project(Project(id="story-01", title="长夜", language="zh-CN"))
+    canon.write_markdown(
+        "story-01", "canon/outline.md", ConfirmedContent(markdown="代号 abc OR 已封存")
+    )
+    database = DatabaseRepository(workspace)
+    database.initialize("story-01")
+    database.rebuild("story-01")
+
+    hits = SearchRepository(workspace, database).search_literal("story-01", "abc OR")
+
+    assert [hit.path for hit in hits] == ["canon/outline.md"]

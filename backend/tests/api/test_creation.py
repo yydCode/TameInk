@@ -102,7 +102,11 @@ def test_agent_chapter_route_runs_planner_writer_and_auditors(
         def invoke(self, agent: str, payload: dict[str, object]) -> object:
             if agent == "ChapterPlanner":
                 return ChapterPlan(
-                    id="plan-1", chapter_id="1", content="章节计划", references=reference
+                    id="plan-1",
+                    chapter_id="1",
+                    content="章节计划",
+                    context_intent={"keywords": ["生成正文"]},
+                    references=reference,
                 )
             if agent == "DraftWriter" and "draft" not in payload:
                 return ChapterDraft(

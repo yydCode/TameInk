@@ -49,6 +49,22 @@ def test_usage_capture_fails_when_provider_omits_usage() -> None:
         capture.require()
 
 
+def test_usage_capture_accumulates_multi_turn_agent_calls() -> None:
+    capture = UsageCaptureHandler()
+    for input_tokens, output_tokens in ((12, 8), (20, 10)):
+        message = AIMessage(
+            content="{}",
+            usage_metadata={
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "total_tokens": input_tokens + output_tokens,
+            },
+        )
+        capture.on_llm_end(LLMResult(generations=[[ChatGeneration(message=message)]]))
+
+    assert capture.require() == TokenUsage(32, 18, 50)
+
+
 def test_usage_recorder_writes_cost_without_prompt_or_secret(tmp_path) -> None:
     log = tmp_path / "usage.jsonl"
     recorder = UsageRecorder(

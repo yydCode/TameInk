@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from app.domain.task import TaskKind
 from app.main import create_app
 from app.repositories.database import DatabaseRepository
+from app.repositories.drafts import DraftRepository
 from app.repositories.tasks import TasksRepository
 from app.repositories.workspace import WorkspaceRepository
 from app.workflows.task_service import TaskService
@@ -65,6 +66,65 @@ def test_task_endpoints_create_read_and_transition(client: TestClient) -> None:
         "task.approved",
         "task.completed",
     ]
+
+
+def test_task_run_returns_only_validated_agent_trace_fields(client: TestClient) -> None:
+    task = create_task(client, "read")
+    task_id = str(task["id"])
+    trace = {
+        "agent": "ChapterPlanner",
+        "skill": "webnovel-chapter-planning",
+        "skill_sha256": "a" * 64,
+        "stage": "chapter-planning",
+        "source_paths": ["canon/outline.md", "memory/summaries/book.md"],
+        "queries": ["主角 能力"],
+        "total_characters": 2048,
+        "duration_ms": 321,
+        "status": "success",
+        "error_code": None,
+    }
+    DraftRepository(client.app.state.workspace).write(
+        "story-01",
+        task_id,
+        "run.json",
+        json.dumps(
+            {
+                "project_id": "story-01",
+                "prompt": "不得通过 API 暴露的正文",
+                "api_key": "不得通过 API 暴露的密钥",
+                "agent_runs": [trace],
+            }
+        ),
+    )
+
+    response = client.get(f"/api/projects/story-01/tasks/{task_id}/run")
+
+    assert response.status_code == 200
+    assert response.json() == {"agent_runs": [trace]}
+    assert "正文" not in response.text
+    assert "密钥" not in response.text
+
+
+def test_task_run_is_empty_without_manifest_and_rejects_invalid_trace(
+    client: TestClient,
+) -> None:
+    task = create_task(client, "read")
+    task_id = str(task["id"])
+    endpoint = f"/api/projects/story-01/tasks/{task_id}/run"
+
+    assert client.get(endpoint).json() == {"agent_runs": []}
+
+    DraftRepository(client.app.state.workspace).write(
+        "story-01",
+        task_id,
+        "run.json",
+        json.dumps({"agent_runs": [{"prompt": "invalid"}]}),
+    )
+    response = client.get(endpoint)
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "WORKFLOW_GATE_BLOCKED"
+    assert "invalid" not in response.text
 
 
 def test_api_maps_domain_errors_without_sqlite_details(client: TestClient) -> None:

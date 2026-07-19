@@ -219,12 +219,12 @@ def test_rebuild_restores_core_fts_index_from_formal_files(tmp_path: Path) -> No
     assert workspace.resolve_project_path("story-01", ".tame-ink/state.db").is_file()
 
 
-def test_search_rejects_queries_shorter_than_trigram_contract(tmp_path: Path) -> None:
+def test_search_rejects_single_character_queries(tmp_path: Path) -> None:
     _, _, database = setup_project(tmp_path)
     database.rebuild("story-01")
 
     with pytest.raises(SearchQueryError) as raised:
-        database.search("story-01", "落雨")
+        database.search("story-01", "雨")
 
     assert raised.value.code == "SEARCH_QUERY_INVALID"
 

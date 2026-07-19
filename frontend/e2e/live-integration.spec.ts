@@ -68,6 +68,24 @@ test("runs the real setting-to-chapter workflow without API mocks", async ({ pag
   expect(reportResponse.ok()).toBeTruthy();
   const report = await reportResponse.json();
   expect(report.commercial_report.references.length).toBeGreaterThan(0);
+  const runResponse = await page.request.get(
+    `/api/projects/${projectId}/tasks/${chapterTask.id}/run`,
+  );
+  expect(runResponse.ok()).toBeTruthy();
+  const run = (await runResponse.json()) as {
+    agent_runs: Array<{
+      skill: string;
+      skill_sha256: string;
+      source_paths: string[];
+      status: string;
+    }>;
+  };
+  expect(run.agent_runs.length).toBeGreaterThanOrEqual(6);
+  expect(run.agent_runs.every((item) => item.status === "success")).toBeTruthy();
+  expect(run.agent_runs.every((item) => /^[0-9a-f]{64}$/.test(item.skill_sha256))).toBeTruthy();
+  expect(run.agent_runs.every((item) => item.source_paths.length > 0)).toBeTruthy();
+  await expect(page.getByText(/RetentionAuditor · webnovel-retention/)).toBeVisible();
+  await expect(page.getByText("当前阶段来源")).toBeVisible();
 
   await page.getByRole("button", { name: "确认章节" }).click();
   await expect.poll(async () => {
@@ -100,6 +118,8 @@ test("runs the real setting-to-chapter workflow without API mocks", async ({ pag
     base_url: settings.base_url,
     project_id: projectId,
     request_count: events.length,
+    agent_run_count: run.agent_runs.length,
+    skills: [...new Set(run.agent_runs.map((item) => item.skill))],
     total_cost_cny: totalCost,
     max_cost_cny: maxCost,
     usage_log: usagePath,

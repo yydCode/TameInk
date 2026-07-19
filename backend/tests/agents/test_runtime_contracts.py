@@ -31,7 +31,7 @@ from app.agents.subagents import (
     build_subagent_definitions,
 )
 from app.domain.project import ConfirmedContent
-from tests.agents.fake_model import ScriptedChatModel
+from tests.agents.fake_model import ScriptedChatModel, ScriptedTameInkModel
 from tests.agents.test_backend import make_backend
 
 
@@ -82,21 +82,24 @@ def test_output_parses_without_context_then_validates_known_sources() -> None:
 def test_model_schema_omits_system_assigned_references(tmp_path: Path) -> None:
     backend, _, _, _ = make_backend(tmp_path)
     definition = next(
-        item
-        for item in build_subagent_definitions(backend)
-        if item.name == "RetentionAuditor"
+        item for item in build_subagent_definitions(backend) if item.name == "RetentionAuditor"
     )
 
     schema = DeepAgentRunner._model_output_schema(definition)
 
     assert '"references"' not in json.dumps(schema)
+    assert "context_reference_paths" in schema["properties"]
     assert "total_score" not in schema["properties"]
 
 
 def test_direct_runner_attaches_exact_context_references_to_output_tree() -> None:
     runner = object.__new__(DeepAgentRunner)
     runner.manifest = manifest()
-    raw = {"id": "report-1", "issues": [{"id": "issue-1"}]}
+    raw = {
+        "id": "report-1",
+        "issues": [{"id": "issue-1"}],
+        "context_reference_paths": ["canon/premise.md"],
+    }
 
     enriched = runner._attach_context_references(raw)
 
@@ -117,6 +120,121 @@ def test_direct_runner_computes_commercial_score_from_dimensions() -> None:
     enriched = DeepAgentRunner._attach_commercial_score(raw)
 
     assert enriched["total_score"] == 77
+
+
+def test_stage_runner_requires_skill_read_and_returns_scoped_structured_output(
+    tmp_path: Path,
+) -> None:
+    backend, canon, drafts, task_id = make_backend(tmp_path)
+    canon.write_markdown("story-01", "canon/premise.md", ConfirmedContent(markdown="confirmed"))
+    skill_root = tmp_path / "skills"
+    skill_file = skill_root / "webnovel-architecture" / "SKILL.md"
+    skill_file.parent.mkdir(parents=True)
+    skill_file.write_text(
+        "---\nname: webnovel-architecture\ndescription: architecture\n---\nFollow facts.",
+        encoding="utf-8",
+    )
+    scoped_backend = type(backend)(
+        canon,
+        drafts,
+        "story-01",
+        task_id,
+        skill_root=skill_root,
+        read_allowlist=frozenset({"canon/premise.md"}),
+    )
+    runner = object.__new__(DeepAgentRunner)
+    runner.skill_root = skill_root
+    runner._run_traces = []
+    runner.model = ScriptedTameInkModel(
+        api_key="test",
+        model="scripted",
+        responses=[
+            AIMessage(
+                content="",
+                tool_calls=[
+                    {
+                        "name": "read_file",
+                        "args": {
+                            "file_path": "/skills/webnovel-architecture/SKILL.md",
+                            "offset": 0,
+                            "limit": 1000,
+                        },
+                        "id": "read-skill",
+                    }
+                ],
+            ),
+            AIMessage(
+                content="",
+                tool_calls=[
+                    {
+                        "name": "StorySetting",
+                        "args": {
+                            "id": "setting-1",
+                            "title": "设定",
+                            "content": "内容",
+                            "context_reference_paths": ["canon/premise.md"],
+                        },
+                        "id": "structured-response",
+                    }
+                ],
+            ),
+        ],
+    )
+    runner.usage_recorder = None
+    runner.manifest = manifest()
+    definition = next(
+        item for item in build_subagent_definitions(scoped_backend) if item.name == "StoryArchitect"
+    )
+
+    result = runner._invoke_stage(definition, {"instruction": "design"}, scoped_backend)
+
+    assert isinstance(result, StorySetting)
+    assert result.references[0].path == "canon/premise.md"
+    assert runner.run_traces()[0]["skill"] == "webnovel-architecture"
+    assert runner.run_traces()[0]["source_paths"] == ["canon/premise.md"]
+
+
+def test_skill_load_requires_a_successful_matching_tool_result() -> None:
+    skill_path = "/skills/webnovel-architecture/SKILL.md"
+    call = AIMessage(
+        content="",
+        tool_calls=[
+            {
+                "name": "read_file",
+                "args": {"file_path": skill_path},
+                "id": "read-skill",
+            }
+        ],
+    )
+
+    assert not DeepAgentRunner._skill_was_loaded(
+        {
+            "messages": [
+                call,
+                ToolMessage(
+                    content="Error: WORKSPACE_PATH_VIOLATION",
+                    name="read_file",
+                    tool_call_id="read-skill",
+                    status="error",
+                ),
+            ]
+        },
+        skill_path,
+    )
+    assert DeepAgentRunner._skill_was_loaded(
+        {
+            "messages": [
+                call,
+                ToolMessage(
+                    content="skill instructions",
+                    name="read_file",
+                    tool_call_id="read-skill",
+                    status="success",
+                ),
+            ]
+        },
+        skill_path,
+    )
 
 
 def test_validated_orchestrator_invoke_cannot_skip_output_validation(tmp_path: Path) -> None:

@@ -3,6 +3,7 @@ from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.agents.context import ContextIntent
 from app.domain.commercial import CommercialProfile
 from app.domain.errors import WorkspacePathViolationError
 from app.domain.paths import validate_formal_path
@@ -83,6 +84,7 @@ class Outline(ReferencedOutput):
 class ChapterPlan(ReferencedOutput):
     chapter_id: str
     content: str
+    context_intent: ContextIntent
 
 
 class ChapterDraft(ReferencedOutput):
