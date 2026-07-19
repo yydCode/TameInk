@@ -354,3 +354,334 @@ label { display: grid; gap: 6px; color: #59645c; font-size: 10px; font-weight: 7
   .boundary-row > span { display: none; }
   .form-grid { grid-template-columns: 1fr; }
 }
+
+/* ===== 导航分组（按创作阶段） ===== */
+.nav-groups { display: grid; gap: 4px; margin-top: 5px; }
+.nav-group { display: grid; gap: 2px; }
+.nav-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 34px;
+  padding: 0 10px;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-left: 3px solid transparent;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: left;
+}
+.nav-group-header:hover { color: var(--ink); background: #e9ece8; }
+.nav-group-header.is-expanded { color: var(--green-dark); }
+.nav-chevron { margin-left: auto; transition: transform 0.2s ease; }
+.nav-group-header.is-expanded .nav-chevron { transform: rotate(180deg); }
+.nav-group-items { display: grid; gap: 2px; padding-left: 8px; }
+
+/* ===== 今日工作台 ===== */
+.today-workspace { max-width: 1180px; margin: 0 auto; }
+
+/* 今日写作进度卡片 */
+.progress-card {
+  margin-bottom: 14px;
+  padding: 16px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+.progress-header h2 { margin: 0; font-size: 14px; }
+.progress-stats {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.progress-stats strong {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+.progress-bar {
+  height: 10px;
+  margin-bottom: 12px;
+  background: #e4e7e3;
+  border-radius: 5px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--green) 0%, var(--green-dark) 100%);
+  border-radius: 5px;
+  transition: width 0.3s ease;
+}
+.progress-actions {
+  display: flex;
+  gap: 12px;
+}
+.progress-input {
+  flex: 1;
+  max-width: 220px;
+}
+.progress-input input { min-height: 32px; }
+
+/* 两列布局 */
+.workspace-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+/* 行动卡片（下一章、存稿） */
+.action-card {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.action-card h2 { margin: 0; font-size: 14px; }
+.action-card-body {
+  display: grid;
+  gap: 4px;
+}
+.action-card-body strong {
+  font: 700 16px "Noto Serif SC", "Songti SC", serif;
+}
+.stockpile-warning {
+  color: var(--rust);
+  font-size: 10px;
+  font-weight: 700;
+}
+.stockpile-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.stockpile-inputs input { min-height: 32px; }
+
+/* 待办卡片 */
+.todo-card {
+  margin-bottom: 14px;
+  padding: 16px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.todo-container { display: grid; gap: 10px; }
+.todo-input-row { display: flex; gap: 6px; }
+.todo-input-row input { flex: 1; min-height: 34px; }
+.todo-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+}
+.todo-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 6px 8px;
+  background: var(--panel);
+  border-radius: 3px;
+  font-size: 12px;
+}
+.todo-list li.is-done span { color: var(--muted); text-decoration: line-through; }
+.todo-check {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  color: var(--green-dark);
+}
+.todo-list li.is-done .todo-check {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+.todo-list li > span { flex: 1; }
+.todo-remove { width: 26px; min-height: 26px; opacity: 0.5; }
+.todo-remove:hover { opacity: 1; color: var(--danger); }
+
+/* 列表卡片（最近章节、伏笔） */
+.list-card {
+  padding: 16px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.recent-list, .foreshadow-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+.recent-item {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 6px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #e4e7e3;
+  text-align: left;
+}
+.recent-item:hover { background: var(--panel); }
+.recent-item .chapter-id {
+  color: var(--blue);
+  font: 700 10px "SFMono-Regular", Consolas, monospace;
+}
+.recent-item strong { font-size: 12px; }
+.recent-item small { color: var(--muted); font-size: 10px; }
+.foreshadow-item {
+  display: grid;
+  gap: 3px;
+  padding: 8px 6px;
+  border-bottom: 1px solid #e4e7e3;
+}
+.foreshadow-item strong { font-size: 11px; }
+.foreshadow-item small { font-size: 9px; }
+.foreshadow-item code { font-size: 9px; color: var(--muted); }
+.view-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  color: var(--green-dark);
+  font-size: 10px;
+  font-weight: 700;
+}
+.view-all:hover { color: var(--green); }
+
+/* 数据和用量卡片 */
+.metrics-card, .usage-card {
+  margin-bottom: 14px;
+  padding: 16px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.usage-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 10px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.usage-strip strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+/* 响应式：小屏幕单列 */
+@media (max-width: 720px) {
+  .workspace-row { grid-template-columns: 1fr; }
+  .progress-actions { flex-direction: column; }
+  .progress-input { max-width: none; }
+  .progress-stats { flex-wrap: wrap; gap: 8px; }
+}
+
+/* ===== 章节右侧面板：审查标签徽章 ===== */
+.evidence-tabs button {
+  position: relative;
+}
+.evidence-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  margin-left: 6px;
+  padding: 0 4px;
+  background: var(--danger, #b42318);
+  color: #fff;
+  border-radius: 8px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* ===== 审查标签：三段式区块 ===== */
+.audit-section {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid #e4e7e3;
+}
+.audit-section:first-of-type {
+  margin-top: 6px;
+  border-top: 0;
+  padding-top: 0;
+}
+.audit-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.audit-section-title h4 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.audit-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  background: var(--danger, #b42318);
+  color: #fff;
+  border-radius: 8px;
+  font-size: 9px;
+  font-weight: 700;
+}
+.audit-section .issue-row {
+  display: grid;
+  gap: 3px;
+  margin-bottom: 6px;
+  padding: 6px 4px;
+  background: var(--panel);
+  border-radius: 3px;
+}
+.audit-section .issue-row strong {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--rust);
+}
+.audit-section .issue-row p {
+  margin: 0;
+  font-size: 11px;
+}
+.audit-section .issue-row q {
+  display: block;
+  padding-left: 8px;
+  border-left: 2px solid var(--line);
+  font-size: 10px;
+  color: var(--muted);
+}

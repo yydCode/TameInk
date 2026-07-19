@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BookOpen,
   ChartNoAxesCombined,
+  ChevronDown,
   CirclePlus,
   FileText,
   GitBranch,
@@ -10,8 +11,10 @@ import {
   Settings,
   Sparkles,
   Upload,
+  Zap,
 } from "lucide-react";
 import { NavLink, Outlet, useNavigate, useParams } from "react-router";
+import type { LucideIcon } from "lucide-react";
 
 import { createProject, listProjects } from "../../api/client";
 import { queryKeys } from "../../app/queryKeys";
@@ -21,15 +24,65 @@ import {
   type CreateProjectInput,
 } from "../common/CreateProjectDialog";
 
-const navigation = [
-  ["overview", "项目概览", BookOpen],
-  ["story", "故事设计", Sparkles],
-  ["chapters", "章节工作台", FileText],
-  ["commercial", "商业增长", ChartNoAxesCombined],
-  ["memory", "记忆中心", Library],
-  ["imports", "作品导入", Upload],
-  ["runs", "运行记录", GitBranch],
-] as const;
+// 导航项类型
+interface NavItem {
+  path: string;
+  label: string;
+  icon: LucideIcon;
+}
+interface NavGroup {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  items: NavItem[];
+}
+
+// 按创作阶段分组的导航结构
+const navGroups: NavGroup[] = [
+  {
+    id: "today",
+    label: "今日工作台",
+    icon: Zap,
+    items: [
+      { path: "today", label: "今日工作台", icon: Zap },
+    ],
+  },
+  {
+    id: "planning",
+    label: "新书策划",
+    icon: Sparkles,
+    items: [
+      { path: "story", label: "故事设计", icon: Sparkles },
+      { path: "commercial", label: "商业定位", icon: ChartNoAxesCombined },
+    ],
+  },
+  {
+    id: "creation",
+    label: "章节创作",
+    icon: FileText,
+    items: [
+      { path: "chapters", label: "章节工作台", icon: FileText },
+    ],
+  },
+  {
+    id: "maintenance",
+    label: "长篇维护",
+    icon: Library,
+    items: [
+      { path: "memory", label: "记忆中心", icon: Library },
+      { path: "imports", label: "作品导入", icon: Upload },
+    ],
+  },
+  {
+    id: "system",
+    label: "系统",
+    icon: GitBranch,
+    items: [
+      { path: "overview", label: "作品概览", icon: BookOpen },
+      { path: "runs", label: "运行记录", icon: GitBranch },
+    ],
+  },
+];
 
 export function AppShell() {
   const { projectId } = useParams();
@@ -41,19 +94,25 @@ export function AppShell() {
     queryFn: listProjects,
   });
   const [showCreate, setShowCreate] = useState(false);
+  // 默认展开"今日工作台"组
+  const [expandedGroup, setExpandedGroup] = useState<string>("today");
+
   useEffect(() => {
     const open = () => setShowCreate(true);
     window.addEventListener("tame-ink:create", open);
     return () => window.removeEventListener("tame-ink:create", open);
   }, []);
+
   const create = useMutation({
     mutationFn: (input: CreateProjectInput) => createProject(input),
     onSuccess: ({ project }) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.projects });
       setShowCreate(false);
-      navigate(`/projects/${project.id}/story`);
+      // 新建作品后进入今日工作台
+      navigate(`/projects/${project.id}/today`);
     },
   });
+
   const backendLabel = health.isPending
     ? "检查连接"
     : health.isSuccess
@@ -101,7 +160,7 @@ export function AppShell() {
               value={projectId ?? ""}
               onChange={(event) =>
                 event.target.value &&
-                navigate(`/projects/${event.target.value}/overview`)
+                navigate(`/projects/${event.target.value}/today`)
               }
             >
               <option value="">未选择</option>
@@ -112,31 +171,49 @@ export function AppShell() {
               ))}
             </select>
           </label>
-          <nav aria-label="项目导航">
-            {navigation.map(([path, label, Icon]) =>
-              projectId ? (
-                <NavLink
-                  key={path}
-                  to={`/projects/${projectId}/${path}`}
-                  className={({ isActive }) =>
-                    `nav-item${isActive ? " is-active" : ""}`
-                  }
-                >
-                  <Icon size={16} />
-                  <span>{label}</span>
-                </NavLink>
-              ) : (
+          <nav aria-label="项目导航" className="nav-groups">
+            {navGroups.map((group) => (
+              <div key={group.id} className="nav-group">
                 <button
-                  key={path}
-                  className="nav-item"
                   type="button"
-                  onClick={() => navigate(`/${path}`)}
+                  className={`nav-group-header${expandedGroup === group.id ? " is-expanded" : ""}`}
+                  onClick={() => setExpandedGroup(expandedGroup === group.id ? "" : group.id)}
+                  aria-expanded={expandedGroup === group.id}
                 >
-                  <Icon size={16} />
-                  <span>{label}</span>
+                  <group.icon size={14} />
+                  <span>{group.label}</span>
+                  <ChevronDown size={13} className="nav-chevron" />
                 </button>
-              ),
-            )}
+                {expandedGroup === group.id && (
+                  <div className="nav-group-items">
+                    {group.items.map((item) =>
+                      projectId ? (
+                        <NavLink
+                          key={item.path}
+                          to={`/projects/${projectId}/${item.path}`}
+                          className={({ isActive }) =>
+                            `nav-item${isActive ? " is-active" : ""}`
+                          }
+                        >
+                          <item.icon size={15} />
+                          <span>{item.label}</span>
+                        </NavLink>
+                      ) : (
+                        <button
+                          key={item.path}
+                          className="nav-item"
+                          type="button"
+                          onClick={() => navigate(`/${item.path}`)}
+                        >
+                          <item.icon size={15} />
+                          <span>{item.label}</span>
+                        </button>
+                      ),
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
           </nav>
           <NavLink
             className={({ isActive }) =>

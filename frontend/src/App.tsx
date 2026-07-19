@@ -41,6 +41,11 @@ const SettingsPage = lazy(() =>
 const StoryPage = lazy(() =>
   import("./pages/StoryPage").then((module) => ({ default: module.StoryPage })),
 );
+const TodayWorkspacePage = lazy(() =>
+  import("./pages/TodayWorkspacePage").then((module) => ({
+    default: module.TodayWorkspacePage,
+  })),
+);
 
 export default function App() {
   return (
@@ -57,7 +62,9 @@ export default function App() {
           <Route path="imports" element={<EmptyPage section="作品导入" />} />
           <Route path="runs" element={<EmptyPage section="运行记录" />} />
           <Route path="projects/:projectId">
-            <Route index element={<Navigate to="overview" replace />} />
+            {/* 默认进入今日工作台，而不是项目概览 */}
+            <Route index element={<Navigate to="today" replace />} />
+            <Route path="today" element={<TodayWorkspacePage />} />
             <Route path="overview" element={<OverviewPage />} />
             <Route path="story" element={<StoryPage />} />
             <Route path="chapters" element={<ChapterPage />} />

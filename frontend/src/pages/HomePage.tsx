@@ -34,7 +34,7 @@ export function HomePage() {
             <button
               type="button"
               key={project.id}
-              onClick={() => navigate(`/projects/${project.id}/overview`)}
+              onClick={() => navigate(`/projects/${project.id}/today`)}
             >
               <span>
                 <strong>{project.title}</strong>
