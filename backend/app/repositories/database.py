@@ -37,7 +37,7 @@ class DatabaseRepository:
             if version is None or version in {"1", "2"}:
                 migration = f"""BEGIN IMMEDIATE;
 {schema}
-INSERT INTO metadata(key, value) VALUES ('schema_version', '3')
+INSERT INTO metadata(key, value) VALUES ('schema_version', '4')
 ON CONFLICT(key) DO UPDATE SET value = excluded.value;
 COMMIT;
 """
@@ -47,8 +47,40 @@ COMMIT;
                     if connection.in_transaction:
                         connection.rollback()
                     raise
-            elif version != "3":
+            elif version == "3":
+                self._migrate_v3_to_v4(connection)
+            elif version != "4":
                 raise DatabaseSchemaError(f"unsupported schema version: {version}")
+
+    @staticmethod
+    def _migrate_v3_to_v4(connection: sqlite3.Connection) -> None:
+        migration = """BEGIN IMMEDIATE;
+ALTER TABLE tasks ADD COLUMN purpose TEXT NOT NULL DEFAULT 'manual' CHECK (
+    purpose IN (
+        'manual', 'setting', 'commercial', 'book_outline', 'volume_outline',
+        'chapter', 'import', 'commercial_audit', 'memory_curation', 'export'
+    )
+);
+ALTER TABLE tasks ADD COLUMN subject_id TEXT;
+ALTER TABLE tasks ADD COLUMN volume_id TEXT;
+ALTER TABLE tasks ADD COLUMN chapter_id TEXT;
+ALTER TABLE tasks ADD COLUMN parent_task_id TEXT;
+ALTER TABLE tasks ADD COLUMN retry_of_task_id TEXT;
+ALTER TABLE tasks ADD COLUMN cancel_requested_at TEXT;
+ALTER TABLE tasks ADD COLUMN error_code TEXT;
+ALTER TABLE tasks ADD COLUMN error_message TEXT;
+ALTER TABLE tasks ADD COLUMN started_at TEXT;
+ALTER TABLE tasks ADD COLUMN finished_at TEXT;
+ALTER TABLE tasks ADD COLUMN duration_ms INTEGER CHECK (duration_ms IS NULL OR duration_ms >= 0);
+UPDATE metadata SET value = '4' WHERE key = 'schema_version';
+COMMIT;
+"""
+        try:
+            connection.executescript(migration)
+        except sqlite3.Error:
+            if connection.in_transaction:
+                connection.rollback()
+            raise
 
     def rebuild(self, project_id: str) -> None:
         self.initialize(project_id)

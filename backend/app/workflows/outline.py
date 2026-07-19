@@ -1,6 +1,6 @@
 from app.domain.errors import WorkflowGateError
 from app.domain.revision import RevisionWrite
-from app.domain.task import Task, TaskKind
+from app.domain.task import Task, TaskKind, TaskPurpose
 from app.repositories.database import DatabaseRepository
 from app.repositories.drafts import DraftRepository
 from app.repositories.revisions import RevisionRepository
@@ -14,7 +14,13 @@ class OutlineService:
         self.workspace = workspace
 
     def create_book(self, project_id: str, content: str) -> Task:
-        return self._create(project_id, "book-outline.md", content)
+        return self._create(
+            project_id,
+            "book-outline.md",
+            content,
+            TaskPurpose.BOOK_OUTLINE,
+            subject_id="book",
+        )
 
     def approve_book(self, project_id: str, task_id: str) -> Task:
         return self._approve(
@@ -24,7 +30,14 @@ class OutlineService:
     def create_volume(self, project_id: str, volume_id: str, content: str) -> Task:
         if not self.workspace.resolve_project_path(project_id, "canon/outline.md").is_file():
             raise WorkflowGateError("approved book outline is required")
-        return self._create(project_id, f"volume-{volume_id}.md", content)
+        return self._create(
+            project_id,
+            f"volume-{volume_id}.md",
+            content,
+            TaskPurpose.VOLUME_OUTLINE,
+            subject_id=volume_id,
+            volume_id=volume_id,
+        )
 
     def approve_volume(self, project_id: str, task_id: str, volume_id: str) -> Task:
         return self._approve(
@@ -35,10 +48,24 @@ class OutlineService:
             f"确认：分卷大纲 {volume_id}",
         )
 
-    def _create(self, project_id: str, draft_name: str, content: str) -> Task:
+    def _create(
+        self,
+        project_id: str,
+        draft_name: str,
+        content: str,
+        purpose: TaskPurpose,
+        *,
+        subject_id: str,
+        volume_id: str | None = None,
+    ) -> Task:
         database = DatabaseRepository(self.workspace)
         service = TaskService(TasksRepository(database, project_id))
-        task = service.create(TaskKind.WRITE)
+        task = service.create(
+            TaskKind.WRITE,
+            purpose,
+            subject_id=subject_id,
+            volume_id=volume_id,
+        )
         service.start(task.id)
         DraftRepository(self.workspace).write(project_id, task.id, draft_name, content)
         return service.await_approval(task.id)

@@ -15,12 +15,29 @@ CREATE TABLE IF NOT EXISTS tasks (
     id TEXT PRIMARY KEY,
     project_id TEXT NOT NULL,
     kind TEXT NOT NULL CHECK (kind IN ('read', 'write')),
+    purpose TEXT NOT NULL DEFAULT 'manual' CHECK (
+        purpose IN (
+            'manual', 'setting', 'commercial', 'book_outline', 'volume_outline',
+            'chapter', 'import', 'commercial_audit', 'memory_curation', 'export'
+        )
+    ),
     status TEXT NOT NULL CHECK (
         status IN (
             'pending', 'running', 'awaiting_approval', 'completed',
             'failed', 'cancelled', 'interrupted'
         )
     ),
+    subject_id TEXT,
+    volume_id TEXT,
+    chapter_id TEXT,
+    parent_task_id TEXT,
+    retry_of_task_id TEXT,
+    cancel_requested_at TEXT,
+    error_code TEXT,
+    error_message TEXT,
+    started_at TEXT,
+    finished_at TEXT,
+    duration_ms INTEGER CHECK (duration_ms IS NULL OR duration_ms >= 0),
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );

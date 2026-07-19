@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.domain.project import Project
 from app.domain.revision import RevisionWrite
-from app.domain.task import Task, TaskKind
+from app.domain.task import Task, TaskKind, TaskPurpose
 from app.repositories.canon import CanonRepository
 from app.repositories.database import DatabaseRepository
 from app.repositories.drafts import DraftRepository
@@ -50,7 +50,7 @@ class NewBookService:
         database.initialize(request.project_id)
         RevisionRepository(self.workspace).current_revision(request.project_id)
         tasks = TaskService(TasksRepository(database, request.project_id))
-        task = tasks.create(TaskKind.WRITE)
+        task = tasks.create(TaskKind.WRITE, TaskPurpose.SETTING, subject_id="setting")
         tasks.start(task.id)
         DraftRepository(self.workspace).write(
             request.project_id, task.id, "setting.md", setting_draft

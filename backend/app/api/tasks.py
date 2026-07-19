@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 
 from app.domain.errors import WorkflowGateError, WorkspacePathViolationError
 from app.domain.paths import validate_formal_path
-from app.domain.task import Task, TaskEvent, TaskKind
+from app.domain.task import Task, TaskEvent, TaskKind, TaskPurpose
 from app.repositories.database import DatabaseRepository
 from app.repositories.drafts import DraftRepository
 from app.repositories.tasks import TasksRepository
@@ -21,6 +21,10 @@ class CreateTaskRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     kind: TaskKind
+    purpose: TaskPurpose = TaskPurpose.MANUAL
+    subject_id: str | None = Field(default=None, max_length=128)
+    volume_id: str | None = Field(default=None, max_length=128)
+    chapter_id: str | None = Field(default=None, max_length=128)
 
 
 class AgentRunTrace(BaseModel):
@@ -82,7 +86,13 @@ Service = Annotated[TaskService, Depends(task_service)]
 
 @router.post("", response_model=Task, status_code=status.HTTP_201_CREATED)
 def create_task(payload: CreateTaskRequest, service: Service) -> Task:
-    return service.create(payload.kind)
+    return service.create(
+        payload.kind,
+        payload.purpose,
+        subject_id=payload.subject_id,
+        volume_id=payload.volume_id,
+        chapter_id=payload.chapter_id,
+    )
 
 
 @router.get("", response_model=list[Task])

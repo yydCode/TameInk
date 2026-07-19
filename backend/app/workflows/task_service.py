@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 from app.domain.errors import InvalidTaskTransitionError
-from app.domain.task import Task, TaskEvent, TaskKind, TaskStatus
+from app.domain.task import Task, TaskEvent, TaskKind, TaskPurpose, TaskStatus
 from app.repositories.tasks import TasksRepository
 from app.workflows.task_state import transition_task
 
@@ -11,13 +11,29 @@ class TaskService:
     def __init__(self, repository: TasksRepository) -> None:
         self.repository = repository
 
-    def create(self, kind: TaskKind) -> Task:
+    def create(
+        self,
+        kind: TaskKind,
+        purpose: TaskPurpose = TaskPurpose.MANUAL,
+        *,
+        subject_id: str | None = None,
+        volume_id: str | None = None,
+        chapter_id: str | None = None,
+        parent_task_id: str | None = None,
+        retry_of_task_id: str | None = None,
+    ) -> Task:
         now = datetime.now(UTC)
         task = Task(
             id=str(uuid4()),
             project_id=self.repository.project_id,
             kind=kind,
+            purpose=purpose,
             status=TaskStatus.PENDING,
+            subject_id=subject_id,
+            volume_id=volume_id,
+            chapter_id=chapter_id,
+            parent_task_id=parent_task_id,
+            retry_of_task_id=retry_of_task_id,
             created_at=now,
             updated_at=now,
         )

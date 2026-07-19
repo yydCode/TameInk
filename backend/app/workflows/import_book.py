@@ -13,7 +13,7 @@ from app.domain.errors import (
     ImportEncodingAmbiguousError,
     ImportEncodingUnsupportedError,
 )
-from app.domain.task import Task, TaskKind
+from app.domain.task import Task, TaskKind, TaskPurpose
 from app.repositories.database import DatabaseRepository
 from app.repositories.drafts import DraftRepository
 from app.repositories.tasks import TasksRepository
@@ -174,9 +174,7 @@ def parse_chapters(text: str, encoding: str = "utf-8") -> list[ChapterBoundary]:
     encoded = text.encode(encoding, errors="strict")
     for position, chapter in enumerate(boundaries):
         next_byte = (
-            boundaries[position + 1].start.byte
-            if position + 1 < len(boundaries)
-            else len(encoded)
+            boundaries[position + 1].start.byte if position + 1 < len(boundaries) else len(encoded)
         )
         body = encoded[chapter.body_start.byte : next_byte].decode(encoding, errors="strict")
         if not body.strip():
@@ -318,7 +316,7 @@ class ImportBookService:
             ).encode(),
         )
         service = TaskService(TasksRepository(DatabaseRepository(self.workspace), project_id))
-        task = service.create(TaskKind.READ)
+        task = service.create(TaskKind.READ, TaskPurpose.IMPORT, subject_id=import_id)
         service.start(task.id)
         analysis = "\n".join(f"{item.number}: {item.title}" for item in confirmed)
         DraftRepository(self.workspace).write(project_id, task.id, "import-analysis.md", analysis)

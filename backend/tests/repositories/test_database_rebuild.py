@@ -45,7 +45,7 @@ def test_initialization_is_repeatable_and_records_schema_version(tmp_path: Path)
             connection.execute(
                 "SELECT value FROM metadata WHERE key = 'schema_version'"
             ).fetchone()[0]
-            == "3"
+            == "4"
         )
 
 
@@ -70,7 +70,7 @@ def test_initialization_migrates_real_v1_database_without_losing_fts_data(tmp_pa
             connection.execute(
                 "SELECT value FROM metadata WHERE key = 'schema_version'"
             ).fetchone()[0]
-            == "3"
+            == "4"
         )
         assert (
             connection.execute(
@@ -109,19 +109,57 @@ def test_initialization_migrates_v2_and_adds_commercial_observations(tmp_path: P
     database.initialize("story-01")
 
     with database.connect("story-01") as connection:
-        assert connection.execute(
+        assert (
+            connection.execute(
+                "SELECT value FROM metadata WHERE key = 'schema_version'"
+            ).fetchone()[0]
+            == "4"
+        )
+        assert (
+            connection.execute(
+                "SELECT path FROM content_fts WHERE content_fts MATCH '版本二内容'"
+            ).fetchone()[0]
+            == "canon/outline.md"
+        )
+        assert (
+            connection.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table' "
+                "AND name = 'commercial_observations'"
+            ).fetchone()[0]
+            == "commercial_observations"
+        )
+
+
+def test_initialization_migrates_v3_tasks_without_losing_rows(tmp_path: Path) -> None:
+    _, _, database = setup_project(tmp_path)
+    with database.connect("story-01") as connection:
+        connection.executescript(
+            """
+            CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+            INSERT INTO metadata(key, value) VALUES ('schema_version', '3');
+            CREATE TABLE tasks (
+                id TEXT PRIMARY KEY, project_id TEXT NOT NULL, kind TEXT NOT NULL,
+                status TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+            );
+            INSERT INTO tasks VALUES (
+                '00000000-0000-0000-0000-000000000001', 'story-01', 'read', 'completed',
+                '2026-01-01T00:00:00+00:00', '2026-01-01T00:00:01+00:00'
+            );
+            """
+        )
+
+    database.initialize("story-01")
+
+    with database.connect("story-01") as connection:
+        row = connection.execute("SELECT purpose, subject_id, duration_ms FROM tasks").fetchone()
+        version = connection.execute(
             "SELECT value FROM metadata WHERE key = 'schema_version'"
-        ).fetchone()[0] == "3"
-        assert connection.execute(
-            "SELECT path FROM content_fts WHERE content_fts MATCH '版本二内容'"
-        ).fetchone()[0] == "canon/outline.md"
-        assert connection.execute(
-            "SELECT name FROM sqlite_master WHERE type = 'table' "
-            "AND name = 'commercial_observations'"
-        ).fetchone()[0] == "commercial_observations"
+        ).fetchone()[0]
+    assert version == "4"
+    assert row == ("manual", None, None)
 
 
-@pytest.mark.parametrize("version", ["0", "4", "future"])
+@pytest.mark.parametrize("version", ["0", "5", "future"])
 def test_initialization_rejects_unknown_schema_versions(tmp_path: Path, version: str) -> None:
     _, _, database = setup_project(tmp_path)
     with database.connect("story-01") as connection:
@@ -162,9 +200,12 @@ def test_v1_migration_rolls_back_all_ddl_and_can_retry_after_failure(tmp_path: P
         database.initialize("story-01")
 
     with database.connect("story-01") as connection:
-        assert connection.execute(
-            "SELECT value FROM metadata WHERE key = 'schema_version'"
-        ).fetchone()[0] == "1"
+        assert (
+            connection.execute(
+                "SELECT value FROM metadata WHERE key = 'schema_version'"
+            ).fetchone()[0]
+            == "1"
+        )
         objects = {
             row[0]
             for row in connection.execute(
@@ -176,17 +217,23 @@ def test_v1_migration_rolls_back_all_ddl_and_can_retry_after_failure(tmp_path: P
             "one_active_write_task_per_project",
             "enforce_task_status_transition",
         }.isdisjoint(objects)
-        assert connection.execute(
-            "SELECT path FROM content_fts WHERE content_fts MATCH '原子迁移'"
-        ).fetchone()[0] == "canon/outline.md"
+        assert (
+            connection.execute(
+                "SELECT path FROM content_fts WHERE content_fts MATCH '原子迁移'"
+            ).fetchone()[0]
+            == "canon/outline.md"
+        )
         connection.execute("DROP TABLE tasks")
 
     database.initialize("story-01")
 
     with database.connect("story-01") as connection:
-        assert connection.execute(
-            "SELECT value FROM metadata WHERE key = 'schema_version'"
-        ).fetchone()[0] == "3"
+        assert (
+            connection.execute(
+                "SELECT value FROM metadata WHERE key = 'schema_version'"
+            ).fetchone()[0]
+            == "4"
+        )
         objects = {
             row[0]
             for row in connection.execute(

@@ -77,6 +77,55 @@ def test_projects_list_returns_saved_projects(tmp_path: Path) -> None:
     assert [project["id"] for project in projects.json()] == ["book-a", "book-b"]
 
 
+def test_project_snapshot_reports_real_documents_tree_and_stats(tmp_path: Path) -> None:
+    with TestClient(create_app(tmp_path)) as client:
+        created = client.post(
+            "/api/projects",
+            json={
+                "project_id": "snapshot-book",
+                "title": "快照书",
+                "genre": "悬疑",
+                "target_words": 1000,
+                "constraints": "第三人称",
+                "setting_draft": "# 城市设定\n\n雨夜。",
+            },
+        ).json()
+        client.post(f"/api/projects/snapshot-book/setting/{created['task']['id']}/approve")
+        outline = client.post(
+            "/api/projects/snapshot-book/design/outline", json={"content": "# 主线大纲"}
+        ).json()
+        client.post(f"/api/projects/snapshot-book/design/outline/{outline['id']}/approve")
+        volume = client.post(
+            "/api/projects/snapshot-book/design/volumes/2",
+            json={"content": "# 第二卷"},
+        ).json()
+        client.post(f"/api/projects/snapshot-book/design/volumes/2/{volume['id']}/approve")
+        chapter = client.post(
+            "/api/projects/snapshot-book/design/chapters/0007",
+            json={"plan": "计划", "draft": "# 雨夜\n\n长街落雨。", "issues": [], "volume_id": "2"},
+        ).json()
+        client.post(f"/api/projects/snapshot-book/design/chapters/0007/{chapter['id']}/approve")
+        snapshot = client.get("/api/projects/snapshot-book/snapshot")
+
+    assert snapshot.status_code == 200
+    payload = snapshot.json()
+    assert payload["stats"] == {
+        "total_words": 6,
+        "chapter_count": 1,
+        "volume_count": 1,
+        "active_foreshadow_count": 0,
+    }
+    assert payload["volumes"][0]["id"] == "2"
+    assert payload["volumes"][0]["chapters"][0]["id"] == "0007"
+    assert payload["unassigned_chapters"] == []
+    assert {document["kind"] for document in payload["documents"]} == {
+        "setting",
+        "outline",
+        "volume",
+        "chapter",
+    }
+
+
 def test_save_and_restore_task_draft(tmp_path: Path) -> None:
     with TestClient(create_app(tmp_path)) as client:
         created = client.post(

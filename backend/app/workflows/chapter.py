@@ -13,7 +13,7 @@ from app.agents.schemas import (
 )
 from app.domain.errors import CommercialGateError, WorkflowGateError
 from app.domain.revision import RevisionWrite
-from app.domain.task import Task, TaskKind
+from app.domain.task import Task, TaskKind, TaskPurpose
 from app.repositories.database import DatabaseRepository
 from app.repositories.drafts import DraftRepository
 from app.repositories.revisions import RevisionRepository
@@ -166,7 +166,13 @@ class ChapterService:
         ):
             raise WorkflowGateError("approved book outline and volume are required")
         service = TaskService(TasksRepository(DatabaseRepository(self.workspace), project_id))
-        task = service.create(TaskKind.WRITE)
+        task = service.create(
+            TaskKind.WRITE,
+            TaskPurpose.CHAPTER,
+            subject_id=chapter_id,
+            volume_id=volume_id,
+            chapter_id=chapter_id,
+        )
         service.start(task.id)
         drafts = DraftRepository(self.workspace)
         drafts.write(project_id, task.id, "plan.md", plan)

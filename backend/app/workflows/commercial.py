@@ -6,7 +6,7 @@ from pydantic import ValidationError
 from app.domain.commercial import CommercialProfile
 from app.domain.errors import CanonContentError
 from app.domain.revision import RevisionWrite
-from app.domain.task import Task, TaskKind
+from app.domain.task import Task, TaskKind, TaskPurpose
 from app.repositories.database import DatabaseRepository
 from app.repositories.drafts import DraftRepository
 from app.repositories.revisions import RevisionRepository
@@ -33,7 +33,9 @@ class CommercialService:
 
     def create(self, project_id: str, profile: CommercialProfile) -> Task:
         service = self._tasks(project_id)
-        task = service.create(TaskKind.WRITE)
+        task = service.create(
+            TaskKind.WRITE, TaskPurpose.COMMERCIAL, subject_id="commercial-profile"
+        )
         service.start(task.id)
         self.write_draft(project_id, task.id, profile)
         return service.await_approval(task.id)
@@ -78,11 +80,7 @@ class CommercialService:
 
     @staticmethod
     def serialize(profile: CommercialProfile) -> str:
-        return yaml.safe_dump(
-            profile.model_dump(mode="json"), allow_unicode=True, sort_keys=True
-        )
+        return yaml.safe_dump(profile.model_dump(mode="json"), allow_unicode=True, sort_keys=True)
 
     def _tasks(self, project_id: str) -> TaskService:
-        return TaskService(
-            TasksRepository(DatabaseRepository(self.workspace), project_id)
-        )
+        return TaskService(TasksRepository(DatabaseRepository(self.workspace), project_id))
