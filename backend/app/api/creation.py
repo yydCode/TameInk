@@ -1,7 +1,7 @@
 from typing import cast
 
 from fastapi import APIRouter, Request, status
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.domain.task import Task, TaskKind, TaskPurpose
 from app.infrastructure.jobs import AgentJobKind, JobQueue
@@ -39,6 +39,7 @@ class ChapterApprovalRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     commercial_override_reason: str | None = None
+    accepted_memory_ids: list[str] = Field(default_factory=list)
 
 
 @router.post("/outline", response_model=Task, status_code=status.HTTP_201_CREATED)
@@ -89,6 +90,7 @@ def approve_chapter(
         task_id,
         chapter_id,
         commercial_override_reason=(payload.commercial_override_reason if payload else None),
+        accepted_memory_ids=(payload.accepted_memory_ids if payload else []),
     )
 
 

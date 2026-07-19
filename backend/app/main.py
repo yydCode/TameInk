@@ -13,6 +13,7 @@ from app.api.health import router as health_router
 from app.api.imports import router as imports_router
 from app.api.memory import router as memory_router
 from app.api.projects import router as projects_router
+from app.api.resources import router as resources_router
 from app.api.settings import router as settings_router
 from app.api.tasks import router as tasks_router
 from app.domain.errors import (
@@ -55,6 +56,7 @@ def create_app(workspace_root: Path, *, queue_immediate: bool = True) -> FastAPI
     application.include_router(events_router, prefix="/api")
     application.include_router(settings_router, prefix="/api")
     application.include_router(projects_router, prefix="/api")
+    application.include_router(resources_router, prefix="/api")
     application.include_router(imports_router, prefix="/api")
     application.include_router(creation_router, prefix="/api")
     application.include_router(memory_router, prefix="/api")

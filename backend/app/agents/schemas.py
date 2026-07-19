@@ -187,9 +187,16 @@ class CommercialReport(ReferencedOutput):
         return self
 
 
-class MemoryUpdate(ReferencedOutput):
+class MemoryCandidate(StrictSchema):
+    stable_id: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+    kind: Literal["fact", "event", "relationship", "foreshadowing"]
     operation: Literal["create", "update", "close"]
     content: str
+    citation: DraftCitation
+
+
+class MemoryCuration(ReferencedOutput):
+    updates: list[MemoryCandidate] = Field(max_length=20)
 
 
 class ImportAnalysis(ReferencedOutput):

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Request, status
 from pydantic import BaseModel, ConfigDict
 
+from app.domain.task import Task
 from app.workflows.import_book import ChapterBoundary, ImportBookService
 
 router = APIRouter(prefix="/projects/{project_id}/imports", tags=["imports"])
@@ -63,3 +64,8 @@ def confirm_boundaries(
         [item.model_dump() for item in payload.boundaries],
     )
     return {"task": task, "chapters": [_boundary(item) for item in boundaries]}
+
+
+@router.post("/{import_id}/{task_id}/approve", response_model=Task)
+def approve_import(project_id: str, import_id: str, task_id: str, request: Request) -> Task:
+    return ImportBookService(request.app.state.workspace).approve(project_id, import_id, task_id)

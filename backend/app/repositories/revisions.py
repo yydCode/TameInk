@@ -1,4 +1,5 @@
 import base64
+import difflib
 import hashlib
 import json
 import os
@@ -162,6 +163,42 @@ class RevisionRepository:
                 Revision(id=entry.commit.id.decode(), message=entry.commit.message.decode())
                 for entry in repo.get_walker(include=[current.encode()])
             ]
+
+    def diff(
+        self, project_id: str, base_revision: str, target_revision: str
+    ) -> list[dict[str, str]]:
+        with self._locked(project_id):
+            self._gate_recovery(project_id)
+            _, repo = self._repo(project_id)
+            base = self._revision_files(repo, base_revision)
+            target = self._revision_files(repo, target_revision)
+            changes: list[dict[str, str]] = []
+            for path in sorted(set(base) | set(target)):
+                before = base.get(path)
+                after = target.get(path)
+                if before == after:
+                    continue
+                status = "added" if before is None else "deleted" if after is None else "modified"
+                patch = "".join(
+                    difflib.unified_diff(
+                        [] if before is None else before.decode().splitlines(keepends=True),
+                        [] if after is None else after.decode().splitlines(keepends=True),
+                        fromfile=f"a/{path}",
+                        tofile=f"b/{path}",
+                    )
+                )
+                changes.append({"path": path, "status": status, "patch": patch})
+            return changes
+
+    def _revision_files(self, repo: Repo, revision_id: str) -> dict[str, bytes]:
+        try:
+            commit = repo.object_store[revision_id.encode()]
+            if not isinstance(commit, Commit):
+                raise TypeError
+            tree = repo.object_store[commit.tree]
+            return self._tree_files(repo, tree)
+        except (KeyError, TypeError, ValueError) as error:
+            raise InvalidRevisionError(f"revision does not exist: {revision_id}") from error
 
     def rollback(self, project_id: str, revision_id: str, expected_revision: str) -> Revision:
         with self._locked(project_id):

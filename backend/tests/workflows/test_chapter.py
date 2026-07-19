@@ -9,6 +9,7 @@ from app.agents.schemas import (
     CommercialIssue,
     CommercialReport,
     ContinuityIssue,
+    MemoryCuration,
     RevisionProposal,
     StyleIssue,
 )
@@ -53,9 +54,7 @@ def approve_commercial_profile(workspace, minimum_score: int = 70) -> None:
     service.approve("night-01", task.id)
 
 
-def commercial_report(
-    reference: list[dict[str, str]], score: int = 80
-) -> CommercialReport:
+def commercial_report(reference: list[dict[str, str]], score: int = 80) -> CommercialReport:
     return CommercialReport(
         id=f"commercial-{score}",
         chapter_id="0001",
@@ -130,6 +129,67 @@ def test_chapter_approval_commits_only_issue_local_revision_and_derives_summary(
     assert (workspace.project_path("night-01") / "memory/summaries/chapters/0001.md").is_file()
     assert RevisionRepository(workspace).history("night-01")[0].message == "确认：章节 0001"
     assert len(RevisionRepository(workspace).history("night-01")) == history_before + 1
+
+
+def test_selected_memory_candidate_is_committed_atomically_with_chapter(
+    tmp_path: Path,
+) -> None:
+    from app.repositories.canon import CanonRepository
+    from app.repositories.workspace import WorkspaceRepository
+
+    workspace = WorkspaceRepository(tmp_path)
+    books = NewBookService(workspace)
+    setting = books.create(
+        NewBookRequest(
+            project_id="night-01",
+            title="长夜",
+            genre="悬疑",
+            target_words=1000,
+            constraints="第三人称",
+        ),
+        "设定",
+    )
+    books.approve_setting("night-01", setting.task.id)
+    outlines = OutlineService(workspace)
+    book = outlines.create_book("night-01", "大纲")
+    outlines.approve_book("night-01", book.id)
+    volume = outlines.create_volume("night-01", "1", "分卷")
+    outlines.approve_volume("night-01", volume.id, "1")
+    candidates = MemoryCuration(
+        id="memory-curation-1",
+        updates=[
+            {
+                "stable_id": "old-city-rain",
+                "kind": "fact",
+                "operation": "create",
+                "content": "旧城在第一章处于雨夜",
+                "citation": {
+                    "source": "draft",
+                    "location": "chars:2-6",
+                    "quote": "旧城落雨",
+                },
+            }
+        ],
+        references=[{"path": "canon/outline.md", "location": "full document", "quote": "大纲"}],
+    )
+    chapters = ChapterService(workspace)
+    task = chapters.start(
+        "night-01",
+        "0001",
+        "计划",
+        "雨夜旧城落雨。",
+        [],
+        memory_candidates=candidates,
+    )
+
+    completed = chapters.approve("night-01", task.id, "0001", accepted_memory_ids=["old-city-rain"])
+    memory = CanonRepository(workspace).read_memory("night-01", "memory/facts/old-city-rain.yaml")
+
+    assert completed.status.value == "completed"
+    assert memory.content == "旧城在第一章处于雨夜"
+    assert memory.source == "canon/chapters/0001.md"
+    assert memory.location == "line 1, column 3, char 2"
+    assert memory.quote == "旧城落雨"
 
 
 def test_chapter_approval_storage_failure_is_atomic_and_marks_task_failed(
@@ -238,6 +298,8 @@ def test_chapter_pipeline_runs_planner_writer_independent_auditors_and_local_rev
                 ]
             if agent == "RetentionAuditor":
                 return commercial_report(reference)
+            if agent == "MemoryCurator":
+                return MemoryCuration(id="memory-1", updates=[], references=reference)
             assert agent == "DraftWriter"
             return [
                 RevisionProposal(
@@ -251,9 +313,7 @@ def test_chapter_pipeline_runs_planner_writer_independent_auditors_and_local_rev
                 )
             ]
 
-    task = ChapterService(workspace, runner=FakeRunner()).run(
-        "night-01", "0001", "写下一章"
-    )
+    task = ChapterService(workspace, runner=FakeRunner()).run("night-01", "0001", "写下一章")
 
     assert calls == [
         "ChapterPlanner",
@@ -263,6 +323,7 @@ def test_chapter_pipeline_runs_planner_writer_independent_auditors_and_local_rev
         "RetentionAuditor",
         "DraftWriter",
         "RetentionAuditor",
+        "MemoryCurator",
     ]
     assert task.status == "awaiting_approval"
     from app.repositories.drafts import DraftRepository

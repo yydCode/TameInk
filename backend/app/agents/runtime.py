@@ -432,6 +432,12 @@ class DeepAgentRunner:
                 "严格遵守 plan 中的字符数和场景顺序；只保留一个章标题，不使用二级分节标题；"
                 "能力规则必须通过动作和后果展示，不写设定说明。"
             )
+        if definition.name == "MemoryCurator":
+            return (
+                common + "只提取会影响后续连续性的持久事实。stable_id 使用稳定英文短横线格式；"
+                "citation 必须精确指向 payload.draft 的字符范围和原文；"
+                "没有持久更新时 updates 为空。"
+            )
         return common
 
     @staticmethod

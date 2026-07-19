@@ -8,6 +8,8 @@ from app.agents.schemas import (
     CommercialIssue,
     CommercialReport,
     ContinuityIssue,
+    MemoryCandidate,
+    MemoryCuration,
     RevisionProposal,
     StyleIssue,
 )
@@ -168,6 +170,19 @@ class ChapterService:
             raise WorkflowGateError("RetentionAuditor returned an invalid commercial report")
         final_commercial = self.normalize_commercial_report(revised, final_commercial)
         self.validate_audit_issues(revised, [], [], final_commercial.issues)
+        memory = self.runner.invoke(
+            "MemoryCurator",
+            {
+                "project_id": project_id,
+                "chapter_id": chapter_id,
+                "volume_id": volume_id,
+                "draft": revised,
+                "instruction": "extract only durable facts supported by exact draft citations",
+            },
+        )
+        if not isinstance(memory, MemoryCuration):
+            raise WorkflowGateError("MemoryCurator returned an invalid candidate list")
+        self.validate_memory_candidates(revised, memory.updates)
         return self._store_candidate(
             project_id,
             task_id,
@@ -178,6 +193,7 @@ class ChapterService:
             volume_id,
             commercial_report=final_commercial,
             minimum_commercial_score=commercial_profile.minimum_commercial_score,
+            memory_candidates=memory,
         )
 
     def start(
@@ -190,6 +206,7 @@ class ChapterService:
         volume_id: str = "1",
         commercial_report: CommercialReport | None = None,
         minimum_commercial_score: int | None = None,
+        memory_candidates: MemoryCuration | None = None,
     ) -> Task:
         if (commercial_report is None) != (minimum_commercial_score is None):
             raise WorkflowGateError(
@@ -215,6 +232,7 @@ class ChapterService:
             volume_id,
             commercial_report,
             minimum_commercial_score,
+            memory_candidates,
         )
 
     def _store_candidate(
@@ -228,6 +246,7 @@ class ChapterService:
         volume_id: str,
         commercial_report: CommercialReport | None,
         minimum_commercial_score: int | None,
+        memory_candidates: MemoryCuration | None,
     ) -> Task:
         service = TaskService(TasksRepository(DatabaseRepository(self.workspace), project_id))
         drafts = DraftRepository(self.workspace)
@@ -245,6 +264,13 @@ class ChapterService:
                 task_id,
                 "commercial-report.json",
                 commercial_report.model_dump_json(indent=2),
+            )
+        if memory_candidates is not None:
+            drafts.write(
+                project_id,
+                task_id,
+                "memory-candidates.json",
+                memory_candidates.model_dump_json(indent=2),
             )
         drafts.write(
             project_id,
@@ -278,6 +304,7 @@ class ChapterService:
         chapter_id: str,
         volume_id: str = "1",
         commercial_override_reason: str | None = None,
+        accepted_memory_ids: list[str] | None = None,
     ) -> Task:
         service = TaskService(TasksRepository(DatabaseRepository(self.workspace), project_id))
         drafts = DraftRepository(self.workspace)
@@ -297,6 +324,12 @@ class ChapterService:
                 raise WorkflowGateError("chapter approval does not match its run manifest")
             stored_volume_id = str(manifest["volume_id"])
             content = drafts.read(project_id, task_id, "chapter.md")
+            accepted = set(accepted_memory_ids or [])
+            candidates = self.read_memory_candidates(project_id, task_id)
+            known = {candidate.stable_id for candidate in candidates}
+            if not accepted <= known:
+                raise WorkflowGateError("accepted memory candidate does not exist")
+            selected = [candidate for candidate in candidates if candidate.stable_id in accepted]
             revisions = RevisionRepository(self.workspace)
             message = f"确认：章节 {chapter_id}"
             revisions.confirm_batch(
@@ -310,6 +343,9 @@ class ChapterService:
                     *MemoryService(self.workspace).summary_writes_for_project(
                         project_id, chapter_id, stored_volume_id, content
                     ),
+                    *MemoryService(self.workspace).candidate_writes(
+                        project_id, chapter_id, content, selected
+                    ),
                 ],
                 revisions.current_revision(project_id),
             )
@@ -318,6 +354,17 @@ class ChapterService:
             service.fail(task_id)
             raise
         return service.complete(task_id)
+
+    def read_memory_candidates(self, project_id: str, task_id: str) -> list[MemoryCandidate]:
+        drafts = DraftRepository(self.workspace)
+        if "memory-candidates.json" not in drafts.list_files(project_id, task_id):
+            return []
+        try:
+            return MemoryCuration.model_validate_json(
+                drafts.read(project_id, task_id, "memory-candidates.json")
+            ).updates
+        except ValueError as error:
+            raise WorkflowGateError("stored memory candidates are invalid") from error
 
     def read_commercial_report(self, project_id: str, task_id: str) -> CommercialReport | None:
         drafts = DraftRepository(self.workspace)
@@ -400,6 +447,16 @@ class ChapterService:
                     "chapter issue citation must exactly match the original draft"
                 )
         return issues
+
+    @staticmethod
+    def validate_memory_candidates(draft: str, candidates: list[MemoryCandidate]) -> None:
+        ids = [candidate.stable_id for candidate in candidates]
+        if len(ids) != len(set(ids)):
+            raise WorkflowGateError("memory candidate ids must be unique")
+        for candidate in candidates:
+            start, end = candidate.citation.character_range()
+            if end > len(draft) or draft[start:end] != candidate.citation.quote:
+                raise WorkflowGateError("memory candidate citation must exactly match the draft")
 
     @staticmethod
     def normalize_audit_citations(draft: str, issues: Sequence[AuditIssueT]) -> list[AuditIssueT]:

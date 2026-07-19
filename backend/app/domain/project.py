@@ -68,6 +68,7 @@ class MemoryRecord(StrictModel):
     source: str
     location: str
     quote: str
+    content: str | None = None
 
     @field_validator("id", "location", "quote")
     @classmethod

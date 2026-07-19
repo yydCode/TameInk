@@ -3,6 +3,7 @@ from typing import Literal
 
 import yaml
 
+from app.agents.schemas import MemoryCandidate
 from app.domain.errors import MemoryProvenanceError
 from app.domain.project import MemoryRecord
 from app.domain.revision import RevisionWrite
@@ -18,9 +19,7 @@ _DIRECTORIES = {
     "foreshadowing": "foreshadowing",
 }
 MemoryKind = Literal["fact", "event", "relationship", "foreshadowing"]
-_LOCATION = re.compile(
-    r"^line ([1-9][0-9]*), column ([1-9][0-9]*)(?:, char (0|[1-9][0-9]*))?$"
-)
+_LOCATION = re.compile(r"^line ([1-9][0-9]*), column ([1-9][0-9]*)(?:, char (0|[1-9][0-9]*))?$")
 
 
 class MemoryService:
@@ -166,6 +165,72 @@ class MemoryService:
             ),
         )
 
+    def candidate_writes(
+        self,
+        project_id: str,
+        chapter_id: str,
+        chapter_text: str,
+        candidates: list[MemoryCandidate],
+    ) -> list[RevisionWrite]:
+        source = f"canon/chapters/{chapter_id}.md"
+        canon = CanonRepository(self.workspace)
+        writes: list[RevisionWrite] = []
+        observed: set[str] = set()
+        for candidate in candidates:
+            if candidate.stable_id in observed:
+                raise MemoryProvenanceError("memory candidate ids must be unique")
+            observed.add(candidate.stable_id)
+            start, end = candidate.citation.character_range()
+            if end > len(chapter_text) or chapter_text[start:end] != candidate.citation.quote:
+                raise MemoryProvenanceError("memory candidate citation does not match chapter")
+            relative = self._relative(candidate.stable_id, candidate.kind)
+            target = self.workspace.resolve_project_path(project_id, relative)
+            if candidate.operation == "create":
+                if target.exists():
+                    raise MemoryProvenanceError("memory candidate already exists")
+                record = MemoryRecord(
+                    id=candidate.stable_id,
+                    kind=candidate.kind,
+                    status="active",
+                    source=source,
+                    location=self._location(chapter_text, start),
+                    quote=candidate.citation.quote,
+                    content=candidate.content,
+                )
+            else:
+                if not target.is_file():
+                    raise MemoryProvenanceError("memory update target does not exist")
+                existing = canon.read_memory(project_id, relative)
+                if candidate.operation == "close":
+                    record = existing.model_copy(update={"status": "resolved"})
+                else:
+                    record = existing.model_copy(
+                        update={
+                            "status": "active",
+                            "source": source,
+                            "location": self._location(chapter_text, start),
+                            "quote": candidate.citation.quote,
+                            "content": candidate.content,
+                        }
+                    )
+            writes.append(
+                RevisionWrite(
+                    path=relative,
+                    content=yaml.safe_dump(
+                        record.model_dump(mode="json"), allow_unicode=True, sort_keys=True
+                    ),
+                    message=f"确认：章节 {chapter_id}",
+                )
+            )
+        return writes
+
+    @staticmethod
+    def _location(content: str, character: int) -> str:
+        prefix = content[:character]
+        line = prefix.count("\n") + 1
+        column = len(prefix.rsplit("\n", 1)[-1]) + 1
+        return f"line {line}, column {column}, char {character}"
+
     def _read_summary(self, project_id: str, relative: str) -> str:
         path = self.workspace.resolve_project_path(project_id, relative)
         if not path.is_file():
@@ -205,9 +270,7 @@ class MemoryService:
             raise MemoryProvenanceError("memory kind is invalid")
         return f"memory/{directory}/{stable_id}.yaml"
 
-    def _validate_provenance(
-        self, project_id: str, source: str, location: str, quote: str
-    ) -> None:
+    def _validate_provenance(self, project_id: str, source: str, location: str, quote: str) -> None:
         match = _LOCATION.fullmatch(location)
         if match is None:
             raise MemoryProvenanceError("memory location must contain a line and column")

@@ -13,7 +13,7 @@ from app.agents.schemas import (
     ContinuityReport,
     DraftWriterResult,
     ImportAnalysis,
-    MemoryUpdate,
+    MemoryCuration,
     Outline,
     ReferencedOutput,
     StorySetting,
@@ -206,7 +206,7 @@ def build_subagent_definitions(backend: NovelWorkspaceBackend) -> list[CreativeA
             "MemoryCurator",
             "生成记忆更新候选",
             "仅生成可追溯记忆更新候选，不写正式 memory。",
-            MemoryUpdate,
+            MemoryCuration,
             False,
         ),
         (

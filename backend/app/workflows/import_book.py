@@ -12,10 +12,13 @@ from app.domain.errors import (
     ImportChapterBoundaryError,
     ImportEncodingAmbiguousError,
     ImportEncodingUnsupportedError,
+    WorkflowGateError,
 )
-from app.domain.task import Task, TaskKind, TaskPurpose
+from app.domain.revision import RevisionWrite
+from app.domain.task import Task, TaskKind, TaskPurpose, TaskStatus
 from app.repositories.database import DatabaseRepository
 from app.repositories.drafts import DraftRepository
+from app.repositories.revisions import RevisionRepository
 from app.repositories.tasks import TasksRepository
 from app.repositories.workspace import WorkspaceRepository
 from app.workflows.task_service import TaskService
@@ -316,11 +319,67 @@ class ImportBookService:
             ).encode(),
         )
         service = TaskService(TasksRepository(DatabaseRepository(self.workspace), project_id))
-        task = service.create(TaskKind.READ, TaskPurpose.IMPORT, subject_id=import_id)
+        task = service.create(TaskKind.WRITE, TaskPurpose.IMPORT, subject_id=import_id)
         service.start(task.id)
+        drafts = DraftRepository(self.workspace)
         analysis = "\n".join(f"{item.number}: {item.title}" for item in confirmed)
-        DraftRepository(self.workspace).write(project_id, task.id, "import-analysis.md", analysis)
+        drafts.write(project_id, task.id, "import-analysis.md", analysis)
+        encoded = decoded.text.encode(decoded.encoding, errors="strict")
+        for chapter in confirmed:
+            body = encoded[chapter.body_start.byte : chapter.end.byte].decode(
+                decoded.encoding, errors="strict"
+            )
+            heading = f"# 第{chapter.number}章"
+            if chapter.title:
+                heading += f" {chapter.title}"
+            drafts.write(
+                project_id,
+                task.id,
+                f"chapters/{chapter.number:04d}.md",
+                f"{heading}\n\n{body.strip()}\n",
+                overwrite=False,
+            )
         return service.await_approval(task.id), confirmed
+
+    def approve(self, project_id: str, import_id: str, task_id: str) -> Task:
+        service = TaskService(TasksRepository(DatabaseRepository(self.workspace), project_id))
+        task = service.get(task_id)
+        if (
+            task.purpose is not TaskPurpose.IMPORT
+            or task.subject_id != import_id
+            or task.status is not TaskStatus.AWAITING_APPROVAL
+        ):
+            raise WorkflowGateError("import approval does not match its task")
+        drafts = DraftRepository(self.workspace)
+        candidates = [
+            relative
+            for relative in drafts.list_files(project_id, task_id)
+            if relative.startswith("chapters/") and relative.endswith(".md")
+        ]
+        if not candidates:
+            raise WorkflowGateError("import has no confirmed chapter candidates")
+        writes: list[RevisionWrite] = []
+        for relative in candidates:
+            chapter_id = Path(relative).stem
+            formal = f"canon/chapters/{chapter_id}.md"
+            if self.workspace.resolve_project_path(project_id, formal).exists():
+                raise WorkflowGateError(f"import chapter already exists: {chapter_id}")
+            writes.append(
+                RevisionWrite(
+                    path=formal,
+                    content=drafts.read(project_id, task_id, relative),
+                    message=f"确认：导入 {import_id}",
+                )
+            )
+        service.approve(task_id)
+        try:
+            revisions = RevisionRepository(self.workspace)
+            revisions.confirm_batch(project_id, writes, revisions.current_revision(project_id))
+            DatabaseRepository(self.workspace).rebuild(project_id)
+        except Exception:
+            service.fail(task_id)
+            raise
+        return service.complete(task_id)
 
     def _original_path(self, project_id: str, import_id: str) -> Path:
         if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,62}", import_id):

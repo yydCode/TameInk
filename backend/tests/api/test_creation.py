@@ -7,6 +7,7 @@ from app.agents.schemas import (
     ChapterPlan,
     CommercialDimensionScore,
     CommercialReport,
+    MemoryCuration,
     Outline,
     StorySetting,
 )
@@ -125,6 +126,8 @@ def test_agent_chapter_route_runs_planner_writer_and_auditors(tmp_path: Path, mo
                     issues=[],
                     references=reference,
                 )
+            if agent == "MemoryCurator":
+                return MemoryCuration(id="memory-1", updates=[], references=reference)
             raise AssertionError(agent)
 
     monkeypatch.setattr(

@@ -3,12 +3,22 @@ from typing import Literal
 from fastapi import APIRouter, Request, status
 from pydantic import BaseModel, ConfigDict
 
+from app.agents.schemas import MemoryCandidate
 from app.domain.project import MemoryRecord
 from app.repositories.database import DatabaseRepository
 from app.repositories.search import SearchHit, SearchRepository
 from app.workflows.memory import MemoryKind, MemoryService
 
 router = APIRouter(prefix="/projects/{project_id}", tags=["memory"])
+
+
+@router.get("/tasks/{task_id}/memory-candidates", response_model=list[MemoryCandidate])
+def list_memory_candidates(
+    project_id: str, task_id: str, request: Request
+) -> list[MemoryCandidate]:
+    from app.workflows.chapter import ChapterService
+
+    return ChapterService(request.app.state.workspace).read_memory_candidates(project_id, task_id)
 
 
 class ProvenanceRequest(BaseModel):
@@ -25,9 +35,7 @@ class MemoryCreateRequest(ProvenanceRequest):
 
 
 @router.post("/memory", response_model=MemoryRecord, status_code=status.HTTP_201_CREATED)
-def create_memory(
-    project_id: str, payload: MemoryCreateRequest, request: Request
-) -> MemoryRecord:
+def create_memory(project_id: str, payload: MemoryCreateRequest, request: Request) -> MemoryRecord:
     return MemoryService(request.app.state.workspace).create(
         project_id,
         payload.id,

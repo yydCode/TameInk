@@ -115,7 +115,7 @@ def test_import_confirmation_allows_title_correction_and_false_positive_removal(
     tmp_path: Path,
 ) -> None:
     workspace = WorkspaceRepository(tmp_path)
-    NewBookService(workspace).create(
+    created = NewBookService(workspace).create(
         NewBookRequest(
             project_id="story-01",
             title="长夜",
@@ -125,6 +125,7 @@ def test_import_confirmation_allows_title_correction_and_false_positive_removal(
         ),
         "设定",
     )
+    NewBookService(workspace).approve_setting("story-01", created.task.id)
     service = ImportBookService(workspace)
     payload = "第一章 旧标题\n正文甲\n第二章 误识别\n正文乙\n第三章 终章\n正文丙".encode()
     _, candidates = service.upload("story-01", "source-01", payload, "utf-8")

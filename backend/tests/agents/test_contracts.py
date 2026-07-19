@@ -7,7 +7,7 @@ from app.agents.schemas import (
     ContinuityIssue,
     DraftCitation,
     ImportAnalysis,
-    MemoryUpdate,
+    MemoryCuration,
     Outline,
     RevisionProposal,
     SourceReference,
@@ -87,8 +87,24 @@ REFERENCE = {"path": "canon/premise.md", "location": "paragraph 2", "quote": "�
             },
         ),
         (
-            MemoryUpdate,
-            {"id": "memory-1", "operation": "create", "content": "事实", "references": [REFERENCE]},
+            MemoryCuration,
+            {
+                "id": "memory-1",
+                "updates": [
+                    {
+                        "stable_id": "weather-rain",
+                        "kind": "fact",
+                        "operation": "create",
+                        "content": "旧城正在下雨",
+                        "citation": {
+                            "source": "draft",
+                            "location": "chars:0-2",
+                            "quote": "正文",
+                        },
+                    }
+                ],
+                "references": [REFERENCE],
+            },
         ),
         (
             ImportAnalysis,
@@ -149,6 +165,4 @@ def test_draft_citation_has_parseable_exact_character_range() -> None:
 @pytest.mark.parametrize("location", ["line 1", "chars:2-1", "chars:-1-2"])
 def test_draft_citation_rejects_unparseable_or_reversed_range(location: str) -> None:
     with pytest.raises(ValidationError):
-        DraftCitation.model_validate(
-            {"source": "draft", "location": location, "quote": "正文"}
-        )
+        DraftCitation.model_validate({"source": "draft", "location": location, "quote": "正文"})
