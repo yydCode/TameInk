@@ -1,9 +1,17 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Check, History, Plus, X } from "lucide-react";
+import { ArrowRight, Check, History, Plus, RefreshCw, X } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
 
-import { getCommercialMetrics, getProjectUsage, listMemory } from "../api/client";
+import {
+  type DiagnosticResult,
+  type Suggestion,
+  getCommercialMetrics,
+  getProjectUsage,
+  listMemory,
+  listSuggestions,
+  runDiagnostics,
+} from "../api/client";
 import { queryKeys } from "../app/queryKeys";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { useProjectWorkspace } from "../features/workspace/useProjectWorkspace";
@@ -24,6 +32,110 @@ interface DailyGoal {
 interface Stockpile {
   chapters: number;
   dailyUpdateChapters: number; // 每日更新章节数
+}
+
+// AI 决策状态：作者对每条 AI 候选条目的"采纳/忽略"决策
+type AiDecisionState = "adopted" | "ignored";
+// AI 决策记录：key 为诊断/建议的稳定哈希，value 为决策状态
+type AiDecisionMap = Record<string, AiDecisionState>;
+
+// 写作统计：每日字数记录 + 今日写作时长
+interface WritingStats {
+  dailyWords: Record<string, number>; // key: YYYY-MM-DD，value: 当日字数
+  todayMinutes: number; // 今日写作时长（分钟），用于计算平均时速
+}
+
+// 生成诊断项的稳定 key（基于类型 + 对象）
+function diagnosticKey(item: DiagnosticResult): string {
+  return `d:${item.diagnostic_type}:${item.target}`;
+}
+
+// 生成建议项的稳定 key（基于类型 + 内容前 40 字）
+function suggestionKey(item: Suggestion): string {
+  return `s:${item.type}:${item.content.slice(0, 40)}`;
+}
+
+// 诊断类型中文标签
+function diagnosticTypeLabel(type: DiagnosticResult["diagnostic_type"]): string {
+  switch (type) {
+    case "data":
+      return "数据";
+    case "plot":
+      return "剧情";
+    case "foreshadowing":
+      return "伏笔";
+  }
+}
+
+// 建议类型中文标签
+function suggestionTypeLabel(type: Suggestion["type"]): string {
+  switch (type) {
+    case "planning":
+      return "规划";
+    case "optimization":
+      return "优化";
+    case "foreshadow":
+      return "伏笔";
+    case "material":
+      return "素材";
+  }
+}
+
+// 优先级中文标签
+function priorityLabel(priority: Suggestion["priority"]): string {
+  switch (priority) {
+    case "low":
+      return "低";
+    case "medium":
+      return "中";
+    case "high":
+      return "高";
+  }
+}
+
+// 计算最近 N 天的日期列表（YYYY-MM-DD，按时间正序）
+function recentDays(count: number): string[] {
+  const days: string[] = [];
+  const now = new Date();
+  for (let i = count - 1; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
+    days.push(d.toISOString().slice(0, 10));
+  }
+  return days;
+}
+
+// 计算连续更新天数（从今日向前数；今天没写不算中断，昨天起没写即中断）
+function streakDays(dailyWords: Record<string, number>): number {
+  let streak = 0;
+  const now = new Date();
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    const words = dailyWords[key] ?? 0;
+    if (words > 0) {
+      streak++;
+    } else if (i > 0) {
+      // i=0（今天）没写不中断；i>=1（昨天起）没写即中断
+      break;
+    }
+  }
+  return streak;
+}
+
+// 计算本周字数（最近 7 天之和）
+function weekWords(dailyWords: Record<string, number>): number {
+  return recentDays(7).reduce((sum, date) => sum + (dailyWords[date] ?? 0), 0);
+}
+
+// 计算本月字数（当月所有日字数之和）
+function monthWords(dailyWords: Record<string, number>): number {
+  const now = new Date();
+  const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  return Object.entries(dailyWords)
+    .filter(([date]) => date.startsWith(prefix))
+    .reduce((sum, [, words]) => sum + words, 0);
 }
 
 /**
@@ -54,11 +166,33 @@ export function TodayWorkspacePage() {
     `tame-ink:todos:${projectId}`,
     [],
   );
+  // 写作统计：每日字数记录 + 今日写作时长（作者自定义，AI 不干预）
+  const [writingStats, setWritingStats] = useLocalStorage<WritingStats>(
+    `tame-ink:writing-stats:${projectId}`,
+    { dailyWords: {}, todayMinutes: 60 },
+  );
+  // AI 决策记录：作者对每条 AI 候选条目的"采纳/忽略"决策
+  const [aiDecisions, setAiDecisions] = useLocalStorage<AiDecisionMap>(
+    `tame-ink:ai-decisions:${projectId}`,
+    {},
+  );
 
   // 如果日期变了，重置今日已写
   if (dailyGoal.date !== today) {
     setDailyGoal({ ...dailyGoal, date: today, writtenWords: 0 });
   }
+
+  // 同步今日已写字数到每日记录（用于本周/本月统计与 7 天打卡）
+  useEffect(() => {
+    if (dailyGoal.writtenWords <= 0) return;
+    setWritingStats((prev) => {
+      if (prev.dailyWords[today] === dailyGoal.writtenWords) return prev;
+      return {
+        ...prev,
+        dailyWords: { ...prev.dailyWords, [today]: dailyGoal.writtenWords },
+      };
+    });
+  }, [dailyGoal.writtenWords, today, setWritingStats]);
 
   // 获取伏笔数据（AI 整理）
   const memory = useQuery({
@@ -73,6 +207,21 @@ export function TodayWorkspacePage() {
   const usage = useQuery({
     queryKey: queryKeys.usage(projectId),
     queryFn: () => getProjectUsage(projectId),
+  });
+  // AI 诊断（候选，作者决策）
+  // enabled: false —— 默认不自动运行，由作者点击"运行诊断"按钮触发 refetch
+  // retry: false —— 失败不重试，UI 显示"诊断服务暂不可用"
+  const diagnostics = useQuery({
+    queryKey: queryKeys.diagnostics(projectId),
+    queryFn: () => runDiagnostics(projectId),
+    enabled: false,
+    retry: false,
+  });
+  // AI 建议列表（候选，作者决策）
+  const suggestions = useQuery({
+    queryKey: queryKeys.suggestions(projectId),
+    queryFn: () => listSuggestions(projectId),
+    retry: false,
   });
 
   // 计算下一章信息
@@ -118,6 +267,32 @@ export function TodayWorkspacePage() {
   const stockpileDays = stockpile.dailyUpdateChapters > 0
     ? Math.floor(stockpile.chapters / stockpile.dailyUpdateChapters)
     : 0;
+
+  // 更新 AI 决策：state 为 undefined 时表示撤销决策
+  function handleAiDecide(key: string, state: AiDecisionState | undefined) {
+    setAiDecisions((prev) => {
+      const next = { ...prev };
+      if (state === undefined) {
+        delete next[key];
+      } else {
+        next[key] = state;
+      }
+      return next;
+    });
+  }
+
+  // 平均时速（字/小时）= 今日字数 / 今日写作小时数
+  const wordsPerHour = writingStats.todayMinutes > 0
+    ? Math.round(dailyGoal.writtenWords / (writingStats.todayMinutes / 60))
+    : 0;
+
+  // 最近 7 天日期列表（用于打卡显示）
+  const calendarDays = useMemo(() => recentDays(7), []);
+  // 连续更新天数
+  const streak = useMemo(
+    () => streakDays(writingStats.dailyWords),
+    [writingStats.dailyWords],
+  );
 
   if (project.isPending || snapshot.isPending)
     return <div className="loading-state">读取今日工作台...</div>;
@@ -191,6 +366,70 @@ export function TodayWorkspacePage() {
         </div>
       </section>
 
+      {/* C2：写作统计（节奏管理）——今日字数 / 本周字数 / 本月字数 / 平均时速 / 7 天打卡 / 连续天数 */}
+      <section className="stats-card">
+        <div className="section-title">
+          <h2>写作统计</h2>
+          <span>节奏管理</span>
+        </div>
+        <div className="stats-grid">
+          <div className="stats-item">
+            <small>今日字数</small>
+            <strong>{dailyGoal.writtenWords.toLocaleString("zh-CN")}</strong>
+          </div>
+          <div className="stats-item">
+            <small>本周字数</small>
+            <strong>{weekWords(writingStats.dailyWords).toLocaleString("zh-CN")}</strong>
+          </div>
+          <div className="stats-item">
+            <small>本月字数</small>
+            <strong>{monthWords(writingStats.dailyWords).toLocaleString("zh-CN")}</strong>
+          </div>
+          <div className="stats-item">
+            <small>平均时速</small>
+            <strong>{wordsPerHour.toLocaleString("zh-CN")} 字/时</strong>
+          </div>
+        </div>
+        <div className="stats-calendar">
+          <div className="stats-calendar-row">
+            <small>最近 7 天</small>
+            <div className="stats-dots">
+              {calendarDays.map((date) => {
+                const words = writingStats.dailyWords[date] ?? 0;
+                const isToday = date === today;
+                return (
+                  <span
+                    key={date}
+                    className={`stats-dot${words > 0 ? " is-active" : ""}${isToday ? " is-today" : ""}`}
+                    title={`${date}：${words.toLocaleString("zh-CN")} 字`}
+                  >
+                    {date.slice(5)}
+                  </span>
+                );
+              })}
+            </div>
+            <small>
+              连续更新 <strong>{streak}</strong> 天
+            </small>
+          </div>
+          <label className="stats-minutes">
+            <span>今日写作时长（分钟）</span>
+            <input
+              type="number"
+              min="0"
+              step="10"
+              value={writingStats.todayMinutes}
+              onChange={(event) =>
+                setWritingStats({
+                  ...writingStats,
+                  todayMinutes: Math.max(0, Number(event.target.value)),
+                })
+              }
+            />
+          </label>
+        </div>
+      </section>
+
       {/* 下一章 + 存稿情况（两列） */}
       <div className="workspace-row">
         <section className="action-card">
@@ -218,6 +457,21 @@ export function TodayWorkspacePage() {
             {stockpileDays > 0 && stockpileDays <= 3 && (
               <span className="stockpile-warning">⚠️ 存稿不足，建议补充</span>
             )}
+          </div>
+          {/* 存稿预警线：3 天为预警线，存稿 < 3 天时整条进度条变红 */}
+          <div className="stockpile-meter">
+            <div
+              className={`stockpile-meter-fill${stockpileDays < 3 ? " is-warning" : ""}`}
+              style={{ width: `${Math.min(100, (stockpileDays / 10) * 100)}%` }}
+            />
+            <span
+              className="stockpile-meter-warnline"
+              style={{ left: `${(3 / 10) * 100}%` }}
+              title="预警线：3 天"
+            />
+            <small className="stockpile-meter-label">
+              预警线 3 天 · 当前 {stockpileDays} 天
+            </small>
           </div>
           <div className="stockpile-inputs">
             <label>
@@ -349,6 +603,42 @@ export function TodayWorkspacePage() {
         </section>
       )}
 
+      {/* C1：AI 诊断与建议（候选，作者决策） */}
+      <section className="ai-card">
+        <div className="section-title">
+          <h2>AI 诊断与建议</h2>
+          <span>候选，作者决策</span>
+        </div>
+        <p className="ai-intro">
+          AI 诊断与建议（候选，作者决策）——以下条目均为候选，由作者决定是否采纳。
+        </p>
+        <div className="ai-toolbar">
+          <button
+            className="button button-secondary"
+            type="button"
+            onClick={() => diagnostics.refetch()}
+            disabled={diagnostics.isFetching}
+          >
+            <RefreshCw size={14} className={diagnostics.isFetching ? "is-spinning" : ""} />
+            运行诊断
+          </button>
+        </div>
+        <AiDiagnosticsSection
+          data={diagnostics.data}
+          isFetching={diagnostics.isFetching}
+          isError={diagnostics.isError}
+          decisions={aiDecisions}
+          onDecide={handleAiDecide}
+        />
+        <AiSuggestionsSection
+          data={suggestions.data}
+          isFetching={suggestions.isFetching}
+          isError={suggestions.isError}
+          decisions={aiDecisions}
+          onDecide={handleAiDecide}
+        />
+      </section>
+
       {/* 模型用量（AI 整理） */}
       {usage.data && (
         <section className="usage-card">
@@ -425,6 +715,198 @@ function TodoList({ todos, setTodos }: { todos: TodoItem[]; setTodos: (todos: To
       ) : (
         <p className="muted">暂无待办。</p>
       )}
+    </div>
+  );
+}
+
+/**
+ * AI 诊断候选区
+ * 显示 runDiagnostics 返回的诊断列表，每项可采纳/忽略
+ * 失败时显示"诊断服务暂不可用"，不报错
+ */
+function AiDiagnosticsSection({
+  data,
+  isFetching,
+  isError,
+  decisions,
+  onDecide,
+}: {
+  data: DiagnosticResult[] | undefined;
+  isFetching: boolean;
+  isError: boolean;
+  decisions: AiDecisionMap;
+  onDecide: (key: string, state: AiDecisionState | undefined) => void;
+}) {
+  if (isFetching) {
+    return <p className="muted">正在运行诊断...</p>;
+  }
+  if (isError) {
+    return <p className="muted">诊断服务暂不可用</p>;
+  }
+  if (!data || data.length === 0) {
+    return <p className="muted">点击"运行诊断"获取候选诊断。</p>;
+  }
+  return (
+    <div className="ai-subsection">
+      <h3 className="ai-subsection-title">诊断候选</h3>
+      <ul className="ai-list">
+        {data.map((item, index) => {
+          const key = diagnosticKey(item);
+          const state = decisions[key];
+          return (
+            <li
+              key={`${key}-${index}`}
+              className={`ai-item ai-item--${item.severity}`}
+            >
+              <div className="ai-item-header">
+                <span className={`ai-tag ai-tag--${item.diagnostic_type}`}>
+                  {diagnosticTypeLabel(item.diagnostic_type)}
+                </span>
+                <strong className="ai-target">{item.target}</strong>
+                {state && (
+                  <span className={`ai-state ai-state--${state}`}>
+                    {state === "adopted" ? "已采纳" : "已忽略"}
+                  </span>
+                )}
+              </div>
+              <p className="ai-conclusion">{item.conclusion}</p>
+              {item.possible_causes.length > 0 && (
+                <div className="ai-causes">
+                  <small>可能原因：</small>
+                  <ul>
+                    {item.possible_causes.map((cause, i) => (
+                      <li key={i}>{cause}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <div className="ai-actions">
+                {!state && (
+                  <>
+                    <button
+                      className="button button-primary"
+                      type="button"
+                      onClick={() => onDecide(key, "adopted")}
+                    >
+                      采纳
+                    </button>
+                    <button
+                      className="button button-secondary"
+                      type="button"
+                      onClick={() => onDecide(key, "ignored")}
+                    >
+                      忽略
+                    </button>
+                  </>
+                )}
+                {state && (
+                  <button
+                    className="button button-secondary"
+                    type="button"
+                    onClick={() => onDecide(key, undefined)}
+                  >
+                    撤销
+                  </button>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * AI 建议候选区
+ * 显示 listSuggestions 返回的建议列表，每项可采纳/忽略
+ * 失败时显示"建议服务暂不可用"，不报错
+ */
+function AiSuggestionsSection({
+  data,
+  isFetching,
+  isError,
+  decisions,
+  onDecide,
+}: {
+  data: Suggestion[] | undefined;
+  isFetching: boolean;
+  isError: boolean;
+  decisions: AiDecisionMap;
+  onDecide: (key: string, state: AiDecisionState | undefined) => void;
+}) {
+  if (isFetching) {
+    return <p className="muted">正在加载建议...</p>;
+  }
+  if (isError) {
+    return <p className="muted">建议服务暂不可用</p>;
+  }
+  if (!data || data.length === 0) {
+    return <p className="muted">暂无可执行建议。</p>;
+  }
+  return (
+    <div className="ai-subsection">
+      <h3 className="ai-subsection-title">建议候选</h3>
+      <ul className="ai-list">
+        {data.map((item, index) => {
+          const key = suggestionKey(item);
+          const state = decisions[key];
+          return (
+            <li
+              key={`${key}-${index}`}
+              className={`ai-item ai-item--${item.priority}`}
+            >
+              <div className="ai-item-header">
+                <span className={`ai-tag ai-tag--${item.type}`}>
+                  {suggestionTypeLabel(item.type)}
+                </span>
+                <span className={`ai-priority ai-priority--${item.priority}`}>
+                  优先级：{priorityLabel(item.priority)}
+                </span>
+                {state && (
+                  <span className={`ai-state ai-state--${state}`}>
+                    {state === "adopted" ? "已采纳" : "已忽略"}
+                  </span>
+                )}
+              </div>
+              <p className="ai-conclusion">{item.content}</p>
+              <p className="ai-reason">
+                <small>推荐理由：</small>
+                <span>{item.reason}</span>
+              </p>
+              <div className="ai-actions">
+                {!state && (
+                  <>
+                    <button
+                      className="button button-primary"
+                      type="button"
+                      onClick={() => onDecide(key, "adopted")}
+                    >
+                      采纳
+                    </button>
+                    <button
+                      className="button button-secondary"
+                      type="button"
+                      onClick={() => onDecide(key, "ignored")}
+                    >
+                      忽略
+                    </button>
+                  </>
+                )}
+                {state && (
+                  <button
+                    className="button button-secondary"
+                    type="button"
+                    onClick={() => onDecide(key, undefined)}
+                  >
+                    撤销
+                  </button>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

@@ -2,14 +2,20 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BookOpen,
+  Bookmark,
+  CalendarRange,
   ChartNoAxesCombined,
   ChevronDown,
   CirclePlus,
+  ClipboardCheck,
   FileText,
   GitBranch,
   Library,
   Settings,
+  Sliders,
   Sparkles,
+  Target,
+  TrendingUp,
   Upload,
   Zap,
 } from "lucide-react";
@@ -53,7 +59,11 @@ const navGroups: NavGroup[] = [
     icon: Sparkles,
     items: [
       { path: "story", label: "故事设计", icon: Sparkles },
+      { path: "market", label: "市场调研", icon: TrendingUp },
+      { path: "opening", label: "黄金三章", icon: Sparkles },
       { path: "commercial", label: "商业定位", icon: ChartNoAxesCombined },
+      { path: "bestseller", label: "爆款拆解", icon: TrendingUp },
+      { path: "patterns", label: "套路模板", icon: Sparkles },
     ],
   },
   {
@@ -70,6 +80,9 @@ const navGroups: NavGroup[] = [
     icon: Library,
     items: [
       { path: "memory", label: "记忆中心", icon: Library },
+      { path: "batch-plan", label: "批量规划", icon: CalendarRange },
+      { path: "materials", label: "素材库", icon: Bookmark },
+      { path: "completion", label: "完本规划", icon: Target },
       { path: "imports", label: "作品导入", icon: Upload },
     ],
   },
@@ -79,6 +92,8 @@ const navGroups: NavGroup[] = [
     icon: GitBranch,
     items: [
       { path: "overview", label: "作品概览", icon: BookOpen },
+      { path: "rules", label: "规则设置", icon: Sliders },
+      { path: "decisions", label: "决策队列", icon: ClipboardCheck },
       { path: "runs", label: "运行记录", icon: GitBranch },
     ],
   },

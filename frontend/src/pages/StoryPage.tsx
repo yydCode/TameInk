@@ -18,6 +18,7 @@ import {
 } from "../api/client";
 import { queryKeys } from "../app/queryKeys";
 import { NovelEditor } from "../components/editor/NovelEditor";
+import { CharacterSystemPanel } from "./CharacterSystemPanel";
 import { RunStatus } from "../features/runs/RunStatus";
 import { useProjectWorkspace } from "../features/workspace/useProjectWorkspace";
 import { useTaskStream } from "../hooks/useTaskStream";
@@ -30,6 +31,8 @@ type StoryTab = {
   canonicalPath: string;
   draftPath: string;
   volumeId?: string;
+  // 标记为本地数据 tab：不参与 AI 生成/审批流程，数据存 localStorage
+  localOnly?: boolean;
 };
 
 export function StoryPage() {
@@ -88,6 +91,16 @@ export function StoryPage() {
           volumeId,
         };
       }),
+      // 人物体系：本地数据 tab，不参与 AI 流程，数据存 localStorage
+      {
+        id: "characters",
+        label: "人物体系",
+        purpose: "setting",
+        subject: "characters",
+        canonicalPath: "",
+        draftPath: "",
+        localOnly: true,
+      },
     ],
     [localVolumes, snapshot.data?.volumes, tasks.data],
   );
@@ -265,93 +278,97 @@ export function StoryPage() {
           </button>
         </span>
       </div>
-      <div className="document-workbench">
-        <section className="document-main">
-          <div className="document-toolbar">
-            <div>
-              <span className="eyebrow">
-                {task?.status === "awaiting_approval"
-                  ? "候选稿"
-                  : formalExists
-                    ? "正式稿"
-                    : "尚未生成"}
-              </span>
-              <h2>{tab.label}</h2>
-            </div>
-            <div>
-              {task && ["pending", "running"].includes(task.status) && (
+      {tab.localOnly ? (
+        <CharacterSystemPanel projectId={projectId} />
+      ) : (
+        <div className="document-workbench">
+          <section className="document-main">
+            <div className="document-toolbar">
+              <div>
+                <span className="eyebrow">
+                  {task?.status === "awaiting_approval"
+                    ? "候选稿"
+                    : formalExists
+                      ? "正式稿"
+                      : "尚未生成"}
+                </span>
+                <h2>{tab.label}</h2>
+              </div>
+              <div>
+                {task && ["pending", "running"].includes(task.status) && (
+                  <button
+                    className="button button-secondary"
+                    type="button"
+                    onClick={() => void cancel()}
+                  >
+                    <XCircle size={15} />
+                    取消
+                  </button>
+                )}
                 <button
                   className="button button-secondary"
                   type="button"
-                  onClick={() => void cancel()}
+                  disabled={
+                    generate.isPending ||
+                    task?.status === "pending" ||
+                    task?.status === "running"
+                  }
+                  onClick={() => generate.mutate()}
                 >
-                  <XCircle size={15} />
-                  取消
+                  {generate.isPending || task?.status === "running" ? (
+                    <LoaderCircle className="spin" size={15} />
+                  ) : (
+                    <Sparkles size={15} />
+                  )}
+                  AI 生成候选
                 </button>
-              )}
-              <button
-                className="button button-secondary"
-                type="button"
-                disabled={
-                  generate.isPending ||
-                  task?.status === "pending" ||
-                  task?.status === "running"
-                }
-                onClick={() => generate.mutate()}
-              >
-                {generate.isPending || task?.status === "running" ? (
-                  <LoaderCircle className="spin" size={15} />
-                ) : (
-                  <Sparkles size={15} />
+                {task?.status === "awaiting_approval" && (
+                  <button
+                    className="button button-primary"
+                    type="button"
+                    disabled={approve.isPending || content !== savedContent}
+                    onClick={() => approve.mutate()}
+                  >
+                    <Check size={15} />
+                    确认当前草稿
+                  </button>
                 )}
-                AI 生成候选
-              </button>
-              {task?.status === "awaiting_approval" && (
-                <button
-                  className="button button-primary"
-                  type="button"
-                  disabled={approve.isPending || content !== savedContent}
-                  onClick={() => approve.mutate()}
-                >
-                  <Check size={15} />
-                  确认当前草稿
-                </button>
-              )}
+              </div>
             </div>
-          </div>
-          {content ? (
-            <NovelEditor
-              markdown={content}
-              onChange={setContent}
-              readOnly={task?.status !== "awaiting_approval"}
+            {content ? (
+              <NovelEditor
+                markdown={content}
+                onChange={setContent}
+                readOnly={task?.status !== "awaiting_approval"}
+              />
+            ) : (
+              <div className="editor-empty">输入指令并生成候选稿。</div>
+            )}
+          </section>
+          <aside className="instruction-rail">
+            <span className="eyebrow">Agent 指令</span>
+            <textarea
+              value={instruction}
+              onChange={(event) => setInstruction(event.target.value)}
             />
-          ) : (
-            <div className="editor-empty">输入指令并生成候选稿。</div>
-          )}
-        </section>
-        <aside className="instruction-rail">
-          <span className="eyebrow">Agent 指令</span>
-          <textarea
-            value={instruction}
-            onChange={(event) => setInstruction(event.target.value)}
-          />
-          <dl>
-            <div>
-              <dt>任务类型</dt>
-              <dd>{tab.purpose}</dd>
-            </div>
-            <div>
-              <dt>正式路径</dt>
-              <dd>{tab.canonicalPath}</dd>
-            </div>
-            <div>
-              <dt>保存状态</dt>
-              <dd>{content === savedContent ? "已保存" : "待保存"}</dd>
-            </div>
-          </dl>
-          {stream.error && <p className="inline-error">{stream.error}</p>}
-        </aside>
-      </div>
+            <dl>
+              <div>
+                <dt>任务类型</dt>
+                <dd>{tab.purpose}</dd>
+              </div>
+              <div>
+                <dt>正式路径</dt>
+                <dd>{tab.canonicalPath}</dd>
+              </div>
+              <div>
+                <dt>保存状态</dt>
+                <dd>{content === savedContent ? "已保存" : "待保存"}</dd>
+              </div>
+            </dl>
+            {stream.error && <p className="inline-error">{stream.error}</p>}
+          </aside>
+        </div>
+      )}
     </div>
   );
 }

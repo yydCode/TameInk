@@ -13,4 +13,11 @@ export const queryKeys = {
   memory: (projectId: string) => ["memory", projectId] as const,
   usage: (projectId: string) => ["usage", projectId] as const,
   revisions: (projectId: string) => ["revisions", projectId] as const,
+  // 诊断
+  diagnostics: (projectId: string) => ["diagnostics", projectId] as const,
+  // 建议
+  suggestions: (projectId: string) => ["suggestions", projectId] as const,
+  // 推荐
+  recommendations: (projectId: string, chapterId: string) =>
+    ["recommendations", projectId, chapterId] as const,
 };

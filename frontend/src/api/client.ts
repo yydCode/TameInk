@@ -629,3 +629,128 @@ export async function getHealth(options: HealthRequestOptions = {}): Promise<Hea
     options.signal?.removeEventListener("abort", abortFromCaller);
   }
 }
+
+// 诊断结果
+export interface DiagnosticResult {
+  diagnostic_type: "data" | "plot" | "foreshadowing";
+  target: string;
+  conclusion: string;
+  possible_causes: string[];
+  severity: "info" | "warning" | "error";
+}
+
+// 建议
+export interface Suggestion {
+  type: "planning" | "optimization" | "foreshadow" | "material";
+  content: string;
+  reason: string;
+  priority: "low" | "medium" | "high";
+}
+
+// 推荐
+export interface Recommendation {
+  type: "material" | "character" | "dialogue";
+  content: string;
+  reason: string;
+  source: string;
+}
+
+// 运行诊断 Agent，返回三类诊断结论
+export function runDiagnostics(projectId: string): Promise<DiagnosticResult[]> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/diagnostics`, { method: "POST" });
+}
+
+// 获取建议通道聚合后的可执行建议
+export function listSuggestions(projectId: string): Promise<Suggestion[]> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/suggestions`);
+}
+
+// 根据章节内容获取素材/人物/对话推荐
+export function listRecommendations(projectId: string, chapterId: string): Promise<Recommendation[]> {
+  return requestJson(
+    `/api/projects/${encodeURIComponent(projectId)}/chapters/${encodeURIComponent(chapterId)}/recommendations`,
+  );
+}
+
+// ============================================================
+// 爆款拆解与套路模板
+// ============================================================
+
+// 单章拆解结果
+export interface ChapterAnalysis {
+  chapter_index: number;
+  word_count: number;
+  dialogue_ratio: number;
+  avg_paragraph_length: number;
+  hook_type: string;
+  climax_count: number;
+  climax_positions: string[];
+  key_events: string[];
+  summary: string;
+}
+
+// 爆款整体拆解结果
+export interface BestsellerAnalysis {
+  source_title: string;
+  source_genre: string;
+  total_words: number;
+  total_chapters: number;
+  avg_chapter_words: number;
+  avg_dialogue_ratio: number;
+  avg_paragraph_length: number;
+  hook_type_distribution: Record<string, number>;
+  climax_density: number;
+  chapter_analyses: ChapterAnalysis[];
+  overall_pattern: string;
+}
+
+// 套路模板
+export interface PatternTemplate {
+  template_name: string;
+  source_title: string;
+  genre: string;
+  chapter_length_range: [number, number];
+  dialogue_ratio_range: [number, number];
+  paragraph_length_max: number;
+  hook_distribution: Record<string, number>;
+  climax_density: number;
+  chapter_structure: string[];
+  notes: string;
+}
+
+// 拆解爆款：将粘贴的章节文本发送给后端分析
+export function analyzeBestseller(
+  projectId: string,
+  sourceTitle: string,
+  sourceGenre: string,
+  chapters: string[],
+): Promise<BestsellerAnalysis> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/bestseller/analyze`, {
+    method: "POST",
+    body: JSON.stringify({
+      source_title: sourceTitle,
+      source_genre: sourceGenre,
+      chapters,
+    }),
+  });
+}
+
+// 基于拆解结果构建套路模板
+export function buildPatternTemplate(
+  projectId: string,
+  analysis: BestsellerAnalysis,
+  templateName: string,
+): Promise<PatternTemplate> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/bestseller/template`, {
+    method: "POST",
+    body: JSON.stringify({
+      analysis,
+      template_name: templateName,
+    }),
+  });
+}
+
+// 列出已保存模板（模板保存由前端 localStorage 处理，后端暂返回空列表）
+export function listPatternTemplates(projectId: string): Promise<PatternTemplate[]> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/bestseller/templates`);
+}

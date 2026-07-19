@@ -10,9 +10,24 @@ const ChapterPage = lazy(() =>
     default: module.ChapterPage,
   })),
 );
+const BatchPlanningPage = lazy(() =>
+  import("./pages/BatchPlanningPage").then((module) => ({
+    default: module.BatchPlanningPage,
+  })),
+);
+const CompletionPage = lazy(() =>
+  import("./pages/CompletionPage").then((module) => ({
+    default: module.CompletionPage,
+  })),
+);
 const CommercialPage = lazy(() =>
   import("./pages/CommercialPage").then((module) => ({
     default: module.CommercialPage,
+  })),
+);
+const MaterialLibraryPage = lazy(() =>
+  import("./pages/MaterialLibraryPage").then((module) => ({
+    default: module.MaterialLibraryPage,
   })),
 );
 const ImportPage = lazy(() =>
@@ -41,9 +56,39 @@ const SettingsPage = lazy(() =>
 const StoryPage = lazy(() =>
   import("./pages/StoryPage").then((module) => ({ default: module.StoryPage })),
 );
+const MarketPage = lazy(() =>
+  import("./pages/MarketPage").then((module) => ({
+    default: module.MarketPage,
+  })),
+);
+const OpeningPage = lazy(() =>
+  import("./pages/OpeningPage").then((module) => ({
+    default: module.OpeningPage,
+  })),
+);
+const RulesPage = lazy(() =>
+  import("./pages/RulesPage").then((module) => ({
+    default: module.RulesPage,
+  })),
+);
+const DecisionQueuePage = lazy(() =>
+  import("./pages/DecisionQueuePage").then((module) => ({
+    default: module.DecisionQueuePage,
+  })),
+);
 const TodayWorkspacePage = lazy(() =>
   import("./pages/TodayWorkspacePage").then((module) => ({
     default: module.TodayWorkspacePage,
+  })),
+);
+const BestsellerAnalyzePage = lazy(() =>
+  import("./pages/BestsellerAnalyzePage").then((module) => ({
+    default: module.BestsellerAnalyzePage,
+  })),
+);
+const PatternTemplatePage = lazy(() =>
+  import("./pages/PatternTemplatePage").then((module) => ({
+    default: module.PatternTemplatePage,
   })),
 );
 
@@ -59,6 +104,15 @@ export default function App() {
           <Route path="chapters" element={<EmptyPage section="章节工作台" />} />
           <Route path="commercial" element={<EmptyPage section="商业增长" />} />
           <Route path="memory" element={<EmptyPage section="记忆中心" />} />
+          <Route path="batch-plan" element={<EmptyPage section="批量规划" />} />
+          <Route path="materials" element={<EmptyPage section="素材库" />} />
+          <Route path="completion" element={<EmptyPage section="完本规划" />} />
+          <Route path="market" element={<EmptyPage section="市场调研" />} />
+          <Route path="opening" element={<EmptyPage section="黄金三章" />} />
+          <Route path="rules" element={<EmptyPage section="规则设置" />} />
+          <Route path="decisions" element={<EmptyPage section="决策队列" />} />
+          <Route path="bestseller" element={<EmptyPage section="爆款拆解" />} />
+          <Route path="patterns" element={<EmptyPage section="套路模板" />} />
           <Route path="imports" element={<EmptyPage section="作品导入" />} />
           <Route path="runs" element={<EmptyPage section="运行记录" />} />
           <Route path="projects/:projectId">
@@ -71,6 +125,15 @@ export default function App() {
             <Route path="chapters/:chapterId" element={<ChapterPage />} />
             <Route path="commercial" element={<CommercialPage />} />
             <Route path="memory" element={<MemoryPage />} />
+            <Route path="batch-plan" element={<BatchPlanningPage />} />
+            <Route path="materials" element={<MaterialLibraryPage />} />
+            <Route path="completion" element={<CompletionPage />} />
+            <Route path="market" element={<MarketPage />} />
+            <Route path="opening" element={<OpeningPage />} />
+            <Route path="rules" element={<RulesPage />} />
+            <Route path="decisions" element={<DecisionQueuePage />} />
+            <Route path="bestseller" element={<BestsellerAnalyzePage />} />
+            <Route path="patterns" element={<PatternTemplatePage />} />
             <Route path="imports" element={<ImportPage />} />
             <Route path="runs" element={<RunsPage />} />
           </Route>

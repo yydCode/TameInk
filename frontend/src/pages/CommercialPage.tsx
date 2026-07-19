@@ -20,6 +20,8 @@ import { CommercialChart } from "../components/charts/CommercialChart";
 import { RunStatus } from "../features/runs/RunStatus";
 import { useProjectWorkspace } from "../features/workspace/useProjectWorkspace";
 import { useTaskStream } from "../hooks/useTaskStream";
+import { BookTitleGenerator } from "./commercial/BookTitleGenerator";
+import { FirstTestManager } from "./commercial/FirstTestManager";
 
 const emptyProfile: CommercialProfile = {
   schema_version: 1,
@@ -59,7 +61,7 @@ const emptyObservation = (): CommercialObservationInput => ({
 export function CommercialPage() {
   const { projectId = "" } = useParams();
   const queryClient = useQueryClient();
-  const { project, tasks } = useProjectWorkspace(projectId);
+  const { project, snapshot, tasks } = useProjectWorkspace(projectId);
   const formal = useQuery({
     queryKey: queryKeys.commercial(projectId),
     queryFn: () => getCommercialProfile(projectId),
@@ -445,6 +447,14 @@ export function CommercialPage() {
           </div>
         </section>
       )}
+      {/* 书名简介生成器（Task B3） */}
+      <BookTitleGenerator projectId={projectId} />
+      {/* 首测管理（Task B8） */}
+      <FirstTestManager
+        projectId={projectId}
+        metrics={metrics.data ?? undefined}
+        totalWords={snapshot.data?.stats.total_words ?? 0}
+      />
     </div>
   );
 }
