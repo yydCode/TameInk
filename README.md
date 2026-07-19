@@ -48,6 +48,24 @@ make e2e
 make verify
 ```
 
+真实模型评测和真实前后端联调不会进入默认验证，必须显式执行。两者都要求当前
+workspace 中存在有效模型设置和 Keyring API Key，并要求提供当前供应商的 CNY 单价：
+
+```bash
+export TAME_INK_INPUT_PRICE_CNY_PER_1M_TOKENS="输入单价"
+export TAME_INK_OUTPUT_PRICE_CNY_PER_1M_TOKENS="输出单价"
+export TAME_INK_MAX_COST_CNY="20"
+
+make evaluate-live
+make e2e-live
+```
+
+live 报告和 token 用量记录位于 `output/live/`。也可以设置
+`TAME_INK_USAGE_LOG`，让多个显式 live 命令共享同一份预算记录。价格缺失、模型响应
+缺少 token usage、Schema 错误、连接失败或预算超限都会立即失败，不会按字符数估算、
+自动重试或切换模型。`e2e-live` 只把模型设置复制到临时 workspace，测试结束后删除临时
+作品，不修改当前作品目录和全局 Keyring。
+
 也可以分别运行：
 
 ```bash

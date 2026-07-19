@@ -1,3 +1,4 @@
+import time
 from typing import Any
 
 from langchain_core.language_models.base import LangSmithParams
@@ -5,6 +6,13 @@ from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 
 from app.infrastructure.settings import ModelSettings
+from app.infrastructure.usage import (
+    UsageBudgetExceededError,
+    UsageCaptureHandler,
+    UsageRecorder,
+    elapsed_ms,
+    utc_now,
+)
 
 
 class ModelConfigurationError(RuntimeError):
@@ -40,5 +48,30 @@ def build_model(settings: ModelSettings, api_key: str | None) -> TameInkChatOpen
     )
 
 
-async def test_connection(model: Any) -> None:
-    await model.ainvoke([{"role": "user", "content": "connection test"}])
+async def test_connection(model: Any, recorder: UsageRecorder | None = None) -> None:
+    capture = UsageCaptureHandler() if recorder is not None else None
+    request_model = model.with_config({"callbacks": [capture]}) if capture is not None else model
+    started_at = utc_now()
+    started = time.perf_counter()
+    try:
+        await request_model.ainvoke([{"role": "user", "content": "connection test"}])
+        usage = capture.require() if capture is not None else None
+        if recorder is not None:
+            recorder.record(
+                agent="ConnectionTest",
+                started_at=started_at,
+                duration_ms=elapsed_ms(started),
+                status="success",
+                usage=usage,
+            )
+    except Exception as error:
+        if recorder is not None and not isinstance(error, UsageBudgetExceededError):
+            recorder.record(
+                agent="ConnectionTest",
+                started_at=started_at,
+                duration_ms=elapsed_ms(started),
+                status="failed",
+                usage=capture.usage if capture is not None else None,
+                error_code=type(error).__name__,
+            )
+        raise

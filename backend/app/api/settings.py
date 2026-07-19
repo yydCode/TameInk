@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.infrastructure.model import ModelConfigurationError, build_model, test_connection
 from app.infrastructure.secrets import ApiKeyStore, SecretStoreError
 from app.infrastructure.settings import ModelSettings, SettingsError, SettingsRepository
+from app.infrastructure.usage import UsageRecorder
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -86,7 +87,11 @@ async def connect(request: Request) -> dict[str, str]:
         config = await asyncio.to_thread(settings.load)
         api_key = await asyncio.to_thread(secrets.get)
         model = build_model(config, api_key)
-        await test_connection(model)
+        recorder = UsageRecorder.from_environment(model=config.model)
+        if recorder is None:
+            await test_connection(model)
+        else:
+            await test_connection(model, recorder)
         return {"status": "ok"}
     except (SettingsError, SecretStoreError, ModelConfigurationError) as error:
         candidate = str(error)

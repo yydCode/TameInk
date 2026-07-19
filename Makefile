@@ -1,4 +1,4 @@
-.PHONY: install backend-dev frontend-dev test check e2e evaluate verify
+.PHONY: install backend-dev frontend-dev test check e2e evaluate evaluate-live e2e-live verify
 
 install:
 	cd backend && uv sync
@@ -27,5 +27,11 @@ e2e:
 evaluate:
 	cd backend && uv run python ../evaluations/run.py --fixture-only
 	cd evaluations && pnpm commercial:fixture
+
+evaluate-live:
+	cd backend && uv run python ../evaluations/live.py
+
+e2e-live:
+	cd frontend && pnpm exec playwright test -c playwright.live.config.ts
 
 verify: test check evaluate e2e

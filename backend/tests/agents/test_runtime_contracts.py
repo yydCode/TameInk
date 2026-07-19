@@ -23,8 +23,13 @@ from app.agents.contracts import (
     ValidatedOrchestrator,
     validate_agent_output,
 )
+from app.agents.runtime import DeepAgentRunner
 from app.agents.schemas import StorySetting
-from app.agents.subagents import StoryArchitectInput, StoryArchitectPayload
+from app.agents.subagents import (
+    StoryArchitectInput,
+    StoryArchitectPayload,
+    build_subagent_definitions,
+)
 from app.domain.project import ConfirmedContent
 from tests.agents.fake_model import ScriptedChatModel
 from tests.agents.test_backend import make_backend
@@ -72,6 +77,46 @@ def test_output_parses_without_context_then_validates_known_sources() -> None:
         validate_agent_output(output("canon/premise.md", quote="FABRICATED"), manifest())
     with pytest.raises(OutputContractError, match="REFERENCE_EVIDENCE_UNKNOWN"):
         validate_agent_output(output("canon/premise.md", location="wrong location"), manifest())
+
+
+def test_model_schema_omits_system_assigned_references(tmp_path: Path) -> None:
+    backend, _, _, _ = make_backend(tmp_path)
+    definition = next(
+        item
+        for item in build_subagent_definitions(backend)
+        if item.name == "RetentionAuditor"
+    )
+
+    schema = DeepAgentRunner._model_output_schema(definition)
+
+    assert '"references"' not in json.dumps(schema)
+    assert "total_score" not in schema["properties"]
+
+
+def test_direct_runner_attaches_exact_context_references_to_output_tree() -> None:
+    runner = object.__new__(DeepAgentRunner)
+    runner.manifest = manifest()
+    raw = {"id": "report-1", "issues": [{"id": "issue-1"}]}
+
+    enriched = runner._attach_context_references(raw)
+
+    expected = [
+        {
+            "path": "canon/premise.md",
+            "location": "paragraph 1",
+            "quote": "confirmed quote",
+        }
+    ]
+    assert enriched["references"] == expected
+    assert enriched["issues"][0]["references"] == expected
+
+
+def test_direct_runner_computes_commercial_score_from_dimensions() -> None:
+    raw = {"dimensions": [{"score": score} for score in (80, 75, 70, 85, 65, 90, 72)]}
+
+    enriched = DeepAgentRunner._attach_commercial_score(raw)
+
+    assert enriched["total_score"] == 77
 
 
 def test_validated_orchestrator_invoke_cannot_skip_output_validation(tmp_path: Path) -> None:

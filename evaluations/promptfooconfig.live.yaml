@@ -8,6 +8,7 @@ providers:
       apiBaseUrl: "{{env.TAME_INK_BASE_URL}}"
       apiKeyEnvar: OPENAI_API_KEY
       max_tokens: 4096
+      maxRetries: 0
       showThinking: false
       temperature: 0
 tests: file://fixtures/commercial_cases.yaml
