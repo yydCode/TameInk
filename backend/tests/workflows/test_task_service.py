@@ -77,6 +77,34 @@ def test_cancel_releases_write_task_mutex(tmp_path: Path) -> None:
     assert tasks.create(TaskKind.WRITE).status is TaskStatus.PENDING
 
 
+def test_running_cancel_is_cooperative_and_worker_finishes_it(tmp_path: Path) -> None:
+    tasks = service(tmp_path)
+    task = tasks.create(TaskKind.WRITE)
+    tasks.start(task.id)
+
+    requested = tasks.cancel(task.id)
+
+    assert requested.status is TaskStatus.RUNNING
+    assert requested.cancel_requested_at is not None
+    assert tasks.events(task.id)[-1].type == "task.cancel_requested"
+    cancelled = tasks.cancel_requested_task(task.id)
+    assert cancelled.status is TaskStatus.CANCELLED
+
+
+def test_retry_creates_new_linked_task_without_mutating_original(tmp_path: Path) -> None:
+    tasks = service(tmp_path)
+    original = tasks.create(TaskKind.READ)
+    tasks.start(original.id)
+    tasks.fail(original.id, "AGENT_RUN_FAILED", "agent job failed")
+
+    retry = tasks.retry(original.id)
+
+    assert retry.id != original.id
+    assert retry.retry_of_task_id == original.id
+    assert retry.parent_task_id == original.id
+    assert tasks.get(original.id).status is TaskStatus.FAILED
+
+
 def test_different_projects_are_independent(tmp_path: Path) -> None:
     first = service(tmp_path, "story-01")
     second = service(tmp_path, "story-02")

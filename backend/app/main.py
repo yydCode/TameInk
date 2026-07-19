@@ -22,6 +22,7 @@ from app.domain.errors import (
     TameInkError,
     TaskNotFoundError,
 )
+from app.infrastructure.jobs import DurableAgentQueue
 from app.infrastructure.secrets import ApiKeyStore
 from app.infrastructure.settings import SettingsRepository
 from app.repositories.database import DatabaseRepository
@@ -30,7 +31,7 @@ from app.repositories.workspace import WorkspaceRepository
 from app.workflows.task_service import TaskService
 
 
-def create_app(workspace_root: Path) -> FastAPI:
+def create_app(workspace_root: Path, *, queue_immediate: bool = True) -> FastAPI:
     workspace = WorkspaceRepository(workspace_root)
 
     @asynccontextmanager
@@ -48,6 +49,7 @@ def create_app(workspace_root: Path) -> FastAPI:
     application.state.workspace = workspace
     application.state.model_settings = SettingsRepository(workspace.root / "settings.json")
     application.state.api_keys = ApiKeyStore()
+    application.state.agent_jobs = DurableAgentQueue(workspace.root, immediate=queue_immediate)
     application.include_router(health_router, prefix="/api")
     application.include_router(tasks_router, prefix="/api")
     application.include_router(events_router, prefix="/api")
@@ -79,4 +81,7 @@ def create_app(workspace_root: Path) -> FastAPI:
     return application
 
 
-app = create_app(Path(os.environ.get("TAME_INK_WORKSPACE", ".tame-ink-workspace")))
+app = create_app(
+    Path(os.environ.get("TAME_INK_WORKSPACE", ".tame-ink-workspace")),
+    queue_immediate=False,
+)

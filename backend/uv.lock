@@ -450,6 +450,15 @@ wheels = [
 ]
 
 [[package]]
+name = "huey"
+version = "3.2.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/55/59/de9e22fa4be35ee03eff7be144a92c32c63c9a80e323a45f260089162b97/huey-3.2.1.tar.gz", hash = "sha256:79cd63d117e5b8da2de58420dcde4e2d0f963e362d67a9b3872ce565eec5c3dc", size = 601509, upload-time = "2026-07-09T21:22:41.187Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a4/9e/7fe3bdca0b2749f4b80a50bf033e9f83db6310b75f93c7aa74543f667dbe/huey-3.2.1-py3-none-any.whl", hash = "sha256:da9e004b80941a718f33f9714697a67e6d5cf12e0707fc4f3dbb5d9c796e7224", size = 120963, upload-time = "2026-07-09T21:22:40.023Z" },
+]
+
+[[package]]
 name = "idna"
 version = "3.18"
 source = { registry = "https://pypi.org/simple" }
@@ -1041,6 +1050,15 @@ wheels = [
 ]
 
 [[package]]
+name = "peewee"
+version = "3.19.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/88/b0/79462b42e89764998756e0557f2b58a15610a5b4512fbbcccae58fba7237/peewee-3.19.0.tar.gz", hash = "sha256:f88292a6f0d7b906cb26bca9c8599b8f4d8920ebd36124400d0cbaaaf915511f", size = 974035, upload-time = "2026-01-07T17:24:59.597Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1a/41/19c65578ef9a54b3083253c68a607f099642747168fe00f3a2bceb7c3a34/peewee-3.19.0-py3-none-any.whl", hash = "sha256:de220b94766e6008c466e00ce4ba5299b9a832117d9eb36d45d0062f3cfd7417", size = 411885, upload-time = "2026-01-07T17:24:58.33Z" },
+]
+
+[[package]]
 name = "pluggy"
 version = "1.6.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1433,8 +1451,10 @@ dependencies = [
     { name = "dulwich" },
     { name = "fastapi" },
     { name = "filelock" },
+    { name = "huey" },
     { name = "keyring" },
     { name = "langchain-openai" },
+    { name = "peewee" },
     { name = "pyyaml" },
     { name = "uvicorn" },
 ]
@@ -1455,8 +1475,10 @@ requires-dist = [
     { name = "dulwich", specifier = ">=0.22,<0.23" },
     { name = "fastapi", specifier = ">=0.115,<0.116" },
     { name = "filelock", specifier = ">=3.16,<4" },
+    { name = "huey", specifier = ">=3.2,<4" },
     { name = "keyring", specifier = ">=25,<26" },
     { name = "langchain-openai", specifier = ">=1.3,<2" },
+    { name = "peewee", specifier = ">=3.18,<4" },
     { name = "pyyaml", specifier = ">=6,<7" },
     { name = "uvicorn", specifier = ">=0.34,<0.35" },
 ]

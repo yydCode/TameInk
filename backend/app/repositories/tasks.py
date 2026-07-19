@@ -159,6 +159,67 @@ class TasksRepository:
             data=data,
         )
 
+    def request_cancel(self, task_id: str) -> Task:
+        connection = self.database.connect(self.project_id)
+        try:
+            connection.isolation_level = None
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT cancel_requested_at FROM tasks WHERE id = ?", (task_id,)
+            ).fetchone()
+            if row is None:
+                raise TaskNotFoundError(task_id)
+            if row[0] is None:
+                requested_at = datetime.now(UTC)
+                connection.execute(
+                    "UPDATE tasks SET cancel_requested_at = ?, updated_at = ? WHERE id = ?",
+                    (requested_at.isoformat(), requested_at.isoformat(), task_id),
+                )
+                sequence = self._next_sequence(connection, task_id)
+                self._insert_event(
+                    connection,
+                    task_id,
+                    sequence,
+                    "task.cancel_requested",
+                    {"status": TaskStatus.RUNNING.value},
+                )
+            connection.commit()
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+        return self.get(task_id)
+
+    def record_error(self, task_id: str, code: str, message: str) -> Task:
+        connection = self.database.connect(self.project_id)
+        try:
+            connection.isolation_level = None
+            connection.execute("BEGIN IMMEDIATE")
+            exists = connection.execute("SELECT 1 FROM tasks WHERE id = ?", (task_id,)).fetchone()
+            if exists is None:
+                raise TaskNotFoundError(task_id)
+            updated_at = datetime.now(UTC)
+            connection.execute(
+                "UPDATE tasks SET error_code = ?, error_message = ?, updated_at = ? WHERE id = ?",
+                (code, message, updated_at.isoformat(), task_id),
+            )
+            sequence = self._next_sequence(connection, task_id)
+            self._insert_event(
+                connection,
+                task_id,
+                sequence,
+                "task.error",
+                {"error_code": code},
+            )
+            connection.commit()
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+        return self.get(task_id)
+
     def events(self, task_id: str, after: int = 0) -> list[TaskEvent]:
         with self.database.connect(self.project_id) as connection:
             rows = connection.execute(

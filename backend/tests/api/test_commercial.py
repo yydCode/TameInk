@@ -47,9 +47,7 @@ def create_project(client: TestClient) -> str:
         },
     ).json()
     task_id = str(created["task"]["id"])
-    approved = client.post(
-        f"/api/projects/commercial-book/setting/{task_id}/approve"
-    )
+    approved = client.post(f"/api/projects/commercial-book/setting/{task_id}/approve")
     assert approved.status_code == 200
     return task_id
 
@@ -74,9 +72,7 @@ def test_commercial_profile_requires_approval_and_records_metrics(tmp_path: Path
         )
         assert updated.json()["minimum_commercial_score"] == 80
 
-        approved = client.post(
-            f"/api/projects/commercial-book/commercial/draft/{task_id}/approve"
-        )
+        approved = client.post(f"/api/projects/commercial-book/commercial/draft/{task_id}/approve")
         profile = client.get("/api/projects/commercial-book/commercial/profile")
 
         observation = client.post(
@@ -102,9 +98,7 @@ def test_commercial_profile_requires_approval_and_records_metrics(tmp_path: Path
     assert metrics.json()["revenue_per_thousand_opens_yuan"] == 125
 
 
-def test_market_strategist_creates_an_unapproved_candidate(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_market_strategist_creates_an_unapproved_candidate(tmp_path: Path, monkeypatch) -> None:
     reference = [{"path": "project.yaml", "location": "full document", "quote": "project"}]
 
     class FakeRunner:
@@ -132,7 +126,9 @@ def test_market_strategist_creates_an_unapproved_candidate(
                 references=reference,
             )
 
-    monkeypatch.setattr("app.api.commercial._runner", lambda project_id, request: FakeRunner())
+    monkeypatch.setattr(
+        "app.infrastructure.jobs.create_runner", lambda *args, **kwargs: FakeRunner()
+    )
     with TestClient(create_app(tmp_path)) as client:
         create_project(client)
         generated = client.post(
@@ -147,18 +143,12 @@ def test_market_strategist_creates_an_unapproved_candidate(
                 "instruction": "生成可验证的商业定位",
             },
         )
-        formal_before = client.get(
-            "/api/projects/commercial-book/commercial/profile"
-        )
-        task_id = generated.json()["task"]["id"]
-        client.post(
-            f"/api/projects/commercial-book/commercial/draft/{task_id}/approve"
-        )
-        formal_after = client.get(
-            "/api/projects/commercial-book/commercial/profile"
-        )
+        formal_before = client.get("/api/projects/commercial-book/commercial/profile")
+        task_id = generated.json()["id"]
+        client.post(f"/api/projects/commercial-book/commercial/draft/{task_id}/approve")
+        formal_after = client.get("/api/projects/commercial-book/commercial/profile")
 
-    assert generated.status_code == 201
-    assert generated.json()["profile"]["platform"] == "fanqie"
+    assert generated.status_code == 202
+    assert generated.json()["status"] == "awaiting_approval"
     assert formal_before.json() is None
     assert formal_after.json()["core_fantasy"] == "普通人获得识破谎言的能力并逆转人生"

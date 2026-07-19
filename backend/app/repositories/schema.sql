@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS tasks (
 CREATE UNIQUE INDEX IF NOT EXISTS one_active_write_task_per_project
 ON tasks(project_id)
 WHERE kind = 'write'
-  AND status IN ('pending', 'running', 'awaiting_approval', 'interrupted');
+  AND status IN ('pending', 'running', 'awaiting_approval');
 
 CREATE TRIGGER IF NOT EXISTS enforce_task_status_transition
 BEFORE UPDATE OF status ON tasks

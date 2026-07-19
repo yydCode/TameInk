@@ -76,3 +76,15 @@ class DraftRepository:
             if path.is_file():
                 files.append(path.relative_to(root).as_posix())
         return files
+
+    def discard_candidates(
+        self, project_id: str, task_id: str, keep: frozenset[str] = frozenset({"request.json"})
+    ) -> None:
+        for relative in self.list_files(project_id, task_id):
+            if relative in keep:
+                continue
+            path = self.resolve(project_id, task_id, relative)
+            try:
+                path.unlink()
+            except OSError as error:
+                raise StorageWriteError(relative) from error

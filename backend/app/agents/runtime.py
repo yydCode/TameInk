@@ -1,5 +1,6 @@
 import json
 import time
+from collections.abc import Callable
 from copy import deepcopy
 from hashlib import sha256
 from pathlib import Path
@@ -62,6 +63,8 @@ class DeepAgentRunner:
         project_id: str,
         settings: SettingsRepository,
         secrets: ApiKeyStore,
+        before_invoke: Callable[[str], None] | None = None,
+        after_invoke: Callable[[str, str | None], None] | None = None,
     ) -> None:
         self.workspace = workspace
         self.project_id = project_id
@@ -86,11 +89,15 @@ class DeepAgentRunner:
         self.context_compiler = ChapterContextCompiler(workspace, project_id)
         self.manifest = self.context_builder.build(self._context_request("Bootstrap", {}))
         self._run_traces: list[dict[str, object]] = []
+        self.before_invoke = before_invoke
+        self.after_invoke = after_invoke
 
     def _context_request(self, agent: str, payload: dict[str, object]) -> ContextRequest:
         return self.context_compiler.request_for(agent, payload)
 
     def invoke(self, agent: str, payload: dict[str, object]) -> object:
+        if self.before_invoke is not None:
+            self.before_invoke(agent)
         self.manifest = self.context_builder.build(self._context_request(agent, payload))
         backend = NovelWorkspaceBackend(
             self.canon,
@@ -106,11 +113,19 @@ class DeepAgentRunner:
         definition = definitions.get(agent)
         if definition is None:
             raise OutputContractError("OUTPUT_SUBAGENT_UNKNOWN")
-        return self._translate(
-            agent,
-            payload,
-            self._invoke_stage(definition, payload, backend),
-        )
+        try:
+            output = self._translate(
+                agent,
+                payload,
+                self._invoke_stage(definition, payload, backend),
+            )
+        except Exception as error:
+            if self.after_invoke is not None:
+                self.after_invoke(agent, type(error).__name__)
+            raise
+        if self.after_invoke is not None:
+            self.after_invoke(agent, None)
+        return output
 
     def _invoke_stage(
         self,

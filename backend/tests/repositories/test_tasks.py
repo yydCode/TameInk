@@ -82,7 +82,7 @@ def test_initialize_migrates_schema_and_preserves_rebuild(tmp_path: Path) -> Non
             )
         }
 
-    assert version == "4"
+    assert version == "5"
     assert {"tasks", "task_events", "content_fts", "commercial_observations"} <= tables
 
 
@@ -176,14 +176,13 @@ def test_database_constraint_allows_only_one_active_write_task_per_project(tmp_p
     assert outcomes.count("conflict") == 1
 
 
-def test_interrupted_write_task_still_blocks_new_write_task(tmp_path: Path) -> None:
+def test_interrupted_write_task_releases_mutex_for_explicit_retry(tmp_path: Path) -> None:
     tasks = repository(tmp_path)
     first = tasks.create(new_task(), "task.created")
     tasks.transition(first.id, TaskStatus.PENDING, TaskStatus.RUNNING, "task.started")
     tasks.transition(first.id, TaskStatus.RUNNING, TaskStatus.INTERRUPTED, "task.interrupted")
 
-    with pytest.raises(ActiveTaskConflictError):
-        tasks.create(new_task(), "task.created")
+    assert tasks.create(new_task(), "task.created").status is TaskStatus.PENDING
 
 
 def test_database_rejects_invalid_status_even_outside_repository(tmp_path: Path) -> None:

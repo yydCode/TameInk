@@ -158,9 +158,9 @@ def test_sse_replays_only_events_after_last_event_id_header(client: TestClient) 
     assert response.headers["content-type"].startswith("text/event-stream")
     assert [(item["id"], item["event"]) for item in parse_sse(response.text)] == [
         (2, "task.started"),
-        (3, "task.cancelled"),
+        (3, "task.cancel_requested"),
     ]
-    assert client.get(f"/api/projects/story-01/tasks/{task_id}").json()["status"] == "cancelled"
+    assert client.get(f"/api/projects/story-01/tasks/{task_id}").json()["status"] == "running"
 
 
 @pytest.mark.parametrize("value", ["+1", " 1 ", "01", "", "-1", "abc", "1.5"])

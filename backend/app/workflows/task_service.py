@@ -65,13 +65,49 @@ class TaskService:
         return self._transition(task_id, TaskStatus.CANCELLED, "task.rejected")
 
     def cancel(self, task_id: str) -> Task:
+        task = self.get(task_id)
+        if task.status is TaskStatus.RUNNING:
+            return self.repository.request_cancel(task_id)
+        return self._transition(task_id, TaskStatus.CANCELLED, "task.cancelled")
+
+    def cancellation_requested(self, task_id: str) -> bool:
+        return self.get(task_id).cancel_requested_at is not None
+
+    def cancel_requested_task(self, task_id: str) -> Task:
+        task = self.get(task_id)
+        if task.status is not TaskStatus.RUNNING or task.cancel_requested_at is None:
+            raise InvalidTaskTransitionError("running task has no cancellation request")
         return self._transition(task_id, TaskStatus.CANCELLED, "task.cancelled")
 
     def complete(self, task_id: str) -> Task:
         return self._transition(task_id, TaskStatus.COMPLETED, "task.completed")
 
-    def fail(self, task_id: str) -> Task:
+    def fail(
+        self, task_id: str, error_code: str | None = None, error_message: str | None = None
+    ) -> Task:
+        if error_code is not None:
+            self.repository.record_error(task_id, error_code, error_message or "task failed")
         return self._transition(task_id, TaskStatus.FAILED, "task.failed")
+
+    def retry(self, task_id: str) -> Task:
+        original = self.get(task_id)
+        if original.status not in {
+            TaskStatus.FAILED,
+            TaskStatus.CANCELLED,
+            TaskStatus.INTERRUPTED,
+        }:
+            raise InvalidTaskTransitionError(
+                "only failed, cancelled or interrupted tasks can retry"
+            )
+        return self.create(
+            original.kind,
+            original.purpose,
+            subject_id=original.subject_id,
+            volume_id=original.volume_id,
+            chapter_id=original.chapter_id,
+            parent_task_id=original.parent_task_id or original.id,
+            retry_of_task_id=original.id,
+        )
 
     def recover_interrupted(self) -> int:
         running = self.repository.list_by_status(TaskStatus.RUNNING)

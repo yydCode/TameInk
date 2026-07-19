@@ -1,4 +1,4 @@
-.PHONY: install backend-dev frontend-dev test check e2e evaluate evaluate-live e2e-live verify
+.PHONY: install backend-dev backend-worker frontend-dev test check e2e evaluate evaluate-live e2e-live verify
 
 install:
 	cd backend && uv sync
@@ -7,6 +7,9 @@ install:
 
 backend-dev:
 	cd backend && uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+
+backend-worker:
+	cd backend && uv run huey_consumer app.infrastructure.worker.huey -w 1 -k thread
 
 frontend-dev:
 	cd frontend && pnpm dev

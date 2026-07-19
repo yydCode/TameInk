@@ -46,6 +46,41 @@ class ChapterService:
     ) -> Task:
         if self.runner is None:
             raise WorkflowGateError("chapter runner is required")
+        self._require_prerequisites(project_id, volume_id)
+        service = TaskService(TasksRepository(DatabaseRepository(self.workspace), project_id))
+        task = service.create(
+            TaskKind.WRITE,
+            TaskPurpose.CHAPTER,
+            subject_id=chapter_id,
+            volume_id=volume_id,
+            chapter_id=chapter_id,
+        )
+        service.start(task.id)
+        try:
+            return self.run_for_task(project_id, task.id, chapter_id, instruction, volume_id)
+        except Exception as error:
+            current = service.get(task.id)
+            if current.status.value == "running":
+                service.fail(task.id, type(error).__name__, "chapter generation failed")
+            raise
+
+    def run_for_task(
+        self,
+        project_id: str,
+        task_id: str,
+        chapter_id: str,
+        instruction: str,
+        volume_id: str = "1",
+    ) -> Task:
+        if self.runner is None:
+            raise WorkflowGateError("chapter runner is required")
+        self._require_prerequisites(project_id, volume_id)
+        service = TaskService(TasksRepository(DatabaseRepository(self.workspace), project_id))
+        task = service.get(task_id)
+        if task.status.value != "running":
+            raise WorkflowGateError("chapter generation task must be running")
+        if task.chapter_id != chapter_id or task.volume_id != volume_id:
+            raise WorkflowGateError("chapter generation task metadata does not match")
         commercial_profile = CommercialService(self.workspace).read(project_id)
         if commercial_profile is None:
             raise WorkflowGateError("approved commercial profile is required")
@@ -133,8 +168,9 @@ class ChapterService:
             raise WorkflowGateError("RetentionAuditor returned an invalid commercial report")
         final_commercial = self.normalize_commercial_report(revised, final_commercial)
         self.validate_audit_issues(revised, [], [], final_commercial.issues)
-        return self.start(
+        return self._store_candidate(
             project_id,
+            task_id,
             chapter_id,
             plan.content,
             revised,
@@ -155,16 +191,11 @@ class ChapterService:
         commercial_report: CommercialReport | None = None,
         minimum_commercial_score: int | None = None,
     ) -> Task:
-        project = self.workspace.project_path(project_id)
         if (commercial_report is None) != (minimum_commercial_score is None):
             raise WorkflowGateError(
                 "commercial report and score threshold must be provided together"
             )
-        if (
-            not (project / "canon/outline.md").is_file()
-            or not (project / "canon/volumes" / f"{volume_id}.md").is_file()
-        ):
-            raise WorkflowGateError("approved book outline and volume are required")
+        self._require_prerequisites(project_id, volume_id)
         service = TaskService(TasksRepository(DatabaseRepository(self.workspace), project_id))
         task = service.create(
             TaskKind.WRITE,
@@ -174,9 +205,34 @@ class ChapterService:
             chapter_id=chapter_id,
         )
         service.start(task.id)
+        return self._store_candidate(
+            project_id,
+            task.id,
+            chapter_id,
+            plan,
+            draft,
+            issues,
+            volume_id,
+            commercial_report,
+            minimum_commercial_score,
+        )
+
+    def _store_candidate(
+        self,
+        project_id: str,
+        task_id: str,
+        chapter_id: str,
+        plan: str,
+        draft: str,
+        issues: Sequence[dict[str, str]],
+        volume_id: str,
+        commercial_report: CommercialReport | None,
+        minimum_commercial_score: int | None,
+    ) -> Task:
+        service = TaskService(TasksRepository(DatabaseRepository(self.workspace), project_id))
         drafts = DraftRepository(self.workspace)
-        drafts.write(project_id, task.id, "plan.md", plan)
-        drafts.write(project_id, task.id, "chapter.md", self._apply_issues(draft, issues))
+        drafts.write(project_id, task_id, "plan.md", plan)
+        drafts.write(project_id, task_id, "chapter.md", self._apply_issues(draft, issues))
         commercial_gate_passed: bool | None = None
         if commercial_report is not None:
             if minimum_commercial_score is None:
@@ -186,13 +242,13 @@ class ChapterService:
             )
             drafts.write(
                 project_id,
-                task.id,
+                task_id,
                 "commercial-report.json",
                 commercial_report.model_dump_json(indent=2),
             )
         drafts.write(
             project_id,
-            task.id,
+            task_id,
             "run.json",
             json.dumps(
                 {
@@ -205,7 +261,15 @@ class ChapterService:
                 }
             ),
         )
-        return service.await_approval(task.id)
+        return service.await_approval(task_id)
+
+    def _require_prerequisites(self, project_id: str, volume_id: str) -> None:
+        project = self.workspace.project_path(project_id)
+        if (
+            not (project / "canon/outline.md").is_file()
+            or not (project / "canon/volumes" / f"{volume_id}.md").is_file()
+        ):
+            raise WorkflowGateError("approved book outline and volume are required")
 
     def approve(
         self,

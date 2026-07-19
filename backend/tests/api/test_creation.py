@@ -35,9 +35,7 @@ def test_creation_outline_draft_and_approval(tmp_path: Path) -> None:
     assert approved.json()["status"] == "completed"
 
 
-def test_agent_generation_routes_store_candidate_drafts(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_agent_generation_routes_store_candidate_drafts(tmp_path: Path, monkeypatch) -> None:
     reference = [{"path": "project.yaml", "location": "full document", "quote": "project"}]
 
     class FakeRunner:
@@ -54,7 +52,9 @@ def test_agent_generation_routes_store_candidate_drafts(
                 references=reference,
             )
 
-    monkeypatch.setattr("app.api.creation._runner", lambda project_id, request: FakeRunner())
+    monkeypatch.setattr(
+        "app.infrastructure.jobs.create_runner", lambda *args, **kwargs: FakeRunner()
+    )
     with TestClient(create_app(tmp_path)) as client:
         created = client.post(
             "/api/projects",
@@ -78,15 +78,13 @@ def test_agent_generation_routes_store_candidate_drafts(
             json={"instruction": "生成大纲"},
         )
 
-    assert generated_setting.json()["content"] == "# 新设定"
-    assert generated_outline.status_code == 201
-    assert generated_outline.json()["content"] == "# 全书大纲"
-    assert generated_outline.json()["task"]["status"] == "awaiting_approval"
+    assert generated_setting.status_code == 202
+    assert generated_setting.json()["status"] == "awaiting_approval"
+    assert generated_outline.status_code == 202
+    assert generated_outline.json()["status"] == "awaiting_approval"
 
 
-def test_agent_chapter_route_runs_planner_writer_and_auditors(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_agent_chapter_route_runs_planner_writer_and_auditors(tmp_path: Path, monkeypatch) -> None:
     reference = [{"path": "canon/outline.md", "location": "full document", "quote": "大纲"}]
     dimensions = [
         "opening_urgency",
@@ -121,9 +119,7 @@ def test_agent_chapter_route_runs_planner_writer_and_auditors(
                     total_score=80,
                     recommendation="pass",
                     dimensions=[
-                        CommercialDimensionScore(
-                            dimension=dimension, score=80, reason="符合承诺"
-                        )
+                        CommercialDimensionScore(dimension=dimension, score=80, reason="符合承诺")
                         for dimension in dimensions
                     ],
                     issues=[],
@@ -131,7 +127,9 @@ def test_agent_chapter_route_runs_planner_writer_and_auditors(
                 )
             raise AssertionError(agent)
 
-    monkeypatch.setattr("app.api.creation._runner", lambda project_id, request: FakeRunner())
+    monkeypatch.setattr(
+        "app.infrastructure.jobs.create_runner", lambda *args, **kwargs: FakeRunner()
+    )
     with TestClient(create_app(tmp_path)) as client:
         created = client.post(
             "/api/projects",
@@ -144,9 +142,7 @@ def test_agent_chapter_route_runs_planner_writer_and_auditors(
                 "setting_draft": "设定",
             },
         ).json()
-        client.post(
-            f"/api/projects/chapter-book/setting/{created['task']['id']}/approve"
-        )
+        client.post(f"/api/projects/chapter-book/setting/{created['task']['id']}/approve")
         commercial = client.post(
             "/api/projects/chapter-book/commercial/draft",
             json={
@@ -163,9 +159,7 @@ def test_agent_chapter_route_runs_planner_writer_and_auditors(
                 "synopsis": "侦探破解密室命案。",
             },
         ).json()
-        client.post(
-            f"/api/projects/chapter-book/commercial/draft/{commercial['id']}/approve"
-        )
+        client.post(f"/api/projects/chapter-book/commercial/draft/{commercial['id']}/approve")
         outline = client.post(
             "/api/projects/chapter-book/design/outline", json={"content": "大纲"}
         ).json()
@@ -173,40 +167,52 @@ def test_agent_chapter_route_runs_planner_writer_and_auditors(
         volume = client.post(
             "/api/projects/chapter-book/design/volumes/1", json={"content": "分卷"}
         ).json()
-        client.post(
-            f"/api/projects/chapter-book/design/volumes/1/{volume['id']}/approve"
-        )
+        client.post(f"/api/projects/chapter-book/design/volumes/1/{volume['id']}/approve")
         generated = client.post(
             "/api/projects/chapter-book/design/agent/chapters/1",
             json={"instruction": "生成第一章"},
         )
+        task_id = generated.json()["id"]
+        chapter_content = client.get(
+            f"/api/projects/chapter-book/drafts/{task_id}", params={"path": "chapter.md"}
+        ).json()["content"]
+        commercial_score = client.get(
+            f"/api/projects/chapter-book/commercial/reports/{task_id}"
+        ).json()["commercial_report"]["total_score"]
 
-    assert generated.status_code == 201
-    assert generated.json()["content"] == "生成正文"
-    assert generated.json()["task"]["status"] == "awaiting_approval"
-    assert generated.json()["commercial_report"]["total_score"] == 80
+    assert generated.status_code == 202
+    assert generated.json()["status"] == "awaiting_approval"
+    assert chapter_content == "生成正文"
+    assert commercial_score == 80
 
 
-def test_agent_generation_returns_stable_configuration_error(
-    tmp_path: Path, monkeypatch
-) -> None:
-    def missing_key(project_id: str, request: object) -> object:
+def test_agent_generation_returns_stable_configuration_error(tmp_path: Path, monkeypatch) -> None:
+    def missing_key(*args: object, **kwargs: object) -> object:
         raise ModelConfigurationError("MODEL_API_KEY_MISSING")
 
-    monkeypatch.setattr("app.api.creation._runner", missing_key)
+    monkeypatch.setattr("app.infrastructure.jobs.create_runner", missing_key)
     with TestClient(create_app(tmp_path)) as client:
+        created = client.post(
+            "/api/projects",
+            json={
+                "project_id": "missing",
+                "title": "缺少配置",
+                "genre": "悬疑",
+                "target_words": 1000,
+                "constraints": "第三人称",
+                "setting_draft": "设定",
+            },
+        ).json()
+        client.post(f"/api/projects/missing/setting/{created['task']['id']}/approve")
         response = client.post(
             "/api/projects/missing/design/agent/outline",
             json={"instruction": "生成大纲"},
         )
 
-    assert response.status_code == 400
-    assert response.json() == {
-        "detail": {
-            "code": "MODEL_API_KEY_MISSING",
-            "message": "agent configuration invalid",
-        }
-    }
+    assert response.status_code == 202
+    assert response.json()["status"] == "failed"
+    assert response.json()["error_code"] == "MODEL_API_KEY_MISSING"
+    assert "sensitive" not in response.text
 
 
 def test_agent_generation_hides_provider_error_details(tmp_path: Path, monkeypatch) -> None:
@@ -214,14 +220,78 @@ def test_agent_generation_hides_provider_error_details(tmp_path: Path, monkeypat
         def invoke(self, agent: str, payload: dict[str, object]) -> object:
             raise RuntimeError("provider response contained sensitive detail")
 
-    monkeypatch.setattr("app.api.creation._runner", lambda project_id, request: FailedRunner())
+    monkeypatch.setattr(
+        "app.infrastructure.jobs.create_runner", lambda *args, **kwargs: FailedRunner()
+    )
     with TestClient(create_app(tmp_path)) as client:
+        created = client.post(
+            "/api/projects",
+            json={
+                "project_id": "failed",
+                "title": "失败任务",
+                "genre": "悬疑",
+                "target_words": 1000,
+                "constraints": "第三人称",
+                "setting_draft": "设定",
+            },
+        ).json()
+        client.post(f"/api/projects/failed/setting/{created['task']['id']}/approve")
         response = client.post(
             "/api/projects/failed/design/agent/outline",
             json={"instruction": "生成大纲"},
         )
 
-    assert response.status_code == 502
-    assert response.json() == {
-        "detail": {"code": "AGENT_RUN_FAILED", "message": "agent generation failed"}
-    }
+    assert response.status_code == 202
+    assert response.json()["status"] == "failed"
+    assert response.json()["error_code"] == "RuntimeError"
+    assert "provider response" not in response.text
+
+
+def test_failed_agent_task_retries_as_new_linked_task(tmp_path: Path, monkeypatch) -> None:
+    class FailedRunner:
+        def invoke(self, agent: str, payload: dict[str, object]) -> object:
+            raise RuntimeError("private provider detail")
+
+    reference = [{"path": "project.yaml", "location": "full document", "quote": "project"}]
+
+    class SuccessfulRunner:
+        def invoke(self, agent: str, payload: dict[str, object]) -> object:
+            return Outline(
+                id="outline-retry",
+                kind="book",
+                title="重试大纲",
+                content="# 重试成功",
+                references=reference,
+            )
+
+    monkeypatch.setattr(
+        "app.infrastructure.jobs.create_runner", lambda *args, **kwargs: FailedRunner()
+    )
+    with TestClient(create_app(tmp_path)) as client:
+        created = client.post(
+            "/api/projects",
+            json={
+                "project_id": "retry-book",
+                "title": "重试书",
+                "genre": "悬疑",
+                "target_words": 1000,
+                "constraints": "第三人称",
+                "setting_draft": "设定",
+            },
+        ).json()
+        client.post(f"/api/projects/retry-book/setting/{created['task']['id']}/approve")
+        failed = client.post(
+            "/api/projects/retry-book/design/agent/outline",
+            json={"instruction": "生成大纲"},
+        ).json()
+        monkeypatch.setattr(
+            "app.infrastructure.jobs.create_runner",
+            lambda *args, **kwargs: SuccessfulRunner(),
+        )
+        retried = client.post(f"/api/projects/retry-book/tasks/{failed['id']}/retry")
+
+    assert failed["status"] == "failed"
+    assert retried.status_code == 202
+    assert retried.json()["status"] == "awaiting_approval"
+    assert retried.json()["retry_of_task_id"] == failed["id"]
+    assert retried.json()["id"] != failed["id"]

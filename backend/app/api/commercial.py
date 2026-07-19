@@ -3,19 +3,21 @@ from typing import Literal
 from fastapi import APIRouter, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.agents.schemas import CommercialReport, CommercialStrategy
-from app.api.creation import _run_agent, _runner
+from app.agents.schemas import CommercialReport
 from app.domain.commercial import (
     CommercialMetrics,
     CommercialObservation,
     CommercialObservationInput,
     CommercialProfile,
 )
-from app.domain.task import Task
+from app.domain.task import Task, TaskKind, TaskPurpose
+from app.infrastructure.jobs import AgentJobKind, JobQueue
 from app.repositories.commercial import CommercialRepository
 from app.repositories.database import DatabaseRepository
+from app.repositories.tasks import TasksRepository
 from app.workflows.chapter import ChapterService
 from app.workflows.commercial import CommercialService
+from app.workflows.task_service import TaskService
 
 router = APIRouter(prefix="/projects/{project_id}/commercial", tags=["commercial"])
 
@@ -32,11 +34,6 @@ class CommercialBrief(BaseModel):
     instruction: str = Field(min_length=1)
 
 
-class GeneratedCommercialResponse(BaseModel):
-    task: Task
-    profile: CommercialProfile
-
-
 class StoredCommercialAuditResponse(BaseModel):
     commercial_report: CommercialReport
     minimum_commercial_score: int
@@ -48,16 +45,12 @@ def get_profile(project_id: str, request: Request) -> CommercialProfile | None:
     return CommercialService(request.app.state.workspace).read(project_id)
 
 
-@router.get(
-    "/reports/{task_id}", response_model=StoredCommercialAuditResponse | None
-)
+@router.get("/reports/{task_id}", response_model=StoredCommercialAuditResponse | None)
 def get_stored_commercial_report(
     project_id: str, task_id: str, request: Request
 ) -> StoredCommercialAuditResponse | None:
     profile = CommercialService(request.app.state.workspace).read(project_id)
-    report = ChapterService(request.app.state.workspace).read_commercial_report(
-        project_id, task_id
-    )
+    report = ChapterService(request.app.state.workspace).read_commercial_report(project_id, task_id)
     if profile is None or report is None:
         return None
     return StoredCommercialAuditResponse(
@@ -70,43 +63,31 @@ def get_stored_commercial_report(
 
 
 @router.post("/draft", response_model=Task, status_code=status.HTTP_201_CREATED)
-def create_profile_draft(
-    project_id: str, payload: CommercialProfile, request: Request
-) -> Task:
+def create_profile_draft(project_id: str, payload: CommercialProfile, request: Request) -> Task:
     return CommercialService(request.app.state.workspace).create(project_id, payload)
 
 
 @router.post(
     "/agent",
-    response_model=GeneratedCommercialResponse,
-    status_code=status.HTTP_201_CREATED,
+    response_model=Task,
+    status_code=status.HTTP_202_ACCEPTED,
 )
-async def generate_profile(
-    project_id: str, payload: CommercialBrief, request: Request
-) -> GeneratedCommercialResponse:
-    def run() -> GeneratedCommercialResponse:
-        metrics = _repository(project_id, request).metrics(project_id)
-        output = _runner(project_id, request).invoke(
-            "MarketStrategist",
-            {
-                "brief": payload.model_dump(mode="json"),
-                "observed_metrics": metrics.model_dump(mode="json"),
-                "instruction": payload.instruction,
-            },
-        )
-        if not isinstance(output, CommercialStrategy):
-            raise RuntimeError("AGENT_OUTPUT_INVALID")
-        if (
-            output.profile.platform != payload.platform
-            or output.profile.monetization != payload.monetization
-        ):
-            raise RuntimeError("AGENT_OUTPUT_INVALID")
-        task = CommercialService(request.app.state.workspace).create(
-            project_id, output.profile
-        )
-        return GeneratedCommercialResponse(task=task, profile=output.profile)
-
-    return await _run_agent(run)
+def generate_profile(project_id: str, payload: CommercialBrief, request: Request) -> Task:
+    workspace = request.app.state.workspace
+    service = TaskService(TasksRepository(DatabaseRepository(workspace), project_id))
+    task = service.create(
+        TaskKind.WRITE,
+        TaskPurpose.COMMERCIAL,
+        subject_id="commercial-profile",
+    )
+    jobs: JobQueue = request.app.state.agent_jobs
+    jobs.enqueue(
+        project_id,
+        task.id,
+        AgentJobKind.COMMERCIAL,
+        {"brief": payload.model_dump(mode="json")},
+    )
+    return service.get(task.id)
 
 
 @router.put("/draft/{task_id}", response_model=CommercialProfile)
@@ -116,15 +97,11 @@ def update_profile_draft(
     payload: CommercialProfile,
     request: Request,
 ) -> CommercialProfile:
-    return CommercialService(request.app.state.workspace).write_draft(
-        project_id, task_id, payload
-    )
+    return CommercialService(request.app.state.workspace).write_draft(project_id, task_id, payload)
 
 
 @router.get("/draft/{task_id}", response_model=CommercialProfile)
-def get_profile_draft(
-    project_id: str, task_id: str, request: Request
-) -> CommercialProfile:
+def get_profile_draft(project_id: str, task_id: str, request: Request) -> CommercialProfile:
     return CommercialService(request.app.state.workspace).read_draft(project_id, task_id)
 
 

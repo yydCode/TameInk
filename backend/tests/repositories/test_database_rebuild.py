@@ -45,7 +45,7 @@ def test_initialization_is_repeatable_and_records_schema_version(tmp_path: Path)
             connection.execute(
                 "SELECT value FROM metadata WHERE key = 'schema_version'"
             ).fetchone()[0]
-            == "4"
+            == "5"
         )
 
 
@@ -70,7 +70,7 @@ def test_initialization_migrates_real_v1_database_without_losing_fts_data(tmp_pa
             connection.execute(
                 "SELECT value FROM metadata WHERE key = 'schema_version'"
             ).fetchone()[0]
-            == "4"
+            == "5"
         )
         assert (
             connection.execute(
@@ -113,7 +113,7 @@ def test_initialization_migrates_v2_and_adds_commercial_observations(tmp_path: P
             connection.execute(
                 "SELECT value FROM metadata WHERE key = 'schema_version'"
             ).fetchone()[0]
-            == "4"
+            == "5"
         )
         assert (
             connection.execute(
@@ -155,11 +155,11 @@ def test_initialization_migrates_v3_tasks_without_losing_rows(tmp_path: Path) ->
         version = connection.execute(
             "SELECT value FROM metadata WHERE key = 'schema_version'"
         ).fetchone()[0]
-    assert version == "4"
+    assert version == "5"
     assert row == ("manual", None, None)
 
 
-@pytest.mark.parametrize("version", ["0", "5", "future"])
+@pytest.mark.parametrize("version", ["0", "6", "future"])
 def test_initialization_rejects_unknown_schema_versions(tmp_path: Path, version: str) -> None:
     _, _, database = setup_project(tmp_path)
     with database.connect("story-01") as connection:
@@ -232,7 +232,7 @@ def test_v1_migration_rolls_back_all_ddl_and_can_retry_after_failure(tmp_path: P
             connection.execute(
                 "SELECT value FROM metadata WHERE key = 'schema_version'"
             ).fetchone()[0]
-            == "4"
+            == "5"
         )
         objects = {
             row[0]

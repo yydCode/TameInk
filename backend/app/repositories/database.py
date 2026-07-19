@@ -37,7 +37,7 @@ class DatabaseRepository:
             if version is None or version in {"1", "2"}:
                 migration = f"""BEGIN IMMEDIATE;
 {schema}
-INSERT INTO metadata(key, value) VALUES ('schema_version', '4')
+INSERT INTO metadata(key, value) VALUES ('schema_version', '5')
 ON CONFLICT(key) DO UPDATE SET value = excluded.value;
 COMMIT;
 """
@@ -49,7 +49,10 @@ COMMIT;
                     raise
             elif version == "3":
                 self._migrate_v3_to_v4(connection)
-            elif version != "4":
+                self._migrate_v4_to_v5(connection)
+            elif version == "4":
+                self._migrate_v4_to_v5(connection)
+            elif version != "5":
                 raise DatabaseSchemaError(f"unsupported schema version: {version}")
 
     @staticmethod
@@ -73,6 +76,24 @@ ALTER TABLE tasks ADD COLUMN started_at TEXT;
 ALTER TABLE tasks ADD COLUMN finished_at TEXT;
 ALTER TABLE tasks ADD COLUMN duration_ms INTEGER CHECK (duration_ms IS NULL OR duration_ms >= 0);
 UPDATE metadata SET value = '4' WHERE key = 'schema_version';
+COMMIT;
+"""
+        try:
+            connection.executescript(migration)
+        except sqlite3.Error:
+            if connection.in_transaction:
+                connection.rollback()
+            raise
+
+    @staticmethod
+    def _migrate_v4_to_v5(connection: sqlite3.Connection) -> None:
+        migration = """BEGIN IMMEDIATE;
+DROP INDEX IF EXISTS one_active_write_task_per_project;
+CREATE UNIQUE INDEX one_active_write_task_per_project
+ON tasks(project_id)
+WHERE kind = 'write'
+  AND status IN ('pending', 'running', 'awaiting_approval');
+UPDATE metadata SET value = '5' WHERE key = 'schema_version';
 COMMIT;
 """
         try:

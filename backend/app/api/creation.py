@@ -1,32 +1,17 @@
-import asyncio
-from collections.abc import Callable
+from typing import cast
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, Request, status
 from pydantic import BaseModel, ConfigDict
 
-from app.agents.runtime import DeepAgentRunner
-from app.agents.schemas import CommercialReport, Outline, StorySetting
-from app.domain.errors import TameInkError
-from app.domain.task import Task
-from app.infrastructure.model import ModelConfigurationError
-from app.infrastructure.secrets import SecretStoreError
-from app.infrastructure.settings import SettingsError
+from app.domain.task import Task, TaskKind, TaskPurpose
+from app.infrastructure.jobs import AgentJobKind, JobQueue
 from app.repositories.database import DatabaseRepository
-from app.repositories.drafts import DraftRepository
 from app.repositories.tasks import TasksRepository
 from app.workflows.chapter import ChapterService
-from app.workflows.commercial import CommercialService
 from app.workflows.outline import OutlineService
+from app.workflows.task_service import TaskService
 
 router = APIRouter(prefix="/projects/{project_id}/design", tags=["creation"])
-
-SAFE_AGENT_CONFIGURATION_CODES = {
-    "MODEL_API_KEY_MISSING",
-    "MODEL_SETTINGS_INVALID",
-    "MODEL_SETTINGS_NOT_FOUND",
-    "MODEL_SETTINGS_READ_FAILED",
-    "SECRET_STORE_READ_FAILED",
-}
 
 
 class ContentRequest(BaseModel):
@@ -50,27 +35,10 @@ class GenerateRequest(BaseModel):
     instruction: str
 
 
-class GeneratedTaskResponse(BaseModel):
-    task: Task
-    content: str
-
-
-class GeneratedChapterResponse(GeneratedTaskResponse):
-    commercial_report: CommercialReport
-    minimum_commercial_score: int
-    commercial_gate_passed: bool
-
-
 class ChapterApprovalRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     commercial_override_reason: str | None = None
-
-
-class CommercialAuditResponse(BaseModel):
-    commercial_report: CommercialReport
-    minimum_commercial_score: int
-    commercial_gate_passed: bool
 
 
 @router.post("/outline", response_model=Task, status_code=status.HTTP_201_CREATED)
@@ -124,184 +92,136 @@ def approve_chapter(
     )
 
 
-def _runner(project_id: str, request: Request) -> DeepAgentRunner:
-    return DeepAgentRunner(
-        request.app.state.workspace,
-        project_id,
-        request.app.state.model_settings,
-        request.app.state.api_keys,
-    )
-
-
-async def _run_agent[AgentResponse](operation: Callable[[], AgentResponse]) -> AgentResponse:
-    try:
-        return await asyncio.to_thread(operation)
-    except TameInkError:
-        raise
-    except (SettingsError, SecretStoreError, ModelConfigurationError) as error:
-        candidate = str(error)
-        code = (
-            candidate
-            if candidate in SAFE_AGENT_CONFIGURATION_CODES
-            else "AGENT_CONFIGURATION_INVALID"
-        )
-        raise HTTPException(
-            status_code=400,
-            detail={"code": code, "message": "agent configuration invalid"},
-        ) from error
-    except Exception as error:
-        code = (
-            "AGENT_OUTPUT_INVALID"
-            if str(error) == "AGENT_OUTPUT_INVALID"
-            else "AGENT_RUN_FAILED"
-        )
-        raise HTTPException(
-            status_code=502,
-            detail={"code": code, "message": "agent generation failed"},
-        ) from error
-
-
-@router.post("/agent/setting/{task_id}", response_model=GeneratedTaskResponse)
-async def generate_setting(
+@router.post("/agent/setting/{task_id}", response_model=Task, status_code=status.HTTP_202_ACCEPTED)
+def generate_setting(
     project_id: str, task_id: str, payload: GenerateRequest, request: Request
-) -> GeneratedTaskResponse:
-    def run() -> GeneratedTaskResponse:
-        workspace = request.app.state.workspace
-        task = TasksRepository(DatabaseRepository(workspace), project_id).get(task_id)
-        output = _runner(project_id, request).invoke(
-            "StoryArchitect", {"instruction": payload.instruction}
-        )
-        if not isinstance(output, StorySetting):
-            raise RuntimeError("AGENT_OUTPUT_INVALID")
-        DraftRepository(workspace).write(project_id, task_id, "setting.md", output.content)
-        return GeneratedTaskResponse(task=task, content=output.content)
-
-    return await _run_agent(run)
+) -> Task:
+    workspace = request.app.state.workspace
+    task = TasksRepository(DatabaseRepository(workspace), project_id).get(task_id)
+    _jobs(request).enqueue(
+        project_id, task_id, AgentJobKind.SETTING, {"instruction": payload.instruction}
+    )
+    return TasksRepository(DatabaseRepository(workspace), project_id).get(task.id)
 
 
 @router.post(
     "/agent/outline",
-    response_model=GeneratedTaskResponse,
-    status_code=status.HTTP_201_CREATED,
+    response_model=Task,
+    status_code=status.HTTP_202_ACCEPTED,
 )
-async def generate_outline(
-    project_id: str, payload: GenerateRequest, request: Request
-) -> GeneratedTaskResponse:
-    def run() -> GeneratedTaskResponse:
-        workspace = request.app.state.workspace
-        output = _runner(project_id, request).invoke(
-            "OutlineArchitect", {"kind": "book", "instruction": payload.instruction}
-        )
-        if not isinstance(output, Outline) or output.kind != "book":
-            raise RuntimeError("AGENT_OUTPUT_INVALID")
-        task = OutlineService(workspace).create_book(project_id, output.content)
-        return GeneratedTaskResponse(task=task, content=output.content)
-
-    return await _run_agent(run)
+def generate_outline(project_id: str, payload: GenerateRequest, request: Request) -> Task:
+    task = _create_agent_task(request, project_id, TaskPurpose.BOOK_OUTLINE, "book")
+    _jobs(request).enqueue(
+        project_id, task.id, AgentJobKind.BOOK_OUTLINE, {"instruction": payload.instruction}
+    )
+    return _task(request, project_id, task.id)
 
 
 @router.post(
     "/agent/volumes/{volume_id}",
-    response_model=GeneratedTaskResponse,
-    status_code=status.HTTP_201_CREATED,
+    response_model=Task,
+    status_code=status.HTTP_202_ACCEPTED,
 )
-async def generate_volume(
+def generate_volume(
     project_id: str,
     volume_id: str,
     payload: GenerateRequest,
     request: Request,
-) -> GeneratedTaskResponse:
-    def run() -> GeneratedTaskResponse:
-        workspace = request.app.state.workspace
-        output = _runner(project_id, request).invoke(
-            "OutlineArchitect",
-            {"kind": "volume", "volume_id": volume_id, "instruction": payload.instruction},
-        )
-        if not isinstance(output, Outline) or output.kind != "volume":
-            raise RuntimeError("AGENT_OUTPUT_INVALID")
-        task = OutlineService(workspace).create_volume(project_id, volume_id, output.content)
-        return GeneratedTaskResponse(task=task, content=output.content)
-
-    return await _run_agent(run)
+) -> Task:
+    task = _create_agent_task(
+        request,
+        project_id,
+        TaskPurpose.VOLUME_OUTLINE,
+        volume_id,
+        volume_id=volume_id,
+    )
+    _jobs(request).enqueue(
+        project_id,
+        task.id,
+        AgentJobKind.VOLUME_OUTLINE,
+        {"instruction": payload.instruction, "volume_id": volume_id},
+    )
+    return _task(request, project_id, task.id)
 
 
 @router.post(
     "/agent/chapters/{chapter_id}",
-    response_model=GeneratedChapterResponse,
-    status_code=status.HTTP_201_CREATED,
+    response_model=Task,
+    status_code=status.HTTP_202_ACCEPTED,
 )
-async def generate_chapter(
+def generate_chapter(
     project_id: str,
     chapter_id: str,
     payload: GenerateRequest,
     request: Request,
-) -> GeneratedChapterResponse:
-    def run() -> GeneratedChapterResponse:
-        workspace = request.app.state.workspace
-        service = ChapterService(workspace, runner=_runner(project_id, request))
-        task = service.run(project_id, chapter_id, payload.instruction)
-        content = DraftRepository(workspace).read(project_id, task.id, "chapter.md")
-        report = service.read_commercial_report(project_id, task.id)
-        profile = CommercialService(workspace).read(project_id)
-        if report is None or profile is None:
-            raise RuntimeError("AGENT_OUTPUT_INVALID")
-        return GeneratedChapterResponse(
-            task=task,
-            content=content,
-            commercial_report=report,
-            minimum_commercial_score=profile.minimum_commercial_score,
-            commercial_gate_passed=service.commercial_gate_passed(
-                report, profile.minimum_commercial_score
-            ),
-        )
-
-    return await _run_agent(run)
+) -> Task:
+    volume_id = "1"
+    task = _create_agent_task(
+        request,
+        project_id,
+        TaskPurpose.CHAPTER,
+        chapter_id,
+        volume_id=volume_id,
+        chapter_id=chapter_id,
+    )
+    _jobs(request).enqueue(
+        project_id,
+        task.id,
+        AgentJobKind.CHAPTER,
+        {
+            "instruction": payload.instruction,
+            "chapter_id": chapter_id,
+            "volume_id": volume_id,
+        },
+    )
+    return _task(request, project_id, task.id)
 
 
 @router.post(
     "/agent/chapters/{chapter_id}/{task_id}/commercial-audit",
-    response_model=CommercialAuditResponse,
+    response_model=Task,
+    status_code=status.HTTP_202_ACCEPTED,
 )
-async def audit_chapter_commercially(
+def audit_chapter_commercially(
     project_id: str,
     chapter_id: str,
     task_id: str,
     request: Request,
-) -> CommercialAuditResponse:
-    def run() -> CommercialAuditResponse:
-        workspace = request.app.state.workspace
-        task = TasksRepository(DatabaseRepository(workspace), project_id).get(task_id)
-        if task.status != "awaiting_approval":
-            raise RuntimeError("COMMERCIAL_AUDIT_TASK_INVALID")
-        profile = CommercialService(workspace).read(project_id)
-        if profile is None:
-            raise RuntimeError("COMMERCIAL_PROFILE_MISSING")
-        draft = DraftRepository(workspace).read(project_id, task_id, "chapter.md")
-        output = _runner(project_id, request).invoke(
-            "RetentionAuditor",
-            {
-                "project_id": project_id,
-                "chapter_id": chapter_id,
-                "draft": draft,
-                "instruction": "re-audit the current user-edited chapter candidate",
-            },
-        )
-        if not isinstance(output, CommercialReport) or output.chapter_id != chapter_id:
-            raise RuntimeError("AGENT_OUTPUT_INVALID")
-        output = ChapterService.normalize_commercial_report(draft, output)
-        ChapterService.validate_audit_issues(draft, [], [], output.issues)
-        service = ChapterService(workspace)
-        passed = service.store_commercial_report(
-            project_id,
-            task_id,
-            chapter_id,
-            output,
-            profile.minimum_commercial_score,
-        )
-        return CommercialAuditResponse(
-            commercial_report=output,
-            minimum_commercial_score=profile.minimum_commercial_score,
-            commercial_gate_passed=passed,
-        )
+) -> Task:
+    task = _task(request, project_id, task_id)
+    _jobs(request).enqueue(
+        project_id,
+        task_id,
+        AgentJobKind.COMMERCIAL_AUDIT,
+        {"chapter_id": chapter_id},
+    )
+    return _task(request, project_id, task.id)
 
-    return await _run_agent(run)
+
+def _jobs(request: Request) -> JobQueue:
+    return cast(JobQueue, request.app.state.agent_jobs)
+
+
+def _task(request: Request, project_id: str, task_id: str) -> Task:
+    return TasksRepository(DatabaseRepository(request.app.state.workspace), project_id).get(task_id)
+
+
+def _create_agent_task(
+    request: Request,
+    project_id: str,
+    purpose: TaskPurpose,
+    subject_id: str,
+    *,
+    volume_id: str | None = None,
+    chapter_id: str | None = None,
+) -> Task:
+    service = TaskService(
+        TasksRepository(DatabaseRepository(request.app.state.workspace), project_id)
+    )
+    return service.create(
+        TaskKind.WRITE,
+        purpose,
+        subject_id=subject_id,
+        volume_id=volume_id,
+        chapter_id=chapter_id,
+    )

@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 from app.domain.errors import WorkflowGateError, WorkspacePathViolationError
 from app.domain.paths import validate_formal_path
 from app.domain.task import Task, TaskEvent, TaskKind, TaskPurpose
+from app.infrastructure.jobs import AgentJobKind, JobQueue
 from app.repositories.database import DatabaseRepository
 from app.repositories.drafts import DraftRepository
 from app.repositories.tasks import TasksRepository
@@ -150,3 +151,23 @@ router.post("/{task_id}/reject", response_model=Task)(operation("reject"))
 router.post("/{task_id}/cancel", response_model=Task)(operation("cancel"))
 router.post("/{task_id}/complete", response_model=Task)(operation("complete"))
 router.post("/{task_id}/fail", response_model=Task)(operation("fail"))
+
+
+@router.post("/{task_id}/retry", response_model=Task, status_code=status.HTTP_202_ACCEPTED)
+def retry_task(project_id: str, task_id: str, request: Request, service: Service) -> Task:
+    original = service.get(task_id)
+    stored = DraftRepository(request.app.state.workspace).read(
+        project_id, original.id, "request.json"
+    )
+    try:
+        request_data = json.loads(stored)
+        kind = AgentJobKind(request_data["kind"])
+        payload = request_data["payload"]
+        if not isinstance(payload, dict):
+            raise ValueError
+    except (json.JSONDecodeError, KeyError, TypeError, ValueError) as error:
+        raise WorkflowGateError("stored task request is invalid") from error
+    retry = service.retry(task_id)
+    jobs: JobQueue = request.app.state.agent_jobs
+    jobs.enqueue(project_id, retry.id, kind, payload)
+    return service.get(retry.id)
