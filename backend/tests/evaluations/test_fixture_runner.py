@@ -13,5 +13,6 @@ def test_fixture_evaluation_is_valid() -> None:
         text=True,
     )
 
-    assert json.loads(result.stdout)["cases"] == 5
-
+    payload = json.loads(result.stdout)
+    assert payload["cases"] == 5
+    assert payload["p0_skill_cases"] == 3

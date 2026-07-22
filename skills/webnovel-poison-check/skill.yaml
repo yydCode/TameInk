@@ -1,0 +1,110 @@
+name: webnovel-poison-check
+agent: PoisonCheckAuditor
+candidate_kinds:
+  - evidence_finding
+purpose: 用毒点清单检查正文，发现会导致读者弃书的结构性写作陷阱。
+
+# ── 毒点检测清单（来自宝剑侍从教材《毒点解析》系列）──────────────────
+# 毒点是让读者弃书的结构性错误，不同于普通写作瑕疵。
+# error 级毒点：一旦出现即严重损害读者体验，必须优先报告。
+# warning 级毒点：有明确证据时报告，避免过度诊断。
+poison_checklist:
+  # ── 人设崩塌类 ──────────────────────────────────────────────────────
+  - id: character_acts_ooc_for_plot
+    category: 人设崩塌
+    label: 人设崩塌（为剧情服务强行改变人物行为）
+    severity: error
+    description: >
+      人物做出与已建立人设完全矛盾的行为，且没有足够的前因铺垫。
+      读者意识到作者在操纵角色而非角色在自主行动时，立即弃书。
+    detection_signals:
+      - 之前强调某特质，此处反向行事且无说明
+      - 为推进剧情让角色做"不像他会做的事"
+      - 性格忽软忽硬无过渡
+
+  - id: ooc_for_romance
+    category: 人设崩塌
+    label: 精虫上脑崩人设（为感情线放弃核心人设）
+    severity: error
+    description: >
+      主角因感情/欲望驱动做出与核心人设/目标背道而驰的选择，
+      导致读者对主角的认同感崩塌。
+    detection_signals:
+      - 主角放弃重要目标或利益去追求感情
+      - 主角因感情做出明显愚蠢/软弱的决策
+      - 主角对待感情对象的方式与对待其他人完全相反
+
+  # ── 剧情结构类 ──────────────────────────────────────────────────────
+  - id: deus_ex_machina
+    category: 剧情结构
+    label: 机械降神（从天而降的解决方案）
+    severity: error
+    description: >
+      主角遇到危机时，靠事前没有铺垫的外力/能力/信息突然化解，
+      读者感受到作者在作弊而非主角在凭实力解决问题。
+    detection_signals:
+      - 危机出现后突然出现之前完全未提及的救援力量
+      - 主角使出从未介绍过的新能力
+      - 关键信息在需要时凭空出现
+
+  - id: protagonist_suffers_pointlessly
+    category: 剧情结构
+    label: 主角无意义受苦（纯粹的情绪下行）
+    severity: error
+    description: >
+      主角遭受挫折/羞辱/痛苦，但该情节对故事进展毫无价值，
+      也没有后续的翻盘或成长，只是让读者陪着难受。
+    detection_signals:
+      - 情绪折线持续下行且无逆转迹象
+      - 挫折对主角后续能力/资源无任何提升
+      - 读者无法看到"这段痛苦有什么意义"
+
+  - id: villain_dumbed_down
+    category: 剧情结构
+    label: 反派降智（反派变蠢配合主角胜利）
+    severity: warning
+    description: >
+      反派在之前建立了强大形象后，在关键时刻做出明显低智行为，
+      让主角的胜利显得廉价。
+    detection_signals:
+      - 反派明显不该犯的低级错误
+      - 反派知道主角弱点却不利用
+      - 反派有绝对优势却停下来废话
+
+  # ── 节奏类 ──────────────────────────────────────────────────────────
+  - id: momentum_collapse
+    category: 节奏
+    label: 节奏崩塌（高潮后的真空感）
+    severity: warning
+    description: >
+      大高潮或重要情节后，接连多章进入毫无张力的松弛状态，
+      已建立的期待感被耗尽，读者失去追读动力。
+    detection_signals:
+      - 高潮后连续3章以上没有新的期待被建立
+      - 章末不再有悬念或钩子
+      - 读者感受到"故事停下来了"
+
+  - id: information_gap_resolved_too_fast
+    category: 节奏
+    label: 信息差消耗过快（悬念提前泄露）
+    severity: warning
+    description: >
+      作者对读者隐藏了关键信息制造悬念，但在张力最高点到来前
+      就将信息透露给读者，悬念白白浪费。
+    detection_signals:
+      - 反派的真实身份/计划在对决前就被揭示
+      - 主角的底牌在使用前就向读者展示
+      - 关键反转在铺垫完成前就被提前说破
+
+  # ── 两界题材专项 ────────────────────────────────────────────────────
+  - id: dual_world_genre_trap
+    category: 两界题材
+    label: 两界题材陷阱（两个世界的读者需求互相冲突）
+    severity: warning
+    description: >
+      主角在两个世界之间切换时，每个世界的读者期待相互矛盾，
+      导致两头都不讨好。需要确认两个世界的核心爽感是同一条主线。
+    detection_signals:
+      - 主角在现代世界的行为逻辑与古代/异界世界格格不入
+      - 两个世界的情节互相抢戏而非互相增强
+      - 读者不清楚应该更关心哪个世界

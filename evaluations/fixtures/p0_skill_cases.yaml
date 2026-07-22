@@ -1,0 +1,62 @@
+cases:
+  - id: urban-reader-contract
+    scenario: urban-workplace-growth
+    skill: webnovel-design-reader-contract
+    context:
+      path: project.yaml
+      content: "作者方向：都市职场，关注普通人通过专业能力获得选择权。"
+    output:
+      id: urban-contract-candidate
+      skill: webnovel-design-reader-contract
+      status: ready
+      evidence: []
+      candidate:
+        artifact_kind: reader_contract
+        summary: "职场成长读者契约"
+        payload:
+          genre_scope: "都市职场成长"
+          core_experience: "主角以专业判断解决真实职场压力，逐步赢得选择权。"
+      decision_requests: []
+      effects: []
+  - id: fantasy-reader-contract
+    scenario: fantasy-survival-expedition
+    skill: webnovel-design-reader-contract
+    context:
+      path: project.yaml
+      content: "作者方向：东方奇幻远征，关注小队在资源匮乏世界中协作求生。"
+    output:
+      id: fantasy-contract-candidate
+      skill: webnovel-design-reader-contract
+      status: ready
+      evidence: []
+      candidate:
+        artifact_kind: reader_contract
+        summary: "远征求生读者契约"
+        payload:
+          genre_scope: "东方奇幻远征求生"
+          core_experience: "主角小队在未知遗迹中以代价换取生存空间和共同目标。"
+      decision_requests: []
+      effects: []
+  - id: audit-conflict
+    scenario: confirmed-identity-conflict
+    skill: webnovel-audit
+    context:
+      path: canon/chapters/chapter-1.md
+      content: "第一章确认：沈舟从未离开北城。"
+    output:
+      id: identity-conflict
+      skill: webnovel-audit
+      status: conflict
+      evidence:
+        - kind: conflict
+          description: "候选正文声称沈舟已在南城，和确认章节冲突。"
+          reference:
+            path: canon/chapters/chapter-1.md
+            location: chars:0-15
+            quote: "第一章确认：沈舟从未离开北城。"
+      candidate: null
+      decision_requests:
+        - id: identity-source
+          question: "确认沈舟当前所在地，以修正候选正文或正式事实。"
+          options: ["北城", "南城"]
+      effects: []

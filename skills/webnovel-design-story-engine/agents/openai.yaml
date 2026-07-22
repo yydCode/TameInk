@@ -1,0 +1,4 @@
+interface:
+  display_name: "故事引擎设计"
+  short_description: "设计可长期运行的主角行动、人物关键选择和世界压力机制"
+  default_prompt: "Use $webnovel-design-story-engine to design a story engine."

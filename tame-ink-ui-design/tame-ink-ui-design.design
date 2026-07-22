@@ -1,0 +1,169 @@
+{
+  "data": [
+    {
+      "id": "page-workspace",
+      "title": "工作台",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1753200000000,
+      "canvasData": {
+        "x": 0,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/workspace.html",
+        "interactions": [
+          {
+            "domId": "cta-editor",
+            "targetPageId": "page-editor",
+            "transitionLabel": "开始创作"
+          },
+          {
+            "domId": "shortcut-stories",
+            "targetPageId": "page-stories",
+            "hideEdge": true,
+            "transitionLabel": "侧栏导航"
+          },
+          {
+            "domId": "shortcut-review",
+            "targetPageId": "page-review",
+            "hideEdge": true,
+            "transitionLabel": "侧栏导航"
+          },
+          {
+            "domId": "shortcut-settings",
+            "targetPageId": "page-settings",
+            "hideEdge": true,
+            "transitionLabel": "侧栏导航"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-editor",
+      "title": "创作",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1753200001000,
+      "canvasData": {
+        "x": 620,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/editor.html",
+        "interactions": [
+          {
+            "domId": "cta-ai-generate",
+            "targetPageId": "page-stories",
+            "transitionLabel": "返回故事库"
+          },
+          {
+            "domId": "nav-workspace",
+            "targetPageId": "page-workspace",
+            "hideEdge": true,
+            "transitionLabel": "侧栏导航"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-stories",
+      "title": "故事库",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1753200002000,
+      "canvasData": {
+        "x": 1240,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/stories.html",
+        "interactions": [
+          {
+            "domId": "cta-review",
+            "targetPageId": "page-review",
+            "transitionLabel": "查看复盘"
+          },
+          {
+            "domId": "nav-workspace-back",
+            "targetPageId": "page-workspace",
+            "hideEdge": true,
+            "transitionLabel": "侧栏导航"
+          },
+          {
+            "domId": "shortcut-editor",
+            "targetPageId": "page-editor",
+            "hideEdge": true,
+            "transitionLabel": "侧栏导航"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-review",
+      "title": "复盘",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1753200003000,
+      "canvasData": {
+        "x": 1860,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/review.html",
+        "interactions": [
+          {
+            "domId": "cta-settings",
+            "targetPageId": "page-settings",
+            "transitionLabel": "前往设置"
+          },
+          {
+            "domId": "nav-workspace-back2",
+            "targetPageId": "page-workspace",
+            "hideEdge": true,
+            "transitionLabel": "侧栏导航"
+          },
+          {
+            "domId": "shortcut-stories-back",
+            "targetPageId": "page-stories",
+            "hideEdge": true,
+            "transitionLabel": "侧栏导航"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-settings",
+      "title": "设置",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1753200004000,
+      "canvasData": {
+        "x": 2480,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/settings.html",
+        "interactions": [
+          {
+            "domId": "nav-workspace-back3",
+            "targetPageId": "page-workspace",
+            "hideEdge": true,
+            "transitionLabel": "侧栏导航"
+          }
+        ]
+      }
+    }
+  ],
+  "config": {
+    "autoLayout": true,
+    "deviceType": "desktop",
+    "projectName": "驯墨 UI 设计",
+    "designLibrary": null
+  }
+}

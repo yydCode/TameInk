@@ -1,0 +1,4 @@
+interface:
+  display_name: "实际回写整理"
+  short_description: "从作者确认正文提取实际事件、人物变化和期待兑现候选"
+  default_prompt: "Use $webnovel-curate-memory to extract confirmed story changes."

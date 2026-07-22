@@ -1,6 +1,7 @@
+import shutil
 from pathlib import Path
 
-from app.domain.errors import WorkspacePathViolationError
+from app.domain.errors import ProjectNotFoundError, WorkspacePathViolationError
 from app.domain.paths import validate_project_id
 
 PROJECT_DIRS = (
@@ -8,6 +9,9 @@ PROJECT_DIRS = (
     "canon/characters",
     "canon/world",
     "canon/chapters",
+    "canon/actual-events",
+    "commitments/story-cards",
+    "commitments/expectations",
     "memory/summaries/volumes",
     "memory/summaries/chapters",
     "memory/facts",
@@ -59,6 +63,12 @@ class WorkspaceRepository:
             if path.is_dir() and (path / "project.yaml").is_file():
                 result.append(validate_project_id(path.name))
         return result
+
+    def delete_project(self, project_id: str) -> None:
+        project = self.project_path(project_id)
+        if not (project.is_dir() and (project / "project.yaml").is_file()):
+            raise ProjectNotFoundError(project_id)
+        shutil.rmtree(project)
 
     def resolve_project_path(self, project_id: str, relative: str | Path) -> Path:
         project = self.project_path(project_id)

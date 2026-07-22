@@ -1,0 +1,5 @@
+name: webnovel-plan-ending
+agent: StoryEditor
+candidate_kinds:
+  - ending_plan
+purpose: 规划承诺兑现、人物终局和收尾后的新平衡。

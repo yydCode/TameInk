@@ -1,0 +1,4 @@
+interface:
+  display_name: "证据审稿"
+  short_description: "使用精确引用诊断连续性、承诺兑现、场景行动和认知负担问题"
+  default_prompt: "Use $webnovel-audit to audit a chapter with evidence."

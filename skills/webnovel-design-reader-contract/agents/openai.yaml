@@ -1,0 +1,4 @@
+interface:
+  display_name: "读者契约设计"
+  short_description: "将作者方向转为待确认的读者体验、必须兑现内容和表达边界"
+  default_prompt: "Use $webnovel-design-reader-contract to draft a reader contract."

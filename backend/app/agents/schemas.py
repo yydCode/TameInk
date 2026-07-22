@@ -1,10 +1,12 @@
 import re
-from typing import Literal, Self
+from typing import Any, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.agents.context import ContextIntent
+from app.agents.skills import P0Skill
 from app.domain.commercial import CommercialProfile
+from app.domain.creation import ArtifactKind
 from app.domain.errors import WorkspacePathViolationError
 from app.domain.paths import validate_formal_path
 
@@ -68,6 +70,53 @@ class ReferencedOutput(StrictSchema):
         min_length=1,
         description="Use only exact confirmed references supplied by the context manifest",
     )
+
+
+class ExecutionEvidence(StrictSchema):
+    kind: Literal["fact", "text", "method", "conflict"]
+    description: str
+    reference: SourceReference
+
+
+class CandidateDescriptor(StrictSchema):
+    artifact_kind: ArtifactKind
+    summary: str
+    payload: dict[str, Any] = Field(min_length=1)
+
+
+class DecisionRequest(StrictSchema):
+    id: str
+    question: str
+    options: list[str] = Field(min_length=1)
+
+
+class CandidateEffect(StrictSchema):
+    artifact_kind: ArtifactKind
+    record_id: str
+    description: str
+
+
+class SkillExecutionContract(ReferencedOutput):
+    skill: P0Skill
+    status: Literal["ready", "needs_decision", "conflict"]
+    evidence: list[ExecutionEvidence] = Field(default_factory=list)
+    candidate: CandidateDescriptor | None = None
+    decision_requests: list[DecisionRequest] = Field(default_factory=list)
+    effects: list[CandidateEffect] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_status_payload(self) -> Self:
+        if self.status == "ready" and self.candidate is None:
+            raise ValueError("READY_CANDIDATE_REQUIRED")
+        if self.status != "ready" and self.candidate is not None:
+            raise ValueError("BLOCKED_CANDIDATE_UNEXPECTED")
+        if self.status in {"needs_decision", "conflict"} and not self.decision_requests:
+            raise ValueError("DECISION_REQUEST_REQUIRED")
+        if self.status == "conflict" and not self.evidence:
+            raise ValueError("CONFLICT_EVIDENCE_REQUIRED")
+        if self.status != "ready" and self.effects:
+            raise ValueError("BLOCKED_EFFECTS_UNEXPECTED")
+        return self
 
 
 class StorySetting(ReferencedOutput):

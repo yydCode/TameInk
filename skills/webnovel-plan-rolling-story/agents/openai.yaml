@@ -1,0 +1,4 @@
+interface:
+  display_name: "滚动故事卡规划"
+  short_description: "规划当前单元目标、读者期待、硬约束以及下一行动空间"
+  default_prompt: "Use $webnovel-plan-rolling-story to plan the current story card."

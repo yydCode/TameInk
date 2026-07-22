@@ -1,0 +1,4 @@
+interface:
+  display_name: "网文题材研究"
+  short_description: "核验平台与题材来源证据，并明确区分已知事实、观察和未验证假设"
+  default_prompt: "Use $webnovel-research-genre to research a webnovel genre."

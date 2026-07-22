@@ -1,0 +1,53 @@
+name: webnovel-audit
+agent: ContinuityAuditor
+candidate_kinds:
+  - evidence_finding
+purpose: 以引用证据报告连续性、承诺、场景或认知负担问题。
+
+# ── 诊断检查项（来自宝剑侍从教材）──────────────────────────
+diagnostic_checks:
+  # 场景废段检测：场景无抛钩且无收钩 → 标记
+  - id: dead_scene
+    label: 废场景检测
+    trigger: scene_has_no_hook_and_no_payoff
+    severity: warning
+
+  # 情绪下行主角被动检测：下行场景 + 主角无主动行为 → 标记
+  - id: passive_protagonist_in_setback
+    label: 主角被动下行
+    trigger: emotion_down AND protagonist_no_active_action
+    severity: error
+    note: 新人扑街最常见原因之一
+
+  # 近期待超期：开启期待 > 5章无进展 → 提醒
+  - id: stale_near_expectation
+    label: 近期待过期
+    trigger: near_expectation_open_chapters_gt_5
+    severity: warning
+
+  # 连续情绪上行：连续≥4章上行 → 提醒引入转折
+  - id: consecutive_up_arc
+    label: 连续上行弧线
+    trigger: consecutive_up_arcs_gte_4
+    severity: info
+    note: 建议下一章引入阻碍或信息差，防止爽感麻木
+
+  # 段落超长：单段 > 100字 → 标记
+  - id: paragraph_too_long
+    label: 段落过长
+    trigger: paragraph_word_count_gt_100
+    severity: warning
+    note: 超过100字读者会跳读
+
+  # 人设偏离检测：行为与已建立的价值取向不一致 → 标记
+  - id: character_inconsistency
+    label: 人设偏离
+    trigger: action_contradicts_established_value_priority
+    severity: error
+    note: 人设崩了直接导致订阅崩溃
+
+  # 起因归责：情绪下行起因追溯为主角失误 → 标记
+  - id: protagonist_fault_for_setback
+    label: 下行归责主角
+    trigger: setback_cause_is_protagonist_error
+    severity: error

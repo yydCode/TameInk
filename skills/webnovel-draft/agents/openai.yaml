@@ -1,0 +1,4 @@
+interface:
+  display_name: "网文正文执行"
+  short_description: "在作者确认的故事范围内生成章节、场景、对话或局部改写候选"
+  default_prompt: "Use $webnovel-draft to draft an approved webnovel scene."

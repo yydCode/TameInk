@@ -68,8 +68,7 @@ export function SettingsPage() {
           <span className="eyebrow">全局配置</span>
           <h2>模型设置</h2>
           <p>
-            一个 OpenAI-compatible 模型用于所有 Agent，密钥只保存在系统
-            Keyring。
+            一个 OpenAI-compatible 模型用于所有 Agent，密钥只保存在系统 Keyring。连接失败时任务会停止并保留记录，不会自动切换模型。
           </p>
         </div>
         <span className={`key-status ${hasKey ? "is-ready" : ""}`}>

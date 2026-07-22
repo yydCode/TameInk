@@ -20,6 +20,84 @@ export interface WorkflowStatus {
   commercial_confirmed: boolean;
 }
 
+export type P0Skill =
+  | "webnovel-research-genre"
+  | "webnovel-design-reader-contract"
+  | "webnovel-design-story-engine"
+  | "webnovel-plan-rolling-story"
+  | "webnovel-plan-chapter"
+  | "webnovel-draft"
+  | "webnovel-audit"
+  | "webnovel-opening-audit"
+  | "webnovel-poison-check"
+  | "webnovel-curate-memory"
+  | "webnovel-plan-ending";
+
+export type CreativeArtifactKind =
+  | "reader_contract"
+  | "story_engine"
+  | "character_state"
+  | "expectation"
+  | "story_card"
+  | "chapter_plan"
+  | "chapter_draft"
+  | "evidence_finding"
+  | "actual_event"
+  | "memory_proposal"
+  | "ending_plan";
+
+export interface CreativeArtifact {
+  id: string;
+  project_id: string;
+  task_id: string;
+  kind: CreativeArtifactKind;
+  source_layer: "candidate" | "hypothesis";
+  status: "candidate" | "needs_decision" | "conflict" | "ready" | "awaiting_approval" | "accepted" | "rejected";
+  payload_path: string;
+  accepted_layer: "canon" | "commitment" | null;
+  formal_path: string | null;
+  accepted_decision_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NextCreativeAction {
+  kind: "execute" | "decision" | "input" | "wait" | "recover" | "complete";
+  skill: P0Skill | null;
+  artifact_id: string | null;
+  task_id: string | null;
+  reason: string;
+}
+
+export interface SkillExecutionResult {
+  id: string;
+  skill: P0Skill;
+  status: "ready" | "needs_decision" | "conflict";
+  references: Array<{ path: string; location: string; quote: string }>;
+  evidence: Array<{ kind: string; description: string; reference: { path: string; location: string; quote: string } }>;
+  candidate: { artifact_kind: CreativeArtifactKind; summary: string; payload: Record<string, unknown> } | null;
+  decision_requests: Array<{ id: string; question: string; options: string[] }>;
+  effects: Array<{ artifact_kind: CreativeArtifactKind; record_id: string; description: string }>;
+}
+
+/** Confirmed reader expectation stored at commitments/expectations/{id}.yaml. */
+export interface Expectation {
+  id: string;
+  decision_id: string;
+  confirmed_by: "author";
+  reader_question: string;
+  contract_link: string;
+  opened_by: { path: string; location: string; quote: string };
+  payoff_semantics: string;
+  scope: "local" | "long_term";
+  status: "opened" | "strengthened" | "partially_paid" | "paid" | "invalidated";
+  strengthening_event_ids: string[];
+  actual_payoff_event_ids: string[];
+  state_change: string | null;
+  next_expectation_ids: string[];
+  invalidation_decision_id: string | null;
+}
+
 export type TaskStatus =
   | "pending"
   | "running"
@@ -284,6 +362,153 @@ export function createProject(input: {
   return requestJson("/api/projects", { method: "POST", body: JSON.stringify(input) });
 }
 
+export function startCreativeProject(
+  projectId: string,
+  input: {
+    title: string;
+    platform: string;
+    genre_scope: string;
+    initial_intent: string;
+    first_story_goal: string;
+    constraints: string[];
+    material_boundaries: string[];
+  },
+): Promise<{ project: Project; task: Task }> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/creative/start`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export interface BriefDraft {
+  title: string;
+  genre_scope: string;
+  first_story_goal: string;
+  initial_intent: string;
+}
+
+/** 把作者一句话想法拆解成创作简报草稿（同步 AI 调用）。project_id 仅用于路由，不写入。 */
+export function draftBrief(idea: string): Promise<BriefDraft> {
+  // 用占位 project id 走 creative 路由；后端 brief-draft 不读写该项目。
+  return requestJson(`/api/projects/draft-scratch/creative/brief-draft`, {
+    method: "POST",
+    body: JSON.stringify({ idea }),
+  });
+}
+
+export function runCreativeSkill(
+  projectId: string,
+  skill: P0Skill,
+  payload: Record<string, unknown>,
+): Promise<Task> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/creative/skills`, {
+    method: "POST",
+    body: JSON.stringify({ skill, payload }),
+  });
+}
+
+export function getNextCreativeAction(projectId: string): Promise<NextCreativeAction> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/creative/next`);
+}
+
+export function listCreativeArtifacts(projectId: string): Promise<CreativeArtifact[]> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/creative/artifacts`);
+}
+
+export function listExpectations(projectId: string): Promise<Expectation[]> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/creative/expectations`);
+}
+
+export interface StoryCard {
+  id: string;
+  decision_id: string;
+  sequence: number;
+  status: "planned" | "current" | "completed" | "superseded";
+  goal: string;
+  motivation: string;
+  cycle_input: string;
+  cycle_delta: string;
+  next_affordance: string;
+  expectation_ids: string[];
+}
+
+export function listStoryCards(projectId: string): Promise<StoryCard[]> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/creative/story-cards`);
+}
+
+export function setCurrentStoryCard(
+  projectId: string,
+  cardId: string,
+): Promise<StoryCard> {
+  return requestJson(
+    `/api/projects/${encodeURIComponent(projectId)}/creative/story-cards/current`,
+    { method: "POST", body: JSON.stringify({ card_id: cardId }) },
+  );
+}
+
+export interface VocabularyIssue {
+  phrase: string;
+  count: number;
+  per_thousand: number;
+  category: "repetitive" | "cliche";
+  suggestion: string;
+}
+
+export interface EmotionalArcPoint {
+  chapter_id: string;
+  chapter_index: number;
+  word_count: number;
+  audit_issues: number;
+}
+
+export function checkVocabulary(projectId: string, text: string): Promise<VocabularyIssue[]> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/vocabulary-check`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+}
+
+export function getEmotionalArc(projectId: string): Promise<EmotionalArcPoint[]> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/emotional-arc`);
+}
+
+export async function getCreativeArtifactResult(
+  projectId: string,
+  artifact: CreativeArtifact,
+): Promise<SkillExecutionResult> {
+  const draft = await getDraft(projectId, artifact.task_id, artifact.payload_path);
+  return JSON.parse(draft.content) as SkillExecutionResult;
+}
+
+export function decideCreativeArtifact(
+  projectId: string,
+  artifactId: string,
+  input: {
+    expected_status: CreativeArtifact["status"];
+    action: "accept" | "reject" | "mix" | "revise" | "replan";
+    rationale?: string | null;
+    target_layer?: "canon" | "commitment" | null;
+    formal_path?: string | null;
+    content_override?: string | null;
+  },
+): Promise<Task> {
+  return requestJson(
+    `/api/projects/${encodeURIComponent(projectId)}/creative/artifacts/${encodeURIComponent(artifactId)}/decisions`,
+    { method: "POST", body: JSON.stringify({ ...input, effects: [] }) },
+  );
+}
+
+export function exportCreativeProject(
+  projectId: string,
+  exportId = "manuscript",
+): Promise<{ task: Task; path: string; chapter_count: number }> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/creative/exports`, {
+    method: "POST",
+    body: JSON.stringify({ export_id: exportId }),
+  });
+}
+
 export function getProject(projectId: string): Promise<Project> {
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}`);
 }
@@ -301,6 +526,23 @@ export function getWorkflowStatus(projectId: string): Promise<WorkflowStatus> {
 }
 
 export function listProjects(): Promise<Project[]> { return requestJson("/api/projects"); }
+
+export async function deleteProject(projectId: string): Promise<void> {
+  const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}`, {
+    method: "DELETE",
+    headers: { Accept: "application/json" },
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => undefined)) as
+      | { error?: { message?: string; code?: string } }
+      | undefined;
+    throw new ApiError(
+      friendlyApiErrorMessage(body?.error?.code, body?.error?.message ?? `删除失败（${response.status}）`),
+      response.status,
+      body?.error?.code,
+    );
+  }
+}
 
 export function listTasks(projectId: string): Promise<Task[]> {
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}/tasks`);

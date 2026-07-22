@@ -1,0 +1,88 @@
+name: webnovel-opening-audit
+agent: OpeningAuditor
+candidate_kinds:
+  - evidence_finding
+purpose: 用18元素清单审核开篇前2-3万字，逐条给出通过/未通过与缺失项。
+
+# ── 开篇18元素审核清单（来自宝剑侍从教材《开头18元素自助审核PLUS版》）──
+# 番茄开篇的合格标准是"结构化情节"而非文笔：必须在2-3万字内完成
+# "冲突发生在主角身上 → 金手指展示 → 解决冲突"的完整闭环，18项全部达标。
+opening_audit_checklist:
+  # 前提三项（缺一不可）
+  - id: hero_starts_adventure
+    category: 前提
+    label: 主角已开始冒险（穿越/入局前铺垫≤1000字）
+    severity: error
+  - id: golden_finger_solves_conflict
+    category: 前提
+    label: 主角用金手指解决了一个具体冲突
+    severity: error
+  - id: golden_finger_growth
+    category: 前提
+    label: 金手指展露出升级/成长潜力
+    severity: error
+  # 冲突质量（3项）
+  - id: conflict_on_hero
+    category: 冲突质量
+    label: 冲突发生在主角本人身上（非旁观者）
+    severity: error
+  - id: conflict_high_stakes
+    category: 冲突质量
+    label: 冲突激烈，事关生命或前途（不接受则有实质损失）
+    severity: error
+  - id: conflict_logical
+    category: 冲突质量
+    label: 冲突逻辑合理，目标读者不会嘲笑
+    severity: warning
+  # 主角行为（5项）
+  - id: hero_active_choice
+    category: 主角行为
+    label: 主角主动做出选择，而非全程被动
+    severity: error
+  - id: golden_finger_motive
+    category: 主角行为
+    label: 使用金手指的动机合理（非昏迷后自动触发）
+    severity: warning
+  - id: action_necessary
+    category: 主角行为
+    label: 主角行动是必要的（其他退路已堵死）
+    severity: warning
+  - id: stakes_clear
+    category: 主角行为
+    label: 行动的赌注/收益一句话说得清
+    severity: warning
+  - id: failure_risk_shown
+    category: 主角行为
+    label: 强调了行动失败的风险
+    severity: warning
+  # 情绪（2项）
+  - id: unfair_harm
+    category: 情绪
+    label: 主角遭受了"不公平伤害"（主角无过，锅在反派）
+    severity: error
+  - id: first_climax_emotion_pull
+    category: 情绪
+    label: 首个爽点运用情绪拉扯（先暗示下行，再反转拉高）
+    severity: warning
+  # 金手指（3项）
+  - id: turn_by_golden_finger
+    category: 金手指
+    label: 关键转折由金手指达成
+    severity: error
+  - id: golden_finger_mechanism
+    category: 金手指
+    label: 详细展露了金手指的作用方式
+    severity: warning
+  - id: golden_finger_reversal
+    category: 金手指
+    label: 金手指带来强烈的反转效果
+    severity: warning
+  # 人设（2项）
+  - id: persona_at_key_moment
+    category: 人设
+    label: 在做决定+行动的关键时刻展示了人设
+    severity: warning
+  - id: goal_matches_values
+    category: 人设
+    label: 达成目标的方式与主角价值观挂钩
+    severity: warning

@@ -1,17 +1,36 @@
 import { type FormEvent, useState } from "react";
-import { Plus, X } from "lucide-react";
-
-const initialSetting = "# 故事设定\n\n从核心冲突、主角目标和世界规则开始。";
+import { Plus, Sparkles, X } from "lucide-react";
+import { generateProjectId } from "../../utils/projectId";
+import { draftBrief } from "../../api/client";
 
 export interface CreateProjectInput {
   project_id: string;
   title: string;
-  genre: string;
-  target_words: number;
+  platform: string;
+  genre_scope: string;
   constraints: string;
-  setting_draft: string;
+  initial_intent: string;
+  first_story_goal: string;
+  material_boundaries: string;
 }
 
+const EMPTY: CreateProjectInput = {
+  project_id: "",
+  title: "",
+  platform: "番茄小说",
+  genre_scope: "",
+  constraints: "",
+  initial_intent: "",
+  first_story_goal: "",
+  material_boundaries: "",
+};
+
+/**
+ * 两步式新建作品：
+ *  step "idea"  — 作者用一句话描述想法，AI 拆解成结构化草稿
+ *  step "review" — 展示草稿供作者编辑确认；作者也可跳过 AI 直接手填
+ * 项目 ID 始终由书名自动生成，作者不感知。
+ */
 export function CreateProjectDialog({
   onClose,
   onCreate,
@@ -21,117 +40,153 @@ export function CreateProjectDialog({
   onCreate: (input: CreateProjectInput) => void;
   busy: boolean;
 }) {
-  const [form, setForm] = useState<CreateProjectInput>({
-    project_id: "my-novel",
-    title: "",
-    genre: "",
-    target_words: 2_000_000,
-    constraints: "",
-    setting_draft: initialSetting,
-  });
+  const [step, setStep] = useState<"idea" | "review">("idea");
+  const [idea, setIdea] = useState("");
+  const [drafting, setDrafting] = useState(false);
+  const [draftError, setDraftError] = useState<string | null>(null);
+  const [form, setForm] = useState<CreateProjectInput>(EMPTY);
+
+  async function runDraft(event: FormEvent) {
+    event.preventDefault();
+    if (!idea.trim()) return;
+    setDrafting(true);
+    setDraftError(null);
+    try {
+      const draft = await draftBrief(idea.trim());
+      setForm({
+        ...EMPTY,
+        title: draft.title,
+        genre_scope: draft.genre_scope,
+        first_story_goal: draft.first_story_goal,
+        initial_intent: draft.initial_intent,
+      });
+      setStep("review");
+    } catch (error) {
+      setDraftError(error instanceof Error ? error.message : "AI 起草失败，请重试或手动填写。");
+    } finally {
+      setDrafting(false);
+    }
+  }
+
+  function skipToManual() {
+    setForm(EMPTY);
+    setStep("review");
+  }
+
   function submit(event: FormEvent) {
     event.preventDefault();
-    onCreate(form);
+    onCreate({ ...form, project_id: generateProjectId(form.title) });
   }
+
   return (
     <div className="dialog-backdrop">
-      <form className="dialog" onSubmit={submit}>
-        <div className="dialog-heading">
-          <div>
-            <span className="eyebrow">新建作品</span>
-            <h2>建立你的故事</h2>
+      {step === "idea" ? (
+        <form className="dialog" onSubmit={runDraft}>
+          <div className="dialog-heading">
+            <div>
+              <span className="eyebrow">新建作品</span>
+              <h2>开始一部新作品</h2>
+            </div>
+            <button className="icon-button" type="button" onClick={onClose} aria-label="关闭">
+              <X size={18} />
+            </button>
           </div>
-          <button
-            className="icon-button"
-            type="button"
-            onClick={onClose}
-            aria-label="关闭"
-          >
-            <X size={18} />
-          </button>
-        </div>
-        <label htmlFor="project-id">项目 ID</label>
-        <input
-          id="project-id"
-          value={form.project_id}
-          onChange={(event) =>
-            setForm({ ...form, project_id: event.target.value })
-          }
-          required
-          pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
-        />
-        <div className="form-grid">
           <label>
-            书名
+            用一两句话描述你想写的故事
+            <textarea
+              value={idea}
+              onChange={(event) => setIdea(event.target.value)}
+              placeholder="例如：都市重生，主角回到高考前，靠超强记忆力逆袭，打脸曾经看不起他的人"
+              rows={4}
+              autoFocus
+            />
+          </label>
+          {draftError ? <p className="inline-error">{draftError}</p> : null}
+          <div className="dialog-actions">
+            <button className="button button-secondary" type="button" onClick={skipToManual}>
+              跳过，手动填写
+            </button>
+            <button
+              className="button button-primary"
+              type="submit"
+              disabled={drafting || !idea.trim()}
+            >
+              <Sparkles size={15} />
+              {drafting ? "AI 起草中…" : "AI 帮我搭框架"}
+            </button>
+          </div>
+        </form>
+      ) : (
+        <form className="dialog" onSubmit={submit}>
+          <div className="dialog-heading">
+            <div>
+              <span className="eyebrow">新建作品 · 审阅草稿</span>
+              <h2>建立你的故事</h2>
+            </div>
+            <button className="icon-button" type="button" onClick={onClose} aria-label="关闭">
+              <X size={18} />
+            </button>
+          </div>
+          <div className="form-grid">
+            <label>
+              书名
+              <input
+                value={form.title}
+                onChange={(event) => setForm({ ...form, title: event.target.value })}
+                placeholder="给你的故事起个名字"
+                required
+                autoFocus
+              />
+            </label>
+            <label>
+              平台
+              <select
+                value={form.platform}
+                onChange={(event) => setForm({ ...form, platform: event.target.value })}
+              >
+                <option value="番茄小说">番茄小说</option>
+                <option value="起点中文网">起点中文网</option>
+                <option value="晋江文学城">晋江文学城</option>
+                <option value="其他">其他</option>
+              </select>
+            </label>
+          </div>
+          <label>
+            题材视图
             <input
-              value={form.title}
-              onChange={(event) =>
-                setForm({ ...form, title: event.target.value })
-              }
+              value={form.genre_scope}
+              onChange={(event) => setForm({ ...form, genre_scope: event.target.value })}
+              placeholder="例如：都市重生、玄幻修仙、历史架空"
+            />
+          </label>
+          <label>
+            首个故事目标
+            <textarea
+              value={form.first_story_goal}
+              onChange={(event) => setForm({ ...form, first_story_goal: event.target.value })}
+              placeholder="主角先要完成什么，并让读者带着什么问题进入下一单元？"
               required
             />
           </label>
           <label>
-            题材
-            <input
-              value={form.genre}
-              onChange={(event) =>
-                setForm({ ...form, genre: event.target.value })
-              }
-              required
+            创作意图（可选）
+            <textarea
+              value={form.initial_intent}
+              onChange={(event) => setForm({ ...form, initial_intent: event.target.value })}
+              placeholder="你希望这个故事给读者什么样的阅读体验？"
             />
           </label>
-        </div>
-        <label>
-          目标字数
-          <input
-            type="number"
-            min="1"
-            value={form.target_words}
-            onChange={(event) =>
-              setForm({ ...form, target_words: Number(event.target.value) })
-            }
-            required
-          />
-        </label>
-        <label>
-          创作约束
-          <textarea
-            value={form.constraints}
-            onChange={(event) =>
-              setForm({ ...form, constraints: event.target.value })
-            }
-            required
-          />
-        </label>
-        <label>
-          初始设定
-          <textarea
-            value={form.setting_draft}
-            onChange={(event) =>
-              setForm({ ...form, setting_draft: event.target.value })
-            }
-            required
-          />
-        </label>
-        <div className="dialog-actions">
-          <button
-            className="button button-secondary"
-            type="button"
-            onClick={onClose}
-          >
-            取消
-          </button>
-          <button
-            className="button button-primary"
-            type="submit"
-            disabled={busy}
-          >
-            <Plus size={15} />
-            创建并进入工作台
-          </button>
-        </div>
-      </form>
+          <div className="dialog-actions">
+            <button className="button button-secondary" type="button" onClick={() => setStep("idea")}>
+              返回
+            </button>
+            <button className="button button-primary" type="submit" disabled={busy}>
+              <Plus size={15} />
+              创建并进入工作台
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }

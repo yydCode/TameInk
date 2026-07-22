@@ -25,6 +25,34 @@ def test_projects_create_and_read(tmp_path: Path) -> None:
     assert fetched.json()["id"] == "night-01"
 
 
+def test_project_delete_removes_project(tmp_path: Path) -> None:
+    with TestClient(create_app(tmp_path)) as client:
+        client.post(
+            "/api/projects",
+            json={
+                "project_id": "gone-01",
+                "title": "待删",
+                "genre": "悬疑",
+                "target_words": 1000,
+                "constraints": "第一人称",
+                "setting_draft": "设定候选",
+            },
+        )
+        deleted = client.delete("/api/projects/gone-01")
+        listed = client.get("/api/projects")
+
+    assert deleted.status_code == 204
+    assert [project["id"] for project in listed.json()] == []
+
+
+def test_project_delete_unknown_returns_404(tmp_path: Path) -> None:
+    with TestClient(create_app(tmp_path)) as client:
+        response = client.delete("/api/projects/missing")
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "PROJECT_NOT_FOUND"
+
+
 def test_workflow_status_only_reports_confirmed_content(tmp_path: Path) -> None:
     with TestClient(create_app(tmp_path)) as client:
         created = client.post(

@@ -1,0 +1,4 @@
+interface:
+  display_name: "收尾兑现规划"
+  short_description: "规划承诺兑现、人物终局、多线高潮后的必要回报与新平衡"
+  default_prompt: "Use $webnovel-plan-ending to plan a webnovel ending."

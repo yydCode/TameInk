@@ -1,0 +1,2619 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>故事库 — 驯墨</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style id="theme-vars">
+    :root {
+      --nw-primary: #1f6b54; --nw-primary-light: #2d8a6e; --nw-primary-dark: #155440;
+      --nw-primary-50: rgba(31,107,84,0.08); --nw-primary-100: rgba(31,107,84,0.15); --nw-primary-200: rgba(31,107,84,0.25);
+      --nw-amber: #d4a04a; --nw-amber-light: #e6b85c; --nw-amber-100: rgba(212,160,74,0.12);
+      --nw-ink-blue: #3b5998; --nw-ink-blue-light: #4a6ab0; --nw-ink-blue-100: rgba(59,89,152,0.12);
+      --nw-bg-base: #0d1117; --nw-bg-surface: #161b22; --nw-bg-elevated: #1c2333; --nw-bg-overlay: #222d3d;
+      --nw-bg-hover: rgba(255,255,255,0.04); --nw-bg-active: rgba(255,255,255,0.07);
+      --nw-border-default: rgba(255,255,255,0.08); --nw-border-subtle: rgba(255,255,255,0.04); --nw-border-strong: rgba(255,255,255,0.15);
+      --nw-text-primary: #e6edf3; --nw-text-secondary: #8b949e; --nw-text-tertiary: #5a6370; --nw-text-inverse: #0d1117; --nw-text-link: #2d8a6e;
+      --state-success: #2ea043; --state-warning: #d29922; --state-error: #f85149; --state-info: #58a6ff;
+      --fact-canon: #2ea043; --fact-canon-bg: rgba(46,160,67,0.08);
+      --fact-commitment: #58a6ff; --fact-commitment-bg: rgba(88,166,255,0.08);
+      --fact-candidate: #d29922; --fact-candidate-bg: rgba(210,153,34,0.08);
+      --fact-hypothesis: #a371f7; --fact-hypothesis-bg: rgba(163,113,247,0.08);
+      --radius-sm: 4px; --radius-md: 8px; --radius-lg: 12px; --radius-full: 9999px;
+      --font-display: 'Noto Serif SC','Georgia',serif; --font-body: 'Inter','Noto Sans SC',-apple-system,sans-serif; --font-mono: 'JetBrains Mono',monospace;
+      --text-xs:11px; --text-sm:13px; --text-base:14px; --text-lg:16px; --text-xl:20px; --text-2xl:24px; --text-3xl:30px;
+      --leading-tight:1.25; --leading-normal:1.6; --leading-relaxed:1.75;
+    }
+  </style>
+  <style id="semantic-token-fallback">
+    :root {
+      --nw-background: var(--nw-bg-base); --nw-foreground: var(--nw-text-primary);
+      --nw-card: var(--nw-bg-surface); --nw-card-foreground: var(--nw-text-primary);
+      --nw-popover: var(--nw-bg-elevated); --nw-popover-foreground: var(--nw-text-primary);
+      --nw-primary-foreground: #ffffff; --nw-muted: var(--nw-bg-elevated); --nw-muted-foreground: var(--nw-text-secondary);
+      --nw-border: var(--nw-border-default); --nw-input: var(--nw-border-default); --nw-ring: var(--nw-primary);
+    }
+  </style>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style type="text/tailwindcss">
+    @theme inline {
+      --color-nw-primary: var(--nw-primary); --color-nw-primary-light: var(--nw-primary-light); --color-nw-primary-dark: var(--nw-primary-dark);
+      --color-nw-amber: var(--nw-amber); --color-nw-amber-light: var(--nw-amber-light);
+      --color-nw-bg-base: var(--nw-bg-base); --color-nw-bg-surface: var(--nw-bg-surface); --color-nw-bg-elevated: var(--nw-bg-elevated);
+      --color-nw-bg-overlay: var(--nw-bg-overlay); --color-nw-bg-hover: var(--nw-bg-hover);
+      --color-nw-border-default: var(--nw-border-default); --color-nw-border-strong: var(--nw-border-strong);
+      --color-nw-text-primary: var(--nw-text-primary); --color-nw-text-secondary: var(--nw-text-secondary); --color-nw-text-tertiary: var(--nw-text-tertiary);
+      --color-state-success: var(--state-success); --color-state-warning: var(--state-warning); --color-state-error: var(--state-error); --color-state-info: var(--state-info);
+      --font-family-display: var(--font-display); --font-family-body: var(--font-body); --font-family-mono: var(--font-mono);
+      --radius-sm: var(--radius-sm); --radius-md: var(--radius-md); --radius-lg: var(--radius-lg);
+    }
+  </style>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--nw-bg-base);
+      color: var(--nw-text-primary);
+      font-family: var(--font-body);
+      font-size: var(--text-base);
+      line-height: var(--leading-normal);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.16); }
+
+    /* ===== Sidebar (must use !important) ===== */
+    .mo-sidebar { width: 240px !important; min-width: 240px !important; flex-shrink: 0 !important; background: var(--nw-bg-overlay) !important; border-right: 1px solid var(--nw-border-default) !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; min-height: 100vh !important; align-self: flex-start !important; position: sticky !important; top: 0 !important; }
+    .mo-sidebar .mo-brand { display: flex !important; align-items: center !important; gap: 12px !important; padding: 24px 24px 28px !important; color: #f5f7fa !important; }
+    .mo-sidebar .mo-brand-name { font-family: 'Noto Serif SC', serif !important; font-size: 18px !important; font-weight: 600 !important; letter-spacing: 2px !important; }
+    .mo-sidebar .mo-nav { flex: 1 !important; padding: 0 12px !important; overflow-y: auto !important; overflow-x: hidden !important; }
+    .mo-sidebar .mo-nav a { display: flex !important; align-items: center !important; gap: 12px !important; min-width: 0 !important; height: 38px !important; padding: 0 14px !important; margin-bottom: 4px !important; border-radius: 10px !important; color: #8c98a8 !important; background: transparent !important; font-size: 14px !important; line-height: 20px !important; text-decoration: none !important; box-sizing: border-box !important; }
+    .mo-sidebar .mo-nav a:hover { background: #1d232b !important; color: #d7dde6 !important; }
+    .mo-sidebar .mo-nav a.mo-active { background: #102922 !important; color: #35d99a !important; font-weight: 500 !important; }
+    .mo-sidebar .mo-nav svg { width: 18px !important; height: 18px !important; flex: 0 0 18px !important; display: block !important; stroke: currentColor !important; }
+    .mo-sidebar .mo-nav span { display: block !important; min-width: 0 !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+    .mo-sidebar .mo-user {
+      display: flex !important; align-items: center !important; gap: 10px !important;
+      padding: 16px 24px !important; border-top: 1px solid #242b33 !important;
+    }
+    .mo-sidebar .mo-user-avatar {
+      width: 32px !important; height: 32px !important; border-radius: 50% !important;
+      background: #2a3140 !important; display: flex !important; align-items: center !important;
+      justify-content: center !important; flex-shrink: 0 !important;
+    }
+    .mo-sidebar .mo-user-avatar svg { width: 16px !important; height: 16px !important; stroke: #6e7a8a !important; }
+    .mo-sidebar .mo-user-name { font-size: 13px !important; color: #c0c8d4 !important; flex: 1 !important; min-width: 0 !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+    .mo-sidebar .mo-user-gear { flex-shrink: 0 !important; cursor: pointer !important; color: #5a6370 !important; transition: color 0.15s !important; background: none !important; border: none !important; padding: 0 !important; display: flex !important; }
+    .mo-sidebar .mo-user-gear:hover { color: #8b949e !important; }
+    .mo-sidebar .mo-user-gear svg { width: 16px !important; height: 16px !important; display: block !important; stroke: currentColor !important; }
+
+    /* ===== Category Panel ===== */
+    .cat-panel {
+      width: 240px;
+      min-width: 240px;
+      flex-shrink: 0;
+      background: var(--nw-bg-surface);
+      border-right: 1px solid var(--nw-border-default);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .cat-search {
+      margin: 16px;
+      padding: 8px 12px;
+      background: #1c2333;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius-md);
+      color: var(--nw-text-primary);
+      font-size: var(--text-sm);
+      font-family: var(--font-body);
+      outline: none;
+      transition: border-color 0.15s;
+      width: calc(100% - 32px);
+    }
+    .cat-search::placeholder { color: var(--nw-text-tertiary); }
+    .cat-search:focus { border-color: rgba(255,255,255,0.15); }
+    .cat-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 8px;
+    }
+    .cat-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: background 0.12s;
+      margin-bottom: 2px;
+      font-size: var(--text-sm);
+      color: var(--nw-text-secondary);
+      position: relative;
+    }
+    .cat-item:hover { background: rgba(255,255,255,0.04); color: var(--nw-text-primary); }
+    .cat-item.cat-active { background: rgba(45,138,110,0.15); color: var(--nw-text-primary); font-weight: 500; }
+    .cat-item svg { width: 16px; height: 16px; flex-shrink: 0; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .cat-item-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cat-item-badge {
+      font-size: 11px;
+      color: var(--nw-text-tertiary);
+      font-family: var(--font-mono);
+      flex-shrink: 0;
+    }
+    .cat-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .cat-dot-canon { background: #2ea043; }
+    .cat-dot-commitment { background: #58a6ff; }
+    .cat-dot-candidate { background: #d29922; }
+    .cat-dot-hypothesis { background: #a371f7; }
+    .cat-dot-none { background: #5a6370; }
+    .cat-legend {
+      padding: 16px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      flex-shrink: 0;
+    }
+    .cat-legend-title {
+      font-size: 11px;
+      color: var(--nw-text-tertiary);
+      margin-bottom: 10px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .cat-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 3px 0;
+      font-size: 11px;
+      color: var(--nw-text-secondary);
+    }
+    .cat-legend-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ===== Content Area ===== */
+    .content-area {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .content-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      flex-shrink: 0;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: var(--text-sm);
+      color: var(--nw-text-tertiary);
+    }
+    .breadcrumb-sep { color: var(--nw-text-tertiary); font-size: 11px; }
+    .breadcrumb-current { color: var(--nw-text-primary); font-weight: 500; }
+    .filter-chips {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .filter-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: var(--radius-full);
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: transparent;
+      color: var(--nw-text-secondary);
+      transition: all 0.12s;
+      font-family: var(--font-body);
+    }
+    .filter-chip:hover { background: rgba(255,255,255,0.04); }
+    .filter-chip.filter-active { border-color: transparent; }
+    .filter-chip .chip-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .filter-chip-all.filter-active { background: rgba(255,255,255,0.08); color: var(--nw-text-primary); }
+    .filter-chip-canon.filter-active { background: rgba(46,160,67,0.15); color: #2ea043; }
+    .filter-chip-commitment.filter-active { background: rgba(88,166,255,0.15); color: #58a6ff; }
+    .filter-chip-candidate.filter-active { background: rgba(210,153,34,0.15); color: #d29922; }
+    .content-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 24px;
+    }
+
+    /* ===== Buttons ===== */
+    .btn-primary {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 6px; padding: 7px 16px;
+      background: var(--nw-primary); color: #ffffff;
+      border: none; border-radius: var(--radius-md);
+      font-size: var(--text-sm); font-weight: 500;
+      cursor: pointer; transition: background 0.15s;
+      font-family: var(--font-body);
+    }
+    .btn-primary:hover { background: #1f6b54; }
+    .btn-secondary {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 6px; padding: 7px 16px;
+      background: transparent; color: var(--nw-text-secondary);
+      border: 1px solid rgba(255,255,255,0.15); border-radius: var(--radius-md);
+      font-size: var(--text-sm); font-weight: 500;
+      cursor: pointer; transition: background 0.15s, color 0.15s;
+      font-family: var(--font-body);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.04); color: var(--nw-text-primary); }
+    .btn-sm {
+      padding: 4px 12px;
+      font-size: 11px;
+      border-radius: var(--radius-sm);
+    }
+    .btn-danger-outline {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 4px; padding: 4px 12px;
+      background: transparent; color: var(--state-error);
+      border: 1px solid rgba(248,81,73,0.3); border-radius: var(--radius-sm);
+      font-size: 11px; font-weight: 500;
+      cursor: pointer; transition: all 0.12s;
+      font-family: var(--font-body);
+    }
+    .btn-danger-outline:hover { background: rgba(248,81,73,0.08); }
+    .btn-ghost {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 4px; padding: 4px 12px;
+      background: transparent; color: var(--nw-text-secondary);
+      border: none; border-radius: var(--radius-sm);
+      font-size: 11px; font-weight: 500;
+      cursor: pointer; transition: all 0.12s;
+      font-family: var(--font-body);
+    }
+    .btn-ghost:hover { color: var(--nw-text-primary); background: rgba(255,255,255,0.04); }
+
+    /* ===== Character Card ===== */
+    .char-card {
+      background: var(--nw-bg-surface);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius-md);
+      padding: 0;
+      margin-bottom: 12px;
+      overflow: hidden;
+      transition: border-color 0.15s;
+    }
+    .char-card:hover { border-color: rgba(255,255,255,0.12); }
+    .char-card-inner {
+      display: flex;
+      gap: 16px;
+      padding: 20px;
+    }
+    .char-card-border {
+      width: 3px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+    .char-card-border-canon { background: #2ea043; }
+    .char-card-border-commitment { background: #58a6ff; }
+    .char-card-border-candidate { background: #d29922; }
+    .char-card-border-hypothesis { background: #a371f7; }
+    .char-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: #2a3140;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--nw-text-secondary);
+    }
+    .char-info { flex: 1; min-width: 0; }
+    .char-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+    }
+    .char-name {
+      font-size: var(--text-lg);
+      font-weight: 600;
+      color: var(--nw-text-primary);
+      font-family: var(--font-body);
+    }
+    .char-role-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 1px 8px;
+      border-radius: var(--radius-full);
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .char-role-badge-role { background: rgba(45,138,110,0.12); color: var(--nw-primary-light); }
+    .char-role-badge-candidate { background: rgba(210,153,34,0.12); color: #d29922; }
+    .fact-level-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 1px 8px;
+      border-radius: var(--radius-full);
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .fact-badge-canon { background: rgba(46,160,67,0.12); color: #2ea043; }
+    .fact-badge-commitment { background: rgba(88,166,255,0.12); color: #58a6ff; }
+    .fact-badge-candidate { background: rgba(210,153,34,0.12); color: #d29922; }
+    .fact-badge-hypothesis { background: rgba(163,113,247,0.12); color: #a371f7; }
+    .char-status {
+      font-size: var(--text-sm);
+      color: var(--nw-text-secondary);
+      line-height: var(--leading-relaxed);
+      margin-bottom: 10px;
+    }
+    .char-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .char-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: var(--radius-sm);
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .char-tag-amber { background: rgba(212,160,74,0.12); color: #e6b85c; }
+    .char-tag-red { background: rgba(248,81,73,0.1); color: #f85149; }
+    .char-tag-blue { background: rgba(88,166,255,0.1); color: #58a6ff; }
+    .char-tag-green { background: rgba(46,160,67,0.1); color: #2ea043; }
+    .char-evidence {
+      padding: 10px 12px;
+      background: var(--nw-bg-elevated);
+      border-radius: var(--radius-sm);
+      font-size: var(--text-xs);
+      color: var(--nw-text-secondary);
+      line-height: var(--leading-relaxed);
+      margin-bottom: 10px;
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.04);
+    }
+    .char-evidence-label {
+      font-size: 10px;
+      color: var(--nw-text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+      font-weight: 500;
+    }
+    .char-relations {
+      font-size: var(--text-xs);
+      color: var(--nw-text-tertiary);
+    }
+    .char-relations-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-right: 12px;
+    }
+    .char-relations-item span { color: var(--nw-text-secondary); }
+    .char-candidate-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    .ai-suggestion {
+      padding: 10px 12px;
+      background: rgba(210,153,34,0.05);
+      border: 1px solid rgba(210,153,34,0.12);
+      border-radius: var(--radius-sm);
+      font-size: var(--text-xs);
+      color: var(--nw-text-secondary);
+      line-height: var(--leading-relaxed);
+      margin-bottom: 10px;
+    }
+    .ai-suggestion-label {
+      font-size: 10px;
+      color: #d29922;
+      font-weight: 500;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* ===== Trace Panel ===== */
+    .trace-panel {
+      flex-shrink: 0;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      background: var(--nw-bg-surface);
+    }
+    .trace-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      cursor: pointer;
+      user-select: none;
+      font-size: var(--text-sm);
+      color: var(--nw-text-secondary);
+      transition: color 0.12s;
+    }
+    .trace-header:hover { color: var(--nw-text-primary); }
+    .trace-header svg { transition: transform 0.2s; flex-shrink: 0; }
+    .trace-header.trace-open svg { transform: rotate(180deg); }
+    .trace-content {
+      display: none;
+      padding: 0 24px 16px;
+    }
+    .trace-content.trace-open { display: block; }
+    .trace-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 6px 0;
+      font-size: var(--text-sm);
+    }
+    .trace-label {
+      color: var(--nw-text-tertiary);
+      min-width: 90px;
+      flex-shrink: 0;
+      font-size: var(--text-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-weight: 500;
+    }
+    .trace-value {
+      color: var(--nw-text-secondary);
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+    }
+    .trace-value-text {
+      color: var(--nw-text-secondary);
+      font-size: var(--text-sm);
+    }
+
+    /* ===== Modal ===== */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+    .modal-overlay.modal-visible {
+      display: flex;
+    }
+    .modal-box {
+      background: var(--nw-bg-elevated);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: var(--radius-lg);
+      width: 440px;
+      max-width: calc(100vw - 48px);
+      padding: 0;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px 0;
+    }
+    .modal-title {
+      font-size: var(--text-lg);
+      font-weight: 600;
+      color: var(--nw-text-primary);
+    }
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-md);
+      border: none;
+      background: transparent;
+      color: var(--nw-text-tertiary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.12s;
+    }
+    .modal-close:hover { background: rgba(255,255,255,0.06); color: var(--nw-text-primary); }
+    .modal-body {
+      padding: 16px 24px 24px;
+    }
+    .modal-body p {
+      font-size: var(--text-sm);
+      color: var(--nw-text-secondary);
+      line-height: var(--leading-relaxed);
+      margin-bottom: 12px;
+    }
+    .modal-warning {
+      color: var(--state-error);
+      font-size: var(--text-xs);
+      font-weight: 500;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 10px 12px;
+      background: rgba(248,81,73,0.06);
+      border: 1px solid rgba(248,81,73,0.12);
+      border-radius: var(--radius-sm);
+      margin-bottom: 20px;
+    }
+    .modal-warning svg { flex-shrink: 0; margin-top: 1px; }
+    .modal-footer {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 0 24px 20px;
+    }
+
+    /* ===== Expectation Ledger (§4.7) ===== */
+    .exp-ledger-header {
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .exp-ledger-title-row {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
+    .exp-ledger-title {
+      font-family: var(--font-display);
+      font-size: var(--text-xl);
+      font-weight: 600;
+      color: var(--nw-text-primary);
+      margin: 0;
+    }
+    .exp-ledger-ref {
+      font-size: var(--text-xs);
+      color: var(--nw-text-tertiary);
+      font-family: var(--font-mono);
+    }
+    .exp-ledger-desc {
+      font-size: var(--text-sm);
+      color: var(--nw-text-secondary);
+      line-height: var(--leading-relaxed);
+      margin-bottom: 12px;
+    }
+    .exp-status-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+    }
+    .exp-legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--nw-text-secondary);
+    }
+    .exp-legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .exp-card {
+      background: #161b22;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      margin-bottom: 12px;
+      overflow: hidden;
+      transition: border-color 0.15s;
+    }
+    .exp-card:hover { border-color: rgba(255,255,255,0.12); }
+    .exp-card-border {
+      width: 3px;
+      border-radius: 3px;
+      background: #58a6ff;
+      flex-shrink: 0;
+    }
+    .exp-card-inner {
+      display: flex;
+      gap: 16px;
+      padding: 16px 20px;
+    }
+    .exp-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .exp-title {
+      font-size: var(--text-base);
+      font-weight: 500;
+      color: var(--nw-text-primary);
+      line-height: var(--leading-relaxed);
+      flex: 1;
+      min-width: 0;
+    }
+    .exp-title-invalidated {
+      text-decoration: line-through;
+      color: var(--nw-text-secondary);
+    }
+    .exp-status-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 10px;
+      border-radius: var(--radius-full);
+      font-size: 11px;
+      font-weight: 500;
+      font-family: var(--font-mono);
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    .exp-status-opened { background: rgba(88,166,255,0.12); color: #58a6ff; }
+    .exp-status-strengthened { background: rgba(163,113,247,0.12); color: #a371f7; }
+    .exp-status-partially-paid { background: rgba(210,153,34,0.12); color: #d29922; }
+    .exp-status-paid { background: rgba(46,160,67,0.12); color: #2ea043; }
+    .exp-status-invalidated {
+      background: rgba(248,81,73,0.12);
+      color: #f85149;
+      text-decoration: line-through;
+    }
+    .exp-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .exp-meta-row {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      font-size: var(--text-sm);
+    }
+    .exp-meta-label {
+      color: var(--nw-text-tertiary);
+      min-width: 90px;
+      flex-shrink: 0;
+      font-size: var(--text-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-weight: 500;
+    }
+    .exp-meta-value {
+      color: var(--nw-text-secondary);
+      line-height: var(--leading-relaxed);
+    }
+    .exp-card-invalidated {
+      opacity: 0.6;
+    }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 900px) {
+      .cat-panel { width: 200px; min-width: 200px; }
+    }
+    @media (max-width: 768px) {
+      .mo-sidebar { display: none !important; }
+      .cat-panel { width: 180px; min-width: 180px; }
+      .char-card-inner { flex-direction: column; gap: 12px; }
+      .char-card-border { width: 100%; height: 3px; }
+      .content-toolbar { flex-direction: column; align-items: flex-start; }
+      .filter-chips { flex-wrap: wrap; }
+    }
+
+    /* ===== Section View Common (读者契约 / 故事引擎 / etc) ===== */
+    .section-view { padding-bottom: 24px; }
+    .section-header {
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--nw-border-default);
+    }
+    .section-title-row {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
+    .section-title {
+      font-family: var(--font-display);
+      font-size: var(--text-xl);
+      font-weight: 600;
+      color: var(--nw-text-primary);
+      margin: 0;
+    }
+    .section-version {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      color: var(--nw-text-tertiary);
+    }
+    .section-desc {
+      font-size: var(--text-sm);
+      color: var(--nw-text-secondary);
+      line-height: var(--leading-relaxed);
+      margin-bottom: 12px;
+    }
+
+    /* ===== Generic Badge ===== */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 10px;
+      font-size: 12px;
+      border-radius: var(--radius-sm);
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .badge-canon { background: rgba(46,160,67,0.12); color: #2ea043; }
+    .badge-commitment { background: rgba(88,166,255,0.12); color: #58a6ff; }
+    .badge-candidate { background: rgba(210,153,34,0.12); color: #d29922; }
+    .badge-hypothesis { background: rgba(163,113,247,0.12); color: #a371f7; }
+    .badge-success { background: rgba(46,160,67,0.12); color: #2ea043; }
+    .badge-warning { background: rgba(210,153,34,0.12); color: #d29922; }
+    .badge-error { background: rgba(248,81,73,0.12); color: #f85149; }
+    .badge-info { background: rgba(88,166,255,0.12); color: #58a6ff; }
+    .badge-neutral { background: rgba(255,255,255,0.06); color: var(--nw-text-secondary); }
+
+    /* ===== Field Card (读者契约 / 实际事件 / 伏笔) ===== */
+    .field-card {
+      background: var(--nw-bg-surface);
+      border: 1px solid var(--nw-border-default);
+      border-left: 3px solid var(--fact-canon);
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      margin-bottom: 12px;
+    }
+    .field-card.commitment-border { border-left-color: var(--fact-commitment); }
+    .field-card.candidate-border { border-left-color: var(--fact-candidate); }
+    .field-card.no-border { border-left: 1px solid var(--nw-border-default); }
+
+    .field-group-title {
+      font-size: var(--text-sm);
+      font-weight: 600;
+      color: var(--nw-text-primary);
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--nw-border-subtle);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: space-between;
+    }
+    .field-group-title-text { display: inline-flex; align-items: center; gap: 8px; }
+    .field-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 6px 0;
+    }
+    .field-label {
+      font-size: 12px;
+      color: var(--nw-text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      min-width: 140px;
+      flex-shrink: 0;
+      font-weight: 500;
+      padding-top: 2px;
+    }
+    .field-value {
+      font-size: 14px;
+      color: var(--nw-text-primary);
+      line-height: var(--leading-relaxed);
+      flex: 1;
+      min-width: 0;
+    }
+    .field-list {
+      margin: 0;
+      padding-left: 18px;
+      font-size: 14px;
+      color: var(--nw-text-primary);
+      line-height: var(--leading-relaxed);
+    }
+    .field-list li { margin-bottom: 4px; }
+
+    /* ===== Action Bar ===== */
+    .action-bar {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--nw-border-default);
+    }
+
+    /* ===== Story Engine Group ===== */
+    .engine-group {
+      background: var(--nw-bg-surface);
+      border: 1px solid var(--nw-border-default);
+      border-radius: var(--radius-md);
+      padding: 16px 20px;
+      margin-bottom: 12px;
+    }
+    .engine-group-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--nw-border-subtle);
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .engine-group-title {
+      font-size: var(--text-sm);
+      font-weight: 600;
+      color: var(--nw-text-primary);
+    }
+    .engine-field {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 6px 0 6px 12px;
+      margin-bottom: 6px;
+      border-left: 3px solid var(--fact-canon);
+    }
+    .engine-field.engine-field-candidate { border-left-color: var(--fact-candidate); }
+    .engine-field-label {
+      font-size: 12px;
+      color: var(--nw-text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      min-width: 130px;
+      flex-shrink: 0;
+      font-weight: 500;
+      padding-top: 2px;
+    }
+    .engine-field-value {
+      font-size: 14px;
+      color: var(--nw-text-primary);
+      line-height: var(--leading-relaxed);
+      flex: 1;
+      min-width: 0;
+    }
+
+    /* ===== Sub-tabs ===== */
+    .sub-tabs {
+      display: flex;
+      gap: 24px;
+      border-bottom: 1px solid var(--nw-border-default);
+      margin-bottom: 20px;
+    }
+    .sub-tab {
+      padding: 10px 4px;
+      font-size: var(--text-sm);
+      color: var(--nw-text-secondary);
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      border-bottom: 2px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+      font-family: var(--font-body);
+      margin-bottom: -1px;
+    }
+    .sub-tab:hover { color: var(--nw-text-primary); }
+    .sub-tab.sub-tab-active {
+      color: var(--nw-primary-light);
+      border-bottom-color: var(--nw-primary);
+      font-weight: 500;
+    }
+    .sub-tab-panel { display: none; }
+    .sub-tab-panel.sub-tab-panel-active { display: block; }
+
+    /* ===== Card Grid ===== */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
+    }
+    .info-card {
+      background: var(--nw-bg-surface);
+      border: 1px solid var(--nw-border-default);
+      border-left: 3px solid var(--fact-canon);
+      border-radius: var(--radius-md);
+      padding: 16px 18px;
+      transition: border-color 0.15s;
+    }
+    .info-card:hover { border-color: var(--nw-border-strong); }
+    .info-card.commitment-border { border-left-color: var(--fact-commitment); }
+    .info-card.no-border { border-left: 1px solid var(--nw-border-default); }
+    .info-card-title {
+      font-size: var(--text-base);
+      font-weight: 600;
+      color: var(--nw-text-primary);
+      margin-bottom: 8px;
+    }
+    .info-card-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    .info-card-desc {
+      font-size: var(--text-sm);
+      color: var(--nw-text-secondary);
+      line-height: var(--leading-relaxed);
+      margin-bottom: 8px;
+    }
+    .info-card-row {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      font-size: var(--text-xs);
+      margin-bottom: 4px;
+    }
+    .info-card-row-label {
+      color: var(--nw-text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      min-width: 60px;
+      flex-shrink: 0;
+      font-weight: 500;
+    }
+    .info-card-row-value {
+      color: var(--nw-text-secondary);
+    }
+
+    /* ===== Timeline ===== */
+    .timeline {
+      position: relative;
+      padding-left: 24px;
+      margin: 0;
+    }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 6px;
+      top: 4px;
+      bottom: 4px;
+      width: 2px;
+      background: var(--nw-border-default);
+    }
+    .timeline-item {
+      position: relative;
+      padding: 0 0 20px 20px;
+    }
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -22px;
+      top: 6px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--fact-canon);
+      border: 2px solid var(--nw-bg-surface);
+      box-shadow: 0 0 0 2px rgba(46,160,67,0.15);
+    }
+    .timeline-item.commitment-dot::before {
+      background: var(--fact-commitment);
+      box-shadow: 0 0 0 2px rgba(88,166,255,0.15);
+    }
+    .timeline-item.candidate-dot::before {
+      background: var(--fact-candidate);
+      box-shadow: 0 0 0 2px rgba(210,153,34,0.15);
+    }
+    .timeline-item.hypothesis-dot::before {
+      background: var(--fact-hypothesis);
+      box-shadow: 0 0 0 2px rgba(163,113,247,0.15);
+    }
+    .timeline-item-title {
+      font-size: var(--text-sm);
+      font-weight: 600;
+      color: var(--nw-text-primary);
+      margin-bottom: 4px;
+    }
+    .timeline-item-time {
+      font-size: 11px;
+      color: var(--nw-text-tertiary);
+      font-family: var(--font-mono);
+      margin-bottom: 6px;
+    }
+    .timeline-item-desc {
+      font-size: var(--text-sm);
+      color: var(--nw-text-secondary);
+      line-height: var(--leading-relaxed);
+    }
+
+    /* ===== Filters Bar ===== */
+    .filters-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .filter-select {
+      padding: 6px 12px;
+      background: var(--nw-bg-elevated);
+      border: 1px solid var(--nw-border-default);
+      border-radius: var(--radius-sm);
+      color: var(--nw-text-secondary);
+      font-size: var(--text-sm);
+      font-family: var(--font-body);
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .filter-select:focus { border-color: var(--nw-border-strong); }
+
+    /* ===== Git Status ===== */
+    .git-status {
+      margin-top: 20px;
+      padding: 12px 16px;
+      background: var(--nw-bg-elevated);
+      border: 1px solid var(--nw-border-default);
+      border-radius: var(--radius-md);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--nw-text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .git-status-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .git-status-item .git-label { color: var(--nw-text-tertiary); }
+    .git-status-item .git-value { color: var(--nw-text-primary); }
+  </style>
+</head>
+
+<body class="flex h-screen overflow-hidden">
+
+  <!-- ==================== SIDEBAR ==================== -->
+  <aside class="mo-sidebar" style="font-family: var(--font-body);">
+    <!-- Brand -->
+    <div class="mo-brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;flex-shrink:0;">
+        <path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+        <path d="m15 5 4 4"/>
+      </svg>
+      <span class="mo-brand-name">驯墨</span>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="mo-nav">
+      <!-- 1. 工作台 -->
+      <a href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>
+        </svg>
+        <span>工作台</span>
+      </a>
+      <!-- 2. 创作 -->
+      <a href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z"/>
+        </svg>
+        <span>创作</span>
+      </a>
+      <!-- 3. 故事库 (active) -->
+      <a href="#" class="mo-active">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+        </svg>
+        <span>故事库</span>
+      </a>
+      <!-- 4. 复盘 -->
+      <a href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>
+        </svg>
+        <span>复盘</span>
+      </a>
+      <!-- 5. 设置 -->
+      <a href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>
+        </svg>
+        <span>设置</span>
+      </a>
+    </nav>
+
+    <!-- User area -->
+    <div class="mo-user">
+      <div class="mo-user-avatar">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+        </svg>
+      </div>
+      <span class="mo-user-name">作者</span>
+      <button class="mo-user-gear" aria-label="设置">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ==================== CATEGORY PANEL ==================== -->
+  <div class="cat-panel">
+    <input class="cat-search" type="text" placeholder="搜索故事库..." />
+
+    <div class="cat-list">
+      <!-- 1. 读者契约 -->
+      <div class="cat-item" onclick="selectCategory(this, '读者契约')">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+        </svg>
+        <span class="cat-item-name">读者契约</span>
+        <span class="cat-item-badge">1</span>
+        <div class="cat-dot cat-dot-canon"></div>
+      </div>
+      <!-- 2. 故事引擎 -->
+      <div class="cat-item" onclick="selectCategory(this, '故事引擎')">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>
+        </svg>
+        <span class="cat-item-name">故事引擎</span>
+        <span class="cat-item-badge">1</span>
+        <div class="cat-dot cat-dot-canon"></div>
+      </div>
+      <!-- 3. 人物状态 (active) -->
+      <div class="cat-item cat-active" onclick="selectCategory(this, '人物状态')">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        <span class="cat-item-name">人物状态</span>
+        <span class="cat-item-badge">8</span>
+        <div class="cat-dot cat-dot-canon"></div>
+      </div>
+      <!-- 4. 世界规则 -->
+      <div class="cat-item" onclick="selectCategory(this, '世界规则')">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>
+        </svg>
+        <span class="cat-item-name">世界规则</span>
+        <span class="cat-item-badge">12</span>
+        <div class="cat-dot cat-dot-canon"></div>
+      </div>
+      <!-- 5. 实际事件 -->
+      <div class="cat-item" onclick="selectCategory(this, '实际事件')">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>
+        </svg>
+        <span class="cat-item-name">实际事件</span>
+        <span class="cat-item-badge">34</span>
+        <div class="cat-dot cat-dot-canon"></div>
+      </div>
+      <!-- 6. 期待 -->
+      <div class="cat-item" onclick="selectCategory(this, '期待')">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>
+        </svg>
+        <span class="cat-item-name">期待</span>
+        <span class="cat-item-badge">6</span>
+        <div class="cat-dot cat-dot-commitment"></div>
+      </div>
+      <!-- 7. 伏笔 -->
+      <div class="cat-item" onclick="selectCategory(this, '伏笔')">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+        </svg>
+        <span class="cat-item-name">伏笔</span>
+        <span class="cat-item-badge">4</span>
+        <div class="cat-dot cat-dot-commitment"></div>
+      </div>
+      <!-- 8. 素材 -->
+      <div class="cat-item" onclick="selectCategory(this, '素材')">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>
+        </svg>
+        <span class="cat-item-name">素材</span>
+        <span class="cat-item-badge">15</span>
+      </div>
+      <!-- 9. 版本历史 -->
+      <div class="cat-item" onclick="selectCategory(this, '版本历史')">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>
+        </svg>
+        <span class="cat-item-name">版本历史</span>
+        <span class="cat-item-badge">&mdash;</span>
+        <div class="cat-dot cat-dot-none"></div>
+      </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="cat-legend">
+      <div class="cat-legend-title">四层事实图例</div>
+      <div class="cat-legend-item">
+        <div class="cat-legend-dot" style="background:#2ea043;"></div>
+        <span>正式</span>
+      </div>
+      <div class="cat-legend-item">
+        <div class="cat-legend-dot" style="background:#58a6ff;"></div>
+        <span>承诺</span>
+      </div>
+      <div class="cat-legend-item">
+        <div class="cat-legend-dot" style="background:#d29922;"></div>
+        <span>候选</span>
+      </div>
+      <div class="cat-legend-item">
+        <div class="cat-legend-dot" style="background:#a371f7;"></div>
+        <span>观察</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== CONTENT AREA ==================== -->
+  <div class="content-area">
+    <!-- Toolbar -->
+    <div class="content-toolbar">
+      <div class="breadcrumb">
+        <span>故事库</span>
+        <span class="breadcrumb-sep">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+        </span>
+        <span class="breadcrumb-current" id="breadcrumb-category">人物状态</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <div class="filter-chips">
+          <button class="filter-chip filter-chip-all filter-active" onclick="setFilter(this,'all')">
+            全部
+          </button>
+          <button class="filter-chip filter-chip-canon" onclick="setFilter(this,'canon')">
+            <span class="chip-dot" style="background:#2ea043;"></span>
+            正式
+          </button>
+          <button class="filter-chip filter-chip-commitment" onclick="setFilter(this,'commitment')">
+            <span class="chip-dot" style="background:#58a6ff;"></span>
+            承诺
+          </button>
+          <button class="filter-chip filter-chip-candidate" onclick="setFilter(this,'candidate')">
+            <span class="chip-dot" style="background:#d29922;"></span>
+            候选
+          </button>
+          <button class="filter-chip filter-chip-hypothesis" onclick="setFilter(this,'hypothesis')">
+            <span class="chip-dot" style="background:#a371f7;"></span>
+            观察
+          </button>
+        </div>
+        <button class="btn-primary" onclick="openModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+          新建
+        </button>
+      </div>
+    </div>
+
+    <!-- Content Body -->
+    <div class="content-body" id="content-body">
+
+      <div id="character-list-section">
+      <!-- Card 1: 林远舟 (canon, 主角) -->
+      <div class="char-card" data-level="canon">
+        <div class="char-card-inner">
+          <div class="char-card-border char-card-border-canon"></div>
+          <div class="char-avatar">林</div>
+          <div class="char-info">
+            <div class="char-header">
+              <span class="char-name">林远舟</span>
+              <span class="char-role-badge char-role-badge-role">主角</span>
+              <span class="fact-level-badge fact-badge-canon">正式</span>
+            </div>
+            <div class="char-status">
+              身份：暗卫组织叛逃者 &middot; 修为：凝气九层 &middot; 当前位置：组织总部外围
+            </div>
+            <div class="char-tags">
+              <span class="char-tag char-tag-amber">欲望: 破除暗卫组织的核心秘术</span>
+              <span class="char-tag char-tag-red">恐惧: 被组织追杀至亲</span>
+              <span class="char-tag char-tag-blue">信念: 力量不应成为奴役他人的工具</span>
+              <span class="char-tag char-tag-green">价值优先级: 自由 &gt; 复仇</span>
+            </div>
+            <div class="char-evidence" onclick="this.classList.toggle('evidence-expanded')">
+              <div class="char-evidence-label">最近选择证据</div>
+              第6章选择独自潜入而非等待支援 -- 来自正式正文。该选择揭示了角色对自我能力的过度自信，同时为后续被围困的情节埋下伏笔。
+            </div>
+            <div class="char-relations">
+              <span class="char-relations-item"><span>苏婉清</span>(信任)</span>
+              <span class="char-relations-item"><span>陈长老</span>(敌对)</span>
+              <span class="char-relations-item"><span>暗影</span>(不明)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: 苏婉清 (canon, 核心配角) -->
+      <div class="char-card" data-level="canon">
+        <div class="char-card-inner">
+          <div class="char-card-border char-card-border-canon"></div>
+          <div class="char-avatar">苏</div>
+          <div class="char-info">
+            <div class="char-header">
+              <span class="char-name">苏婉清</span>
+              <span class="char-role-badge char-role-badge-role">核心配角</span>
+              <span class="fact-level-badge fact-badge-canon">正式</span>
+            </div>
+            <div class="char-status">
+              身份：药王谷传人 &middot; 修为：筑基初期 &middot; 当前位置：随主角同行至苍梧城
+            </div>
+            <div class="char-tags">
+              <span class="char-tag char-tag-amber">欲望: 寻回失落的谷主传承令</span>
+              <span class="char-tag char-tag-blue">信念: 医者仁心，以术济世</span>
+              <span class="char-tag char-tag-green">价值优先级: 传承 &gt; 个人安危</span>
+            </div>
+            <div class="char-relations">
+              <span class="char-relations-item"><span>林远舟</span>(信任)</span>
+              <span class="char-relations-item"><span>谷主</span>(师承)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 3: 周明轩 (candidate, 候选角色) -->
+      <div class="char-card" data-level="candidate">
+        <div class="char-card-inner">
+          <div class="char-card-border char-card-border-candidate"></div>
+          <div class="char-avatar" style="background:#2a2a1f;">周</div>
+          <div class="char-info">
+            <div class="char-header">
+              <span class="char-name">周明轩</span>
+              <span class="char-role-badge char-role-badge-candidate">候选角色</span>
+              <span class="fact-level-badge fact-badge-candidate">候选</span>
+            </div>
+            <div class="ai-suggestion">
+              <div class="ai-suggestion-label">AI 建议依据</div>
+              StoryEditor 建议在第8章引入此角色作为组织内部线人。当前暗卫组织的追缉线索缺少内部视角，此角色可提供组织内部权力格局的信息，同时与主角形成"昔日同僚"的情感张力。依据：第5章伏笔"组织内部并非铁板一块"的承诺兑现需求。
+            </div>
+            <div class="char-status">
+              身份：暗卫组织情报司执事（拟定） &middot; 修为：凝气七层（拟定） &middot; 当前位置：组织总部
+            </div>
+            <div class="char-candidate-actions">
+              <button class="btn-primary btn-sm" onclick="openModal()">确认加入</button>
+              <button class="btn-danger-outline">拒绝</button>
+              <button class="btn-ghost">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                查看依据
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 4: 沈墨寒 (commitment, 承诺角色) -->
+      <div class="char-card" data-level="commitment">
+        <div class="char-card-inner">
+          <div class="char-card-border char-card-border-commitment"></div>
+          <div class="char-avatar" style="background:#1f2638;">沈</div>
+          <div class="char-info">
+            <div class="char-header">
+              <span class="char-name">沈墨寒</span>
+              <span class="char-role-badge" style="background:rgba(88,166,255,0.12);color:#58a6ff;">承诺引入</span>
+              <span class="fact-level-badge fact-badge-commitment">承诺</span>
+            </div>
+            <div class="char-status">
+              身份：苍梧城城主之子 &middot; 修为：筑基中期 &middot; 当前位置：苍梧城
+            </div>
+            <div class="char-tags">
+              <span class="char-tag char-tag-amber">欲望: 摆脱家族安排的政治联姻</span>
+              <span class="char-tag char-tag-red">恐惧: 丧失独立意志</span>
+            </div>
+            <div class="char-evidence">
+              <div class="char-evidence-label">承诺来源</div>
+              第4章读者契约中承诺："苍梧城将出现与主角理念相合的盟友"。该角色作为承诺内容，预计在第9章正式出场。
+            </div>
+            <div class="char-relations">
+              <span class="char-relations-item"><span>城主沈天佑</span>(父，压制)</span>
+              <span class="char-relations-item"><span>林远舟</span>(尚未结识)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 5: 陈长老 (canon, 反派) -->
+      <div class="char-card" data-level="canon">
+        <div class="char-card-inner">
+          <div class="char-card-border char-card-border-canon"></div>
+          <div class="char-avatar" style="color:#f85149;">陈</div>
+          <div class="char-info">
+            <div class="char-header">
+              <span class="char-name">陈长老</span>
+              <span class="char-role-badge" style="background:rgba(248,81,73,0.1);color:#f85149;">核心反派</span>
+              <span class="fact-level-badge fact-badge-canon">正式</span>
+            </div>
+            <div class="char-status">
+              身份：暗卫组织执法长老 &middot; 修为：金丹初期 &middot; 当前位置：组织总部，主持追缉行动
+            </div>
+            <div class="char-tags">
+              <span class="char-tag char-tag-amber">欲望: 彻底清除叛逃者以巩固权威</span>
+              <span class="char-tag char-tag-red">恐惧: 组织秘术外泄导致覆灭</span>
+              <span class="char-tag char-tag-blue">信念: 秩序高于个体，叛徒必须清除</span>
+            </div>
+            <div class="char-relations">
+              <span class="char-relations-item"><span>林远舟</span>(追缉目标)</span>
+              <span class="char-relations-item"><span>宗主</span>(效忠)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div><!-- /character-list-section -->
+
+      <!-- ===== Expectation Ledger (§4.7) ===== -->
+      <div id="expectation-ledger-section" style="display:none;">
+        <!-- Section Header -->
+        <div class="exp-ledger-header">
+          <div class="exp-ledger-title-row">
+            <h2 class="exp-ledger-title">期待账本</h2>
+            <span class="exp-ledger-ref">§4.7 · 5 种状态完整展示</span>
+          </div>
+          <p class="exp-ledger-desc">记录读者承诺的兑现情况。期待属于 承诺 层级，需在后续章节中回应或兑现。</p>
+          <div class="exp-status-legend">
+            <span class="exp-legend-item"><span class="exp-legend-dot" style="background:#58a6ff;"></span>opened 已开启</span>
+            <span class="exp-legend-item"><span class="exp-legend-dot" style="background:#a371f7;"></span>strengthened 已加强</span>
+            <span class="exp-legend-item"><span class="exp-legend-dot" style="background:#d29922;"></span>partially_paid 部分兑现</span>
+            <span class="exp-legend-item"><span class="exp-legend-dot" style="background:#2ea043;"></span>paid 已兑现</span>
+            <span class="exp-legend-item"><span class="exp-legend-dot" style="background:#f85149;"></span>invalidated 已失效</span>
+          </div>
+        </div>
+
+        <!-- Expectation 1: opened -->
+        <div class="exp-card">
+          <div class="exp-card-border"></div>
+          <div class="exp-card-inner">
+            <div class="exp-header">
+              <span class="exp-title">林越能否在暗哨间安全穿行到达藏经楼</span>
+              <span class="exp-status-badge exp-status-opened">opened</span>
+            </div>
+            <div class="exp-meta">
+              <div class="exp-meta-row">
+                <span class="exp-meta-label">来源</span>
+                <span class="exp-meta-value">第6章末尾设置</span>
+              </div>
+              <div class="exp-meta-row">
+                <span class="exp-meta-label">回应要求</span>
+                <span class="exp-meta-value">需要在后续场景中回答此问题</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Expectation 2: strengthened -->
+        <div class="exp-card">
+          <div class="exp-card-border"></div>
+          <div class="exp-card-inner">
+            <div class="exp-header">
+              <span class="exp-title">师兄令牌的真正用途是什么</span>
+              <span class="exp-status-badge exp-status-strengthened">strengthened</span>
+            </div>
+            <div class="exp-meta">
+              <div class="exp-meta-row">
+                <span class="exp-meta-label">来源</span>
+                <span class="exp-meta-value">第4章设置，第6章加强</span>
+              </div>
+              <div class="exp-meta-row">
+                <span class="exp-meta-label">加强原因</span>
+                <span class="exp-meta-value">第6章令牌开启侧门，暗示更多功能</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Expectation 3: partially_paid -->
+        <div class="exp-card">
+          <div class="exp-card-border"></div>
+          <div class="exp-card-inner">
+            <div class="exp-header">
+              <span class="exp-title">林越如何在暗哨间穿行</span>
+              <span class="exp-status-badge exp-status-partially-paid">partially_paid</span>
+            </div>
+            <div class="exp-meta">
+              <div class="exp-meta-row">
+                <span class="exp-meta-label">来源</span>
+                <span class="exp-meta-value">第6章末尾设置</span>
+              </div>
+              <div class="exp-meta-row">
+                <span class="exp-meta-label">部分兑现说明</span>
+                <span class="exp-meta-value">S1-S2已展示穿越过程，S3尚未完成</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Expectation 4: paid -->
+        <div class="exp-card">
+          <div class="exp-card-border"></div>
+          <div class="exp-card-inner">
+            <div class="exp-header">
+              <span class="exp-title">林越首次展现隐匿功夫</span>
+              <span class="exp-status-badge exp-status-paid">paid</span>
+            </div>
+            <div class="exp-meta">
+              <div class="exp-meta-row">
+                <span class="exp-meta-label">来源</span>
+                <span class="exp-meta-value">第2章设置</span>
+              </div>
+              <div class="exp-meta-row">
+                <span class="exp-meta-label">兑现章节</span>
+                <span class="exp-meta-value">第7章</span>
+              </div>
+              <div class="exp-meta-row">
+                <span class="exp-meta-label">兑现说明</span>
+                <span class="exp-meta-value">在潜入天枢阁时完整展示了隐匿能力</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Expectation 5: invalidated -->
+        <div class="exp-card exp-card-invalidated">
+          <div class="exp-card-border"></div>
+          <div class="exp-card-inner">
+            <div class="exp-header">
+              <span class="exp-title exp-title-invalidated">陈长老是否会在第5章出手阻拦</span>
+              <span class="exp-status-badge exp-status-invalidated">invalidated</span>
+            </div>
+            <div class="exp-meta">
+              <div class="exp-meta-row">
+                <span class="exp-meta-label">来源</span>
+                <span class="exp-meta-value">第3章设置</span>
+              </div>
+              <div class="exp-meta-row">
+                <span class="exp-meta-label">失效原因</span>
+                <span class="exp-meta-value">作者确认：陈长老在第4章已被调离，此期待不再成立</span>
+              </div>
+              <div class="exp-meta-row">
+                <span class="exp-meta-label">失效确认</span>
+                <span class="exp-meta-value">由作者确认 · 2026-07-18</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 1. 读者契约 §4.2 ===== -->
+      <div id="reader-contract-section" class="section-view" style="display:none;">
+        <div class="section-header">
+          <div class="section-title-row">
+            <h2 class="section-title">读者契约</h2>
+            <span class="badge badge-canon">正式</span>
+            <span class="section-version">v2.1</span>
+            <span class="badge badge-success" style="margin-left:auto;">已确认</span>
+          </div>
+          <p class="section-desc">读者契约是创作过程中对所有读者承诺的明确记录。所有正式正文必须遵守契约中的核心体验、必备回馈和禁止方向，违反契约将损害读者信任。</p>
+        </div>
+
+        <div class="field-card">
+          <div class="field-group-title"><span class="field-group-title-text">基础定位</span></div>
+          <div class="field-row">
+            <span class="field-label">platform</span>
+            <span class="field-value">番茄小说</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">channel</span>
+            <span class="field-value">男频</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">genre_scope</span>
+            <span class="field-value">玄幻 · 修仙</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">target_readers</span>
+            <span class="field-value">追求紧凑剧情和世界观深度的新生代读者</span>
+          </div>
+        </div>
+
+        <div class="field-card">
+          <div class="field-group-title"><span class="field-group-title-text">核心体验</span></div>
+          <div class="field-row">
+            <span class="field-label">core_experience</span>
+            <span class="field-value">在困境中寻找真相，在复仇与成长间做出选择</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">protagonist_promise</span>
+            <span class="field-value">一个被背叛的修士，在追查真相的过程中重新定义正义</span>
+          </div>
+        </div>
+
+        <div class="field-card">
+          <div class="field-group-title"><span class="field-group-title-text">必备回馈</span></div>
+          <div class="field-row">
+            <span class="field-label">must_payoffs</span>
+            <ol class="field-list">
+              <li>星脉残图真相</li>
+              <li>师兄之死</li>
+              <li>天枢阁秘密</li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="field-card">
+          <div class="field-group-title"><span class="field-group-title-text">禁止方向</span></div>
+          <div class="field-row">
+            <span class="field-label">forbidden_directions</span>
+            <ol class="field-list">
+              <li>无脑后宫</li>
+              <li>降智反转</li>
+              <li>为虐而虐</li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="field-card">
+          <div class="field-group-title"><span class="field-group-title-text">证据与状态</span></div>
+          <div class="field-row">
+            <span class="field-label">evidence_refs</span>
+            <span class="field-value">第1-6章正式正文</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">status</span>
+            <span class="field-value"><span class="badge badge-success">confirmed</span></span>
+          </div>
+        </div>
+
+        <div class="action-bar">
+          <button class="btn-primary">编辑契约</button>
+          <button class="btn-secondary">查看变更历史</button>
+        </div>
+      </div>
+
+      <!-- ===== 2. 故事引擎 §4.3 ===== -->
+      <div id="story-engine-section" class="section-view" style="display:none;">
+        <div class="section-header">
+          <div class="section-title-row">
+            <h2 class="section-title">故事引擎</h2>
+            <span class="badge badge-canon">正式</span>
+            <span class="section-version">v1.4</span>
+          </div>
+          <p class="section-desc">这本书为什么能持续产生新故事。故事引擎定义了角色内在驱动、行动机制和长线张力，是判断后续情节是否"自然生长"的核心依据。</p>
+        </div>
+
+        <div class="engine-group">
+          <div class="engine-group-header">
+            <span class="engine-group-title">角色定位</span>
+          </div>
+          <div class="engine-field">
+            <span class="engine-field-label">protagonist_role</span>
+            <span class="engine-field-value">暗卫组织叛逃者</span>
+          </div>
+          <div class="engine-field">
+            <span class="engine-field-label">desire</span>
+            <span class="engine-field-value">找到星脉真相</span>
+          </div>
+          <div class="engine-field">
+            <span class="engine-field-label">fear</span>
+            <span class="engine-field-value">真相背后的代价</span>
+          </div>
+          <div class="engine-field">
+            <span class="engine-field-label">value_priority</span>
+            <span class="engine-field-value">真相 &gt; 安宁 &gt; 复仇</span>
+          </div>
+        </div>
+
+        <div class="engine-group">
+          <div class="engine-group-header">
+            <span class="engine-group-title">行动机制</span>
+          </div>
+          <div class="engine-field">
+            <span class="engine-field-label">action_mechanism</span>
+            <span class="engine-field-value">以暗卫技能在各方势力间周旋</span>
+          </div>
+          <div class="engine-field">
+            <span class="engine-field-label">world_pressure</span>
+            <span class="engine-field-value">暗卫组织追缉 + 天枢阁封锁</span>
+          </div>
+        </div>
+
+        <div class="engine-group">
+          <div class="engine-group-header">
+            <span class="engine-group-title">转换链</span>
+          </div>
+          <div class="engine-field">
+            <span class="engine-field-label">conversion_chain</span>
+            <span class="engine-field-value">情报 → 推理 → 验证 → 行动 → 新情报</span>
+          </div>
+        </div>
+
+        <div class="engine-group">
+          <div class="engine-group-header">
+            <span class="engine-group-title">状态维度</span>
+          </div>
+          <div class="engine-field">
+            <span class="engine-field-label">state_dimensions</span>
+            <span class="engine-field-value">位置 / 资源 / 信任度 / 知识边界</span>
+          </div>
+        </div>
+
+        <div class="engine-group">
+          <div class="engine-group-header">
+            <span class="engine-group-title">变化轴</span>
+          </div>
+          <div class="engine-field">
+            <span class="engine-field-label">variation_axes</span>
+            <span class="engine-field-value">敌友转换 / 能力突破 / 信息揭露</span>
+          </div>
+        </div>
+
+        <div class="engine-group">
+          <div class="engine-group-header">
+            <span class="engine-group-title">长线</span>
+          </div>
+          <div class="engine-field">
+            <span class="engine-field-label">long_lines</span>
+            <ol class="field-list">
+              <li>星脉真相</li>
+              <li>组织内部权斗</li>
+              <li>师兄遗愿</li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="engine-group">
+          <div class="engine-group-header">
+            <span class="engine-group-title">结局方向</span>
+            <span class="badge badge-candidate">候选</span>
+          </div>
+          <div class="engine-field engine-field-candidate">
+            <span class="engine-field-label">ending_direction</span>
+            <span class="engine-field-value">真相揭晓后的选择：重建还是摧毁 <span style="font-size:11px;color:#d29922;margin-left:6px;">（AI 候选方案，待作者确认）</span></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 3. 世界规则 §5.3 ===== -->
+      <div id="world-rules-section" class="section-view" style="display:none;">
+        <div class="section-header">
+          <div class="section-title-row">
+            <h2 class="section-title">世界规则</h2>
+            <span class="badge badge-canon">正式</span>
+            <span class="section-version">v2.0</span>
+          </div>
+          <p class="section-desc">世界规则包含设定、时间线、物品和能力四类内容，为故事提供可复用的世界观基底。所有规则属于 正式 层级，修改需触发版本变更。</p>
+        </div>
+
+        <div class="sub-tabs">
+          <button class="sub-tab sub-tab-active" onclick="switchSubTab(this, 'wr-settings')">设定</button>
+          <button class="sub-tab" onclick="switchSubTab(this, 'wr-timeline')">时间线</button>
+          <button class="sub-tab" onclick="switchSubTab(this, 'wr-items')">物品</button>
+          <button class="sub-tab" onclick="switchSubTab(this, 'wr-abilities')">能力</button>
+        </div>
+
+        <!-- 设定 tab -->
+        <div class="sub-tab-panel sub-tab-panel-active" id="wr-settings-panel">
+          <div class="card-grid">
+            <div class="info-card">
+              <div class="info-card-title">天枢阁组织结构</div>
+              <div class="info-card-meta">
+                <span class="badge badge-canon">正式</span>
+                <span class="badge badge-neutral">组织</span>
+              </div>
+              <div class="info-card-desc">天枢阁是修仙界最大的典籍收藏机构，表面中立，实则暗藏多方势力博弈。内设藏经楼、执法堂、星象司三大部门，阁主由三方推举产生。</div>
+              <div class="info-card-row"><span class="info-card-row-label">来源章节</span><span class="info-card-row-value">第3章首次提及</span></div>
+            </div>
+            <div class="info-card">
+              <div class="info-card-title">暗卫体系</div>
+              <div class="info-card-meta">
+                <span class="badge badge-canon">正式</span>
+                <span class="badge badge-neutral">组织</span>
+              </div>
+              <div class="info-card-desc">暗卫组织以"影"为代号分级，从凝气到金丹各设执事。核心秘术为隐匿术与星脉感应，叛逃者会被全力追缉直至清除。</div>
+              <div class="info-card-row"><span class="info-card-row-label">来源章节</span><span class="info-card-row-value">第1章首次出场</span></div>
+            </div>
+            <div class="info-card">
+              <div class="info-card-title">星脉系统</div>
+              <div class="info-card-meta">
+                <span class="badge badge-canon">正式</span>
+                <span class="badge badge-neutral">力量体系</span>
+              </div>
+              <div class="info-card-desc">星脉是天地间灵力流转的脉络，共有九图残卷散落各方。集齐残图可窥见上古修士的传承与真相，是本作的核心谜题驱动。</div>
+              <div class="info-card-row"><span class="info-card-row-label">来源章节</span><span class="info-card-row-value">第2章师兄遗言</span></div>
+            </div>
+            <div class="info-card">
+              <div class="info-card-title">苍梧城地理</div>
+              <div class="info-card-meta">
+                <span class="badge badge-canon">正式</span>
+                <span class="badge badge-neutral">地理</span>
+              </div>
+              <div class="info-card-desc">苍梧城是南北修仙界的咽喉要地，城主沈天佑以中立姿态维系各方平衡。城内分外城、内城、灵山三区，各有不同势力盘踞。</div>
+              <div class="info-card-row"><span class="info-card-row-label">来源章节</span><span class="info-card-row-value">第4章场景设定</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 时间线 tab -->
+        <div class="sub-tab-panel" id="wr-timeline-panel">
+          <div class="timeline">
+            <div class="timeline-item">
+              <div class="timeline-item-time">上古时期 · 距今万年</div>
+              <div class="timeline-item-title">星脉九图初创</div>
+              <div class="timeline-item-desc">上古修士将天地灵力脉络测绘为九图，奠定修仙界格局。九图后因大战散落各方，成为后世争夺的核心。关联章节：第2章师兄遗言。</div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-item-time">三百年前</div>
+              <div class="timeline-item-title">暗卫组织成立</div>
+              <div class="timeline-item-desc">初代宗主以"影"为号建立暗卫，专司情报与暗杀，后逐渐演变为独立势力。组织内部等级森严，叛逃者格杀勿论。关联章节：第1章背景。</div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-item-time">百年前</div>
+              <div class="timeline-item-title">天枢阁藏经楼封禁</div>
+              <div class="timeline-item-desc">天枢阁以"星脉相关典籍危险"为由封禁藏经楼第三层，引发多方觊觎。封禁真相成为后续主线之一。关联章节：第3章。</div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-item-time">二十年前</div>
+              <div class="timeline-item-title">师兄入门拜师</div>
+              <div class="timeline-item-desc">师兄作为宗主亲传弟子入门，开始接触星脉残图线索，逐步发现组织对真相的隐瞒。关联章节：第2章回忆。</div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-item-time">三年前</div>
+              <div class="timeline-item-title">师兄之死</div>
+              <div class="timeline-item-desc">师兄在追查星脉真相时离奇陨落，遗言"星脉不止一图"。其死因成为主角叛逃与追查的核心驱动。关联章节：第2章主线。</div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-item-time">故事开始 · 当下</div>
+              <div class="timeline-item-title">林远舟叛逃</div>
+              <div class="timeline-item-desc">主角因发现师兄之死的蹊跷而叛逃暗卫组织，开始追查真相。叛逃标志着主线故事的正式开端。关联章节：第1章开篇。</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 物品 tab -->
+        <div class="sub-tab-panel" id="wr-items-panel">
+          <div class="card-grid">
+            <div class="info-card">
+              <div class="info-card-title">师兄铜牌</div>
+              <div class="info-card-meta">
+                <span class="badge badge-canon">正式</span>
+                <span class="badge badge-neutral">信物</span>
+              </div>
+              <div class="info-card-desc">师兄临终交付的铜牌，刻有暗卫组织内部密语。第6章曾开启天枢阁侧门，暗示更多功能尚未展现。</div>
+              <div class="info-card-row"><span class="info-card-row-label">持有者</span><span class="info-card-row-value">林远舟</span></div>
+              <div class="info-card-row"><span class="info-card-row-label">首次出现</span><span class="info-card-row-value">第2章</span></div>
+            </div>
+            <div class="info-card">
+              <div class="info-card-title">星脉残图</div>
+              <div class="info-card-meta">
+                <span class="badge badge-canon">正式</span>
+                <span class="badge badge-neutral">核心道具</span>
+              </div>
+              <div class="info-card-desc">星脉九图残卷之一，记载灵力脉络的一段秘密。主线核心道具，集齐可窥见上古真相，是多方势力争夺的焦点。</div>
+              <div class="info-card-row"><span class="info-card-row-label">持有者</span><span class="info-card-row-value">林远舟</span></div>
+              <div class="info-card-row"><span class="info-card-row-label">首次出现</span><span class="info-card-row-value">第2章</span></div>
+            </div>
+            <div class="info-card">
+              <div class="info-card-title">暗卫令牌</div>
+              <div class="info-card-meta">
+                <span class="badge badge-canon">正式</span>
+                <span class="badge badge-neutral">信物</span>
+              </div>
+              <div class="info-card-desc">暗卫组织身份标识，凝气执事级别。主角叛逃后仍偶有用途，但使用会带来追缉风险，需谨慎抉择。</div>
+              <div class="info-card-row"><span class="info-card-row-label">持有者</span><span class="info-card-row-value">林远舟（已失效）</span></div>
+              <div class="info-card-row"><span class="info-card-row-label">首次出现</span><span class="info-card-row-value">第1章</span></div>
+            </div>
+            <div class="info-card">
+              <div class="info-card-title">紫檀木匣</div>
+              <div class="info-card-meta">
+                <span class="badge badge-canon">正式</span>
+                <span class="badge badge-neutral">容器</span>
+              </div>
+              <div class="info-card-desc">师兄遗留的紫檀木匣，内藏星脉残图与一封密信。木匣表面有星脉感应封印，仅主角的星脉感应可开启。</div>
+              <div class="info-card-row"><span class="info-card-row-label">持有者</span><span class="info-card-row-value">林远舟</span></div>
+              <div class="info-card-row"><span class="info-card-row-label">首次出现</span><span class="info-card-row-value">第2章</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 能力 tab -->
+        <div class="sub-tab-panel" id="wr-abilities-panel">
+          <div class="card-grid">
+            <div class="info-card">
+              <div class="info-card-title">隐匿术</div>
+              <div class="info-card-meta">
+                <span class="badge badge-canon">正式</span>
+                <span class="badge badge-neutral">暗卫秘术</span>
+                <span class="badge badge-info">中阶</span>
+              </div>
+              <div class="info-card-desc">暗卫组织核心秘术，可短暂隐去气息与身形。高阶可致完全无形，是叛逃者保命的关键。修炼至大成需金丹修为。</div>
+              <div class="info-card-row"><span class="info-card-row-label">掌握者</span><span class="info-card-row-value">林远舟、陈长老、周明轩（拟定）</span></div>
+            </div>
+            <div class="info-card">
+              <div class="info-card-title">星脉感应</div>
+              <div class="info-card-meta">
+                <span class="badge badge-canon">正式</span>
+                <span class="badge badge-neutral">先天能力</span>
+                <span class="badge badge-warning">高阶</span>
+              </div>
+              <div class="info-card-desc">感知星脉残图与灵力脉络走向的先天能力，极为罕见。主角因此被暗卫组织吸纳，也是追查真相的核心依仗。</div>
+              <div class="info-card-row"><span class="info-card-row-label">掌握者</span><span class="info-card-row-value">林远舟</span></div>
+            </div>
+            <div class="info-card">
+              <div class="info-card-title">暗卫身法</div>
+              <div class="info-card-meta">
+                <span class="badge badge-canon">正式</span>
+                <span class="badge badge-neutral">身法</span>
+                <span class="badge badge-info">中阶</span>
+              </div>
+              <div class="info-card-desc">专为暗杀与潜入设计的身法，讲究瞬时爆发与轨迹迷惑，与隐匿术配合可无声接近目标。主角已修至第七层。</div>
+              <div class="info-card-row"><span class="info-card-row-label">掌握者</span><span class="info-card-row-value">林远舟、暗卫组织全员</span></div>
+            </div>
+            <div class="info-card">
+              <div class="info-card-title">凝气决</div>
+              <div class="info-card-meta">
+                <span class="badge badge-canon">正式</span>
+                <span class="badge badge-neutral">功法</span>
+                <span class="badge badge-success">基础</span>
+              </div>
+              <div class="info-card-desc">暗卫组织基础修炼功法，凝气阶段通用。主角已修至九层，接近筑基门槛，突破在即。</div>
+              <div class="info-card-row"><span class="info-card-row-label">掌握者</span><span class="info-card-row-value">林远舟、组织凝气期弟子</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 4. 实际事件 §5.3 / §6.2 ===== -->
+      <div id="actual-events-section" class="section-view" style="display:none;">
+        <div class="section-header">
+          <div class="section-title-row">
+            <h2 class="section-title">实际事件</h2>
+            <span class="badge badge-canon">正式</span>
+            <span class="section-version">v3.2</span>
+          </div>
+          <p class="section-desc">已发生的关键事件记录，按时间倒序排列。每条事件记录对人物状态和期待的影响，是事后追溯的核心依据。</p>
+        </div>
+
+        <div class="filters-bar">
+          <select class="filter-select">
+            <option>全部章节</option>
+            <option>第1章</option>
+            <option>第2章</option>
+            <option>第3章</option>
+            <option>第4章</option>
+            <option>第5章</option>
+            <option>第6章</option>
+          </select>
+          <select class="filter-select">
+            <option>全部影响类型</option>
+            <option>人物状态变化</option>
+            <option>期待变化</option>
+            <option>伏笔设置</option>
+            <option>伏笔回收</option>
+          </select>
+        </div>
+
+        <div class="field-card">
+          <div class="field-group-title">
+            <span class="field-group-title-text">林远舟独自潜入天枢阁藏经楼</span>
+            <span class="badge badge-canon">正式</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">发生章节</span>
+            <span class="field-value">第6章末尾</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">事件描述</span>
+            <span class="field-value">林远舟在获取师兄铜牌后，选择独自潜入天枢阁藏经楼而非等待苏婉清支援。利用隐匿术穿越三道暗哨，最终在侧门处被星脉感应触发封印所阻。</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">影响</span>
+            <span class="field-value">
+              <div style="margin-bottom:4px;">人物状态：林远舟位置变更（藏经楼外围），自信心暴露弱点</div>
+              <div>期待：开启"林越能否在暗哨间安全穿行到达藏经楼"，部分兑现"林越如何在暗哨间穿行"</div>
+            </span>
+          </div>
+        </div>
+
+        <div class="field-card">
+          <div class="field-group-title">
+            <span class="field-group-title-text">师兄铜牌开启天枢阁侧门</span>
+            <span class="badge badge-canon">正式</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">发生章节</span>
+            <span class="field-value">第6章中段</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">事件描述</span>
+            <span class="field-value">林远舟在天枢阁外墙上发现一道隐蔽侧门，使用师兄遗留的铜牌成功开启。门后通道通向藏经楼内部，但铜牌仅能使用一次。</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">影响</span>
+            <span class="field-value">
+              <div style="margin-bottom:4px;">期待：加强"师兄令牌的真正用途是什么"，暗示更多功能</div>
+              <div>伏笔：铜牌"仅一次"的限制为后续围困埋下伏笔</div>
+            </span>
+          </div>
+        </div>
+
+        <div class="field-card">
+          <div class="field-group-title">
+            <span class="field-group-title-text">陈长老被调离追缉行动</span>
+            <span class="badge badge-canon">正式</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">发生章节</span>
+            <span class="field-value">第4章</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">事件描述</span>
+            <span class="field-value">宗主以"组织内部权斗"为由，将陈长老从林远舟追缉行动中调离，改由暗影接手。陈长老对此心存不满，暗中布局。</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">影响</span>
+            <span class="field-value">
+              <div style="margin-bottom:4px;">人物状态：陈长老态度由"全力追缉"转为"暗中布局"</div>
+              <div>期待：失效"陈长老是否会在第5章出手阻拦"</div>
+            </span>
+          </div>
+        </div>
+
+        <div class="field-card">
+          <div class="field-group-title">
+            <span class="field-group-title-text">林远舟与苏婉清结盟</span>
+            <span class="badge badge-canon">正式</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">发生章节</span>
+            <span class="field-value">第3章</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">事件描述</span>
+            <span class="field-value">林远舟在逃离暗卫组织途中救下被围攻的苏婉清，双方达成合作。苏婉清以药王谷传承提供医疗支援，林远舟提供护送至苍梧城。</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">影响</span>
+            <span class="field-value">
+              <div style="margin-bottom:4px;">人物状态：新增苏婉清为同行者，林远舟信任度+1</div>
+              <div>伏笔：药王谷传承令的下落成为新支线</div>
+            </span>
+          </div>
+        </div>
+
+        <div class="field-card">
+          <div class="field-group-title">
+            <span class="field-group-title-text">师兄临终交付铜牌与残图</span>
+            <span class="badge badge-canon">正式</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">发生章节</span>
+            <span class="field-value">第2章</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">事件描述</span>
+            <span class="field-value">师兄在陨落前将紫檀木匣交给林远舟，内含铜牌与星脉残图。临终遗言"星脉不止一图"，成为主角后续行动的核心驱动。</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">影响</span>
+            <span class="field-value">
+              <div style="margin-bottom:4px;">人物状态：林远舟获得核心道具，欲望从"逃离"转为"追查真相"</div>
+              <div style="margin-bottom:4px;">伏笔：设置"师兄临终遗言"伏笔，设置"林越身世之谜"</div>
+              <div>期待：开启"师兄令牌的真正用途是什么"</div>
+            </span>
+          </div>
+        </div>
+
+        <div class="field-card">
+          <div class="field-group-title">
+            <span class="field-group-title-text">林远舟叛逃暗卫组织</span>
+            <span class="badge badge-canon">正式</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">发生章节</span>
+            <span class="field-value">第1章</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">事件描述</span>
+            <span class="field-value">林远舟在执行任务时发现组织对师兄之死的隐瞒，决意叛逃。利用隐匿术穿越组织总部外围，开始了被追缉的逃亡生涯。</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">影响</span>
+            <span class="field-value">
+              <div style="margin-bottom:4px;">人物状态：林远舟身份变更为"叛逃者"，位置变更（组织总部外围）</div>
+              <div>伏笔：设置"林越身世之谜"，设置"暗卫组织内部分裂迹象"</div>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 5. 伏笔 §4.7 / §5.3 ===== -->
+      <div id="foreshadowing-section" class="section-view" style="display:none;">
+        <div class="section-header">
+          <div class="section-title-row">
+            <h2 class="section-title">伏笔</h2>
+            <span class="badge badge-commitment">承诺</span>
+            <span class="section-version">v2.5</span>
+          </div>
+          <p class="section-desc">伏笔是对读者的隐性承诺，需在合理章节范围内回收。伏笔属于 承诺 层级，超期未回收会损害读者信任。</p>
+        </div>
+
+        <div class="field-card commitment-border">
+          <div class="field-group-title">
+            <span class="field-group-title-text">师兄临终遗言"星脉不止一图"</span>
+            <span class="badge badge-error">未回收</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">伏笔内容</span>
+            <span class="field-value">师兄临终遗言暗示星脉残图不止一张，存在更多散落各方的残卷。这是主角后续行动的核心驱动，也是读者最关注的谜题之一。</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">设置章节</span>
+            <span class="field-value">第2章</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">关联期待</span>
+            <span class="field-value">星脉残图真相（must_payoffs #1）</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">预期回收</span>
+            <span class="field-value" style="color:#f85149;">已超期预警（预期 20 章内，当前第 6 章，剩余 14 章）</span>
+          </div>
+        </div>
+
+        <div class="field-card commitment-border">
+          <div class="field-group-title">
+            <span class="field-group-title-text">暗卫组织内部分裂迹象</span>
+            <span class="badge badge-warning">待回收</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">伏笔内容</span>
+            <span class="field-value">第5章中陈长老被调离追缉行动，宗主以"组织内部权斗"为由。暗示暗卫组织内部并非铁板一块，存在派系博弈。</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">设置章节</span>
+            <span class="field-value">第5章</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">关联期待</span>
+            <span class="field-value">组织内部权斗（long_lines #2）</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">预期回收</span>
+            <span class="field-value">第15-20 章左右（与候选角色周明轩的引入配合）</span>
+          </div>
+        </div>
+
+        <div class="field-card commitment-border">
+          <div class="field-group-title">
+            <span class="field-group-title-text">天枢阁藏经楼的秘密</span>
+            <span class="badge badge-success">已回收</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">伏笔内容</span>
+            <span class="field-value">第3章提及天枢阁藏经楼第三层被封禁，以"星脉相关典籍危险"为由。暗示藏经楼内藏有星脉相关核心信息。</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">设置章节</span>
+            <span class="field-value">第3章</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">回收章节</span>
+            <span class="field-value">第7章（林远舟潜入藏经楼时确认）</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">关联期待</span>
+            <span class="field-value">天枢阁秘密（must_payoffs #3）</span>
+          </div>
+        </div>
+
+        <div class="field-card commitment-border">
+          <div class="field-group-title">
+            <span class="field-group-title-text">林越身世之谜</span>
+            <span class="badge badge-error">未回收</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">伏笔内容</span>
+            <span class="field-value">第1章林越叛逃时，宗主曾言"你不知道自己是什么人"。暗示林越身世与星脉或上古传承有关，是核心长线伏笔。</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">设置章节</span>
+            <span class="field-value">第1章</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">关联期待</span>
+            <span class="field-value">星脉真相（long_lines #1）</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">预期回收</span>
+            <span class="field-value">第30-40 章左右（长线伏笔，需缓慢铺垫）</span>
+          </div>
+        </div>
+
+        <div class="field-card commitment-border">
+          <div class="field-group-title">
+            <span class="field-group-title-text">药王谷传承令的下落</span>
+            <span class="badge badge-warning">待回收</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">伏笔内容</span>
+            <span class="field-value">第3章苏婉清提及药王谷传承令失落，是她的核心欲望驱动。传承令下落不明，可能与苍梧城城主有关。</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">设置章节</span>
+            <span class="field-value">第3章</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">关联期待</span>
+            <span class="field-value">苏婉清的个人支线</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">预期回收</span>
+            <span class="field-value">第12-18 章左右（苍梧城主线期间）</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 6. 素材 §5.3 ===== -->
+      <div id="materials-section" class="section-view" style="display:none;">
+        <div class="section-header">
+          <div class="section-title-row">
+            <h2 class="section-title">素材</h2>
+            <span class="badge badge-neutral">参考资料</span>
+            <span class="section-version">v1.8</span>
+          </div>
+          <p class="section-desc">参考素材、对标作品与平台证据。素材不属于四层事实体系，但为创作提供依据和参考，可随时增补。</p>
+        </div>
+
+        <div class="sub-tabs">
+          <button class="sub-tab sub-tab-active" onclick="switchSubTab(this, 'mat-ref')">参考素材</button>
+          <button class="sub-tab" onclick="switchSubTab(this, 'mat-bench')">对标作品</button>
+          <button class="sub-tab" onclick="switchSubTab(this, 'mat-platform')">平台证据</button>
+        </div>
+
+        <!-- 参考素材 tab -->
+        <div class="sub-tab-panel sub-tab-panel-active" id="mat-ref-panel">
+          <div class="card-grid">
+            <div class="info-card no-border">
+              <div class="info-card-title">修仙体系参考</div>
+              <div class="info-card-meta">
+                <span class="badge badge-neutral">体系设定</span>
+              </div>
+              <div class="info-card-desc">参考《凡人修仙传》《仙逆》的境界划分与功法体系，凝气-筑基-金丹-元婴-化神五阶。本作在传统体系上增加星脉感应作为独特设定。</div>
+              <div class="info-card-row"><span class="info-card-row-label">添加时间</span><span class="info-card-row-value">2026-06-12</span></div>
+            </div>
+            <div class="info-card no-border">
+              <div class="info-card-title">暗卫组织历史参考</div>
+              <div class="info-card-meta">
+                <span class="badge badge-neutral">组织设定</span>
+              </div>
+              <div class="info-card-desc">参考明代锦衣卫、清代粘杆处的组织结构与运作模式，结合修仙世界设定。重点关注内部等级、密语系统与叛逃处理机制。</div>
+              <div class="info-card-row"><span class="info-card-row-label">添加时间</span><span class="info-card-row-value">2026-06-15</span></div>
+            </div>
+            <div class="info-card no-border">
+              <div class="info-card-title">古代城邦结构</div>
+              <div class="info-card-meta">
+                <span class="badge badge-neutral">地理设定</span>
+              </div>
+              <div class="info-card-desc">参考唐宋城坊制度与战国城邦格局，设计苍梧城外城-内城-灵山三区结构。重点参考《长安十二时辰》的城市描写手法。</div>
+              <div class="info-card-row"><span class="info-card-row-label">添加时间</span><span class="info-card-row-value">2026-06-20</span></div>
+            </div>
+            <div class="info-card no-border">
+              <div class="info-card-title">武术动作参考</div>
+              <div class="info-card-meta">
+                <span class="badge badge-neutral">动作描写</span>
+              </div>
+              <div class="info-card-desc">参考传统武术八卦掌、形意拳的身法要诀，结合暗卫身法设计。重点参考《一代宗师》《卧虎藏龙》的动作美学。</div>
+              <div class="info-card-row"><span class="info-card-row-label">添加时间</span><span class="info-card-row-value">2026-07-02</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 对标作品 tab -->
+        <div class="sub-tab-panel" id="mat-bench-panel">
+          <div class="card-grid">
+            <div class="info-card no-border">
+              <div class="info-card-title">《凡人修仙传》</div>
+              <div class="info-card-meta">
+                <span class="badge badge-neutral">番茄小说</span>
+                <span class="badge badge-neutral">玄幻·修仙</span>
+              </div>
+              <div class="info-card-desc"><strong>优势分析：</strong>境界体系严谨，主角成长节奏稳定，世界观深度与爽感平衡得当。长线伏笔回收率高。</div>
+              <div class="info-card-desc"><strong>可借鉴点：</strong>境界划分清晰、伏笔回收节奏、配角塑造手法。</div>
+              <div class="info-card-row"><span class="info-card-row-label">添加时间</span><span class="info-card-row-value">2026-06-10</span></div>
+            </div>
+            <div class="info-card no-border">
+              <div class="info-card-title">《诡秘之主》</div>
+              <div class="info-card-meta">
+                <span class="badge badge-neutral">起点</span>
+                <span class="badge badge-neutral">玄幻·悬疑</span>
+              </div>
+              <div class="info-card-desc"><strong>优势分析：</strong>组织设定复杂精巧，悬疑线索层层递进，主角与组织的对抗张力强。</div>
+              <div class="info-card-desc"><strong>可借鉴点：</strong>暗卫组织内部博弈、悬疑线索铺设、主角与组织的关系处理。</div>
+              <div class="info-card-row"><span class="info-card-row-label">添加时间</span><span class="info-card-row-value">2026-06-18</span></div>
+            </div>
+            <div class="info-card no-border">
+              <div class="info-card-title">《大奉打更人》</div>
+              <div class="info-card-meta">
+                <span class="badge badge-neutral">番茄小说</span>
+                <span class="badge badge-neutral">玄幻·修仙</span>
+              </div>
+              <div class="info-card-desc"><strong>优势分析：</strong>官方组织视角新颖，案件推进与日常切换流畅，主角与组织的合作关系有趣。</div>
+              <div class="info-card-desc"><strong>可借鉴点：</strong>组织视角切换、案件单元结构、主角能力展示节奏。</div>
+              <div class="info-card-row"><span class="info-card-row-label">添加时间</span><span class="info-card-row-value">2026-07-05</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 平台证据 tab -->
+        <div class="sub-tab-panel" id="mat-platform-panel">
+          <div class="field-card no-border">
+            <div class="field-group-title"><span class="field-group-title-text">番茄小说 · 男频玄幻类目数据</span></div>
+            <div class="field-row">
+              <span class="field-label">热门标签</span>
+              <span class="field-value">
+                <span class="badge badge-neutral" style="margin-right:4px;">修仙</span>
+                <span class="badge badge-neutral" style="margin-right:4px;">暗卫</span>
+                <span class="badge badge-neutral" style="margin-right:4px;">悬疑</span>
+                <span class="badge badge-neutral" style="margin-right:4px;">复仇</span>
+                <span class="badge badge-neutral" style="margin-right:4px;">无女主</span>
+                <span class="badge badge-neutral" style="margin-right:4px;">爽文</span>
+              </span>
+            </div>
+            <div class="field-row">
+              <span class="field-label">字数分布</span>
+              <span class="field-value">主流区间 200-400 万字；头部作品 400 万字以上；新书签约门槛 50 万字</span>
+            </div>
+            <div class="field-row">
+              <span class="field-label">更新频率</span>
+              <span class="field-value">日更 6000-10000 字为标准；周更不可低于 30000 字；断更超 3 天影响推荐</span>
+            </div>
+            <div class="field-row">
+              <span class="field-label">完读率基准</span>
+              <span class="field-value">前 20 章完读率需 ≥ 40%；前 100 章完读率需 ≥ 15%</span>
+            </div>
+            <div class="field-row">
+              <span class="field-label">数据采集</span>
+              <span class="field-value">2026-07-01 ~ 2026-07-15 · 番茄小说后台公开数据</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 7. 版本历史 §5.3 / §9.2 ===== -->
+      <div id="version-history-section" class="section-view" style="display:none;">
+        <div class="section-header">
+          <div class="section-title-row">
+            <h2 class="section-title">版本历史</h2>
+            <span class="badge badge-neutral">来源与历史</span>
+            <span class="section-version">v3.2</span>
+          </div>
+          <p class="section-desc">故事库内容的版本变更记录。所有 正式 层级内容的变更都需作者审批确认，候选内容升级会触发审批流程。</p>
+        </div>
+
+        <div class="timeline">
+          <div class="timeline-item">
+            <div class="timeline-item-time">2026-07-18 14:32 · v3.2</div>
+            <div class="timeline-item-title">林远舟人物状态更新</div>
+            <div class="timeline-item-desc">
+              <div style="margin-bottom:6px;"><span class="badge badge-canon" style="margin-right:6px;">正式变更</span>第6章正文确认后，林远舟位置更新为"组织总部外围"，新增"独自潜入"选择证据。</div>
+              <div style="font-size:11px;color:var(--nw-text-tertiary);">关联章节：第6章 · 作者审批：已确认</div>
+            </div>
+          </div>
+          <div class="timeline-item candidate-dot">
+            <div class="timeline-item-time">2026-07-15 10:18 · v3.1</div>
+            <div class="timeline-item-title">新增候选角色周明轩</div>
+            <div class="timeline-item-desc">
+              <div style="margin-bottom:6px;"><span class="badge badge-candidate" style="margin-right:6px;">新增候选</span>StoryEditor 建议在第8章引入暗卫组织内部线人角色，待作者确认是否升级为 canon。</div>
+              <div style="font-size:11px;color:var(--nw-text-tertiary);">关联章节：第8章（拟定） · 作者审批：待确认</div>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-item-time">2026-07-10 16:45 · v3.0</div>
+            <div class="timeline-item-title">读者契约正式确认</div>
+            <div class="timeline-item-desc">
+              <div style="margin-bottom:6px;"><span class="badge badge-info" style="margin-right:6px;">审批确认</span>读者契约 v2.1 经作者审批确认为正式版本，所有后续章节必须遵守。</div>
+              <div style="font-size:11px;color:var(--nw-text-tertiary);">关联章节：全章节 · 作者审批：已确认</div>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-item-time">2026-07-05 09:22 · v2.0</div>
+            <div class="timeline-item-title">世界规则体系重构</div>
+            <div class="timeline-item-desc">
+              <div style="margin-bottom:6px;"><span class="badge badge-canon" style="margin-right:6px;">正式变更</span>重新梳理天枢阁、暗卫组织、星脉系统三大设定，新增苍梧城地理设定。</div>
+              <div style="font-size:11px;color:var(--nw-text-tertiary);">关联章节：第1-4章 · 作者审批：已确认</div>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-item-time">2026-06-20 11:08 · v1.0</div>
+            <div class="timeline-item-title">故事库初始化</div>
+            <div class="timeline-item-desc">
+              <div style="margin-bottom:6px;"><span class="badge badge-canon" style="margin-right:6px;">正式变更</span>创建故事库初始版本，导入第1章正式正文，建立林远舟、苏婉清、陈长老三位核心人物。</div>
+              <div style="font-size:11px;color:var(--nw-text-tertiary);">关联章节：第1章 · 作者审批：已确认</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="git-status">
+          <div class="git-status-item"><span class="git-label">当前分支:</span> <span class="git-value">main</span></div>
+          <div class="git-status-item"><span class="git-label">最新提交:</span> <span class="git-value">a3f2d1e</span></div>
+          <div class="git-status-item"><span class="git-label">无未提交变更</span></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Trace Panel (collapsible) -->
+    <div class="trace-panel">
+      <div class="trace-header" id="trace-toggle" onclick="toggleTrace()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        <span style="font-weight:500;">来源追溯</span>
+        <span style="color:var(--nw-text-tertiary);font-size:11px;margin-left:4px;">-- 林远舟 / 人物状态</span>
+      </div>
+      <div class="trace-content" id="trace-content">
+        <div class="trace-row">
+          <span class="trace-label">来源层级</span>
+          <span class="fact-level-badge fact-badge-canon" style="font-size:11px;">正式 canon</span>
+        </div>
+        <div class="trace-row">
+          <span class="trace-label">版本</span>
+          <span class="trace-value">v3.2</span>
+        </div>
+        <div class="trace-row">
+          <span class="trace-label">最后更新</span>
+          <span class="trace-value-text">第6章正文确认后</span>
+        </div>
+        <div class="trace-row">
+          <span class="trace-label">作者审批</span>
+          <span class="trace-value">2026-07-18</span>
+        </div>
+        <div class="trace-row">
+          <span class="trace-label">关联章节</span>
+          <span class="trace-value-text">第1章 ~ 第6章（持续追踪中）</span>
+        </div>
+        <div class="trace-row">
+          <span class="trace-label">AI 审校</span>
+          <span class="trace-value">通过 / 无冲突</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL (hidden by default) ==================== -->
+  <div class="modal-overlay" id="upgrade-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span class="modal-title">确认升级为正式内容</span>
+        <button class="modal-close" onclick="closeModal()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p>此操作将候选内容升级为 正式 层级。升级后，所有后续章节和场景将引用此版本。</p>
+        <div class="modal-warning">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+          <span>此操作不可自动撤销，需通过版本历史回滚。</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal()">取消</button>
+        <button class="btn-primary" onclick="closeModal()">确认升级</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SCRIPTS ==================== -->
+  <script>
+    // Category selection
+    function selectCategory(el, name) {
+      document.querySelectorAll('.cat-item').forEach(function(item) {
+        item.classList.remove('cat-active');
+      });
+      el.classList.add('cat-active');
+      document.getElementById('breadcrumb-category').textContent = name;
+
+      // 隐藏所有内容区
+      var sections = ['character-list-section', 'expectation-ledger-section',
+        'reader-contract-section', 'story-engine-section', 'world-rules-section',
+        'actual-events-section', 'foreshadowing-section', 'materials-section', 'version-history-section'];
+      sections.forEach(function(id) {
+        var s = document.getElementById(id);
+        if (s) s.style.display = 'none';
+      });
+
+      // 显示对应内容区
+      var sectionMap = {
+        '人物状态': 'character-list-section',
+        '期待': 'expectation-ledger-section',
+        '读者契约': 'reader-contract-section',
+        '故事引擎': 'story-engine-section',
+        '世界规则': 'world-rules-section',
+        '实际事件': 'actual-events-section',
+        '伏笔': 'foreshadowing-section',
+        '素材': 'materials-section',
+        '版本历史': 'version-history-section'
+      };
+      var targetId = sectionMap[name];
+      if (targetId) {
+        var target = document.getElementById(targetId);
+        if (target) target.style.display = '';
+      }
+    }
+
+    // Sub-tab switching (世界规则 / 素材)
+    function switchSubTab(el, prefix) {
+      var tabsContainer = el.parentElement;
+      var parent = tabsContainer.parentElement;
+      tabsContainer.querySelectorAll('.sub-tab').forEach(function(t) {
+        t.classList.remove('sub-tab-active');
+      });
+      el.classList.add('sub-tab-active');
+      parent.querySelectorAll(':scope > .sub-tab-panel').forEach(function(p) {
+        p.classList.remove('sub-tab-panel-active');
+      });
+      var target = document.getElementById(prefix + '-panel');
+      if (target) target.classList.add('sub-tab-panel-active');
+    }
+
+    // Filter chips
+    function setFilter(el, level) {
+      document.querySelectorAll('.filter-chip').forEach(function(chip) {
+        chip.classList.remove('filter-active');
+      });
+      el.classList.add('filter-active');
+
+      document.querySelectorAll('.char-card').forEach(function(card) {
+        if (level === 'all') {
+          card.style.display = '';
+        } else {
+          card.style.display = card.dataset.level === level ? '' : 'none';
+        }
+      });
+    }
+
+    // Trace panel toggle
+    function toggleTrace() {
+      var toggle = document.getElementById('trace-toggle');
+      var content = document.getElementById('trace-content');
+      toggle.classList.toggle('trace-open');
+      content.classList.toggle('trace-open');
+    }
+
+    // Modal
+    function openModal() {
+      document.getElementById('upgrade-modal').classList.add('modal-visible');
+    }
+    function closeModal() {
+      document.getElementById('upgrade-modal').classList.remove('modal-visible');
+    }
+
+    // Close modal on overlay click
+    document.getElementById('upgrade-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+
+    // Close modal on Escape
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeModal();
+    });
+  </script>
+
+</body>
+</html>

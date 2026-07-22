@@ -14,7 +14,11 @@ from pydantic import BaseModel, ValidationError
 from app.agents.backend import NovelWorkspaceBackend
 from app.agents.context import ContextBuilder, ContextRequest, ManifestSource, RetrievedSnippet
 from app.agents.context_compiler import ChapterContextCompiler
-from app.agents.contracts import OutputContractError, validate_agent_output_tree
+from app.agents.contracts import (
+    OutputContractError,
+    validate_agent_output_tree,
+    validate_skill_execution,
+)
 from app.agents.orchestrator import register_model_profile
 from app.agents.schemas import (
     ChapterDraft,
@@ -22,9 +26,17 @@ from app.agents.schemas import (
     ContinuityReport,
     DraftWriterResult,
     ReferencedOutput,
+    SkillExecutionContract,
     StyleReport,
 )
-from app.agents.subagents import CreativeAgentDefinition, build_subagent_definitions
+from app.agents.skills import P0Skill, render_generation_directives
+from app.agents.subagents import (
+    CreativeAgentDefinition,
+    P0SkillAgentDefinition,
+    build_p0_skill_definitions,
+    build_subagent_definitions,
+    select_p0_skill_agent,
+)
 from app.infrastructure.model import build_model
 from app.infrastructure.secrets import ApiKeyStore
 from app.infrastructure.settings import SettingsRepository
@@ -146,6 +158,55 @@ class DeepAgentRunner:
             )
         return output
 
+    def execute_skill(
+        self, skill: P0Skill, payload: dict[str, object]
+    ) -> SkillExecutionContract:
+        started = time.perf_counter()
+        try:
+            self.manifest = self.context_builder.build(
+                self.context_compiler.request_for_skill(skill, payload)
+            )
+            backend = NovelWorkspaceBackend(
+                self.canon,
+                self.drafts,
+                self.project_id,
+                str(uuid4()),
+                skill_root=self.skill_root,
+                read_allowlist=self.manifest.allowed_paths(),
+            )
+            definition = select_p0_skill_agent(skill, payload, build_p0_skill_definitions(backend))
+        except Exception as error:
+            if self.after_invoke is not None:
+                self.after_invoke(
+                    "SkillExecutor",
+                    type(error).__name__,
+                    {"phase": "context_compile", "duration_ms": elapsed_ms(started)},
+                )
+            raise
+        diagnostics = self._diagnostic_context(started)
+        if self.before_invoke is not None:
+            self.before_invoke(definition.name, diagnostics)
+        try:
+            output = self._invoke_stage(definition, payload, backend, skill=skill)
+            if not isinstance(output, SkillExecutionContract):
+                raise OutputContractError("SKILL_OUTPUT_INVALID")
+            result = validate_skill_execution(output, self.manifest, skill)
+        except Exception as error:
+            if self.after_invoke is not None:
+                self.after_invoke(
+                    definition.name,
+                    type(error).__name__,
+                    {**self._diagnostic_context(started), "phase": "skill_execute"},
+                )
+            raise
+        if self.after_invoke is not None:
+            self.after_invoke(
+                definition.name,
+                None,
+                {**self._diagnostic_context(started), "phase": "skill_execute"},
+            )
+        return result
+
     def _diagnostic_context(self, started: float) -> dict[str, object]:
         return {
             "stage": self.manifest.stage,
@@ -159,15 +220,18 @@ class DeepAgentRunner:
 
     def _invoke_stage(
         self,
-        definition: CreativeAgentDefinition,
+        definition: CreativeAgentDefinition | P0SkillAgentDefinition,
         payload: dict[str, object],
         backend: NovelWorkspaceBackend,
+        *,
+        skill: str | None = None,
     ) -> ReferencedOutput:
         agent = definition.name
-        skill = AGENT_SKILLS[agent]
+        if skill is None:
+            skill = AGENT_SKILLS[agent]
         skill_path = f"/skills/{skill}/SKILL.md"
         skill_hash = sha256((self.skill_root / skill / "SKILL.md").read_bytes()).hexdigest()
-        system_prompt = self._direct_system_prompt(definition, payload)
+        system_prompt = self._direct_system_prompt(definition, payload, skill=skill)
         register_model_profile()
         graph = create_deep_agent(
             model=self.model,
@@ -188,7 +252,7 @@ class DeepAgentRunner:
         started_at = utc_now()
         started = time.perf_counter()
         try:
-            config: dict[str, Any] = {"recursion_limit": 12}
+            config: dict[str, Any] = {"recursion_limit": 50}
             if capture is not None:
                 config["callbacks"] = [capture]
             result = graph.invoke(
@@ -291,7 +355,7 @@ class DeepAgentRunner:
 
     @staticmethod
     def _model_output_schema(
-        definition: CreativeAgentDefinition,
+        definition: CreativeAgentDefinition | P0SkillAgentDefinition,
         manifest: object | None = None,
     ) -> dict[str, Any]:
         schema = deepcopy(definition.output_schema.model_json_schema())
@@ -427,13 +491,25 @@ class DeepAgentRunner:
 
     @staticmethod
     def _direct_system_prompt(
-        definition: CreativeAgentDefinition, payload: dict[str, object]
+        definition: CreativeAgentDefinition | P0SkillAgentDefinition,
+        payload: dict[str, object],
+        skill: str | None = None,
     ) -> str:
         common = (
             f"你直接执行 {definition.name}，不要委派。{definition.system_prompt}"
             "严格按 response schema 输出。context_reference_paths 只选择实际支持结论的"
             "context_manifest 正式来源路径；references 由系统据此写入，模型不得虚构。"
         )
+        if definition.output_schema is SkillExecutionContract:
+            base = (
+                common
+                + "只输出当前主 Skill 的统一执行契约。ready 时只给一个可存储候选，"
+                "needs_decision 或 conflict 时不给候选且列出作者必须决定的问题。"
+                "每项 evidence.reference 必须逐字引用 context_manifest 中的正式来源；"
+                "不得写入作品文件，也不得把候选或假设说成已确认事实。"
+            )
+            directives = render_generation_directives(skill) if skill is not None else ""
+            return base + directives
         if definition.name == "RetentionAuditor":
             return (
                 common + "正文证据只放 citation；每个 issue.quote 必须是正文中唯一存在的完整原文。"

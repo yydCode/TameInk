@@ -1,0 +1,238 @@
+{
+  "skillProvenance": {
+    "name": "solo-design",
+    "version": "2026.07.06.8",
+    "version_source": "skill-version.json",
+    "runtime_skill_dir": "/Users/dyan/.trae-cn/builtin/design/default/skills/solo-design",
+    "recorded_at": "2026-07-22T13:00:00+08:00"
+  },
+  "project": {
+    "name": "驯墨交互设计",
+    "path": "/Users/dyan/Documents/work/Code/Tame-Ink/tame-ink-ux-design",
+    "operation": "create",
+    "deviceType": "desktop",
+    "language": "zh-CN",
+    "dashboardMode": true,
+    "designRead": "创作工具 / 网文作者 / 单栏聚焦 / AI辅助输入 / 结构化展示 / 禁止裸JSON",
+    "designDials": { "layoutVariance": 2, "motionIntensity": 2, "visualDensity": 2 },
+    "intentProfile": {
+      "caseFamily": "free_exploration",
+      "graphicStrategy": null,
+      "sourceType": null,
+      "routingReason": "基于最新UX设计方案重新设计全部交互页面"
+    },
+    "cssPreflightEvidence": {
+      "applies": true,
+      "status": "passed",
+      "brandPrefix": null
+    }
+  },
+  "designSource": {
+    "operatingMode": "free-explore",
+    "styleConstraints": {
+      "radiusMax": 16,
+      "staticShadowAlphaMax": 0.05
+    }
+  },
+  "project": {
+    "styleContinuityAnchors": {
+      "shellTreatment": "极简顶栏48px+左侧导航200px，品牌墨绿激活态，单栏聚焦内容区max-width 760px居中",
+      "surfaceModel": "border-led layering, surface-0/1/2/3 递进，卡片使用 surface-1 + border-default",
+      "typographySystem": "Noto Sans SC body + Noto Serif SC headings, 14px base, 步骤标题用serif",
+      "interactionPattern": "卡片式步骤展示，主轴单栏居中，右侧可折叠期待热力图，三按钮模式(采用/修改/重新生成)",
+      "buttonSystem": "主按钮=品牌色填充，次按钮=surface-3边框，文字按钮=品牌色文字"
+    }
+  },
+  "pages": [
+    {
+      "nodeId": "page-workspace-input",
+      "title": "工作台-步骤卡片",
+      "htmlSrc": "pages/workspace-input.html",
+      "pageIndex": 1,
+      "visualNorthStar": "工作台主页面，next_action=input状态。步骤大卡片居中展示，含步骤编号、AI说明、补充想法输入框、让AI起草按钮。右侧可折叠期待热力图",
+      "compositionPattern": "single-column-focus",
+      "continuityAnchors": { "shellTreatment": "极简顶栏+左侧导航，单栏聚焦", "surfaceModel": "surface-1卡片+border-default", "typographySystem": "Noto Sans SC + Noto Serif SC" },
+      "imagePlan": [],
+      "chartsRequired": false
+    },
+    {
+      "nodeId": "page-workspace-wait",
+      "title": "工作台-生成中",
+      "htmlSrc": "pages/workspace-wait.html",
+      "pageIndex": 2,
+      "visualNorthStar": "工作台wait状态，步骤卡片变为生成进度展示，含进度条和预计时间",
+      "compositionPattern": "single-column-focus",
+      "continuityAnchors": { "shellTreatment": "极简顶栏+左侧导航，单栏聚焦", "surfaceModel": "surface-1卡片+border-default", "typographySystem": "Noto Sans SC + Noto Serif SC" },
+      "imagePlan": [],
+      "chartsRequired": false
+    },
+    {
+      "nodeId": "page-workspace-recover",
+      "title": "工作台-中断恢复",
+      "htmlSrc": "pages/workspace-recover.html",
+      "pageIndex": 3,
+      "visualNorthStar": "工作台recover状态，展示中断提示和重新生成/跳过按钮",
+      "compositionPattern": "single-column-focus",
+      "continuityAnchors": { "shellTreatment": "极简顶栏+左侧导航，单栏聚焦", "surfaceModel": "surface-1卡片+border-default", "typographySystem": "Noto Sans SC + Noto Serif SC" },
+      "imagePlan": [],
+      "chartsRequired": false
+    },
+    {
+      "nodeId": "page-artifact-contract",
+      "title": "读者契约卡片",
+      "htmlSrc": "pages/artifact-contract.html",
+      "pageIndex": 4,
+      "visualNorthStar": "结构化展示读者契约artifact：平台、核心体验、主角承诺、必须兑现、禁止方向，底部三按钮(采用/修改/重新生成)",
+      "compositionPattern": "artifact-card",
+      "continuityAnchors": { "shellTreatment": "极简顶栏+左侧导航，单栏聚焦", "surfaceModel": "surface-1卡片+border-default", "typographySystem": "Noto Sans SC + Noto Serif SC" },
+      "imagePlan": [],
+      "chartsRequired": false
+    },
+    {
+      "nodeId": "page-artifact-engine",
+      "title": "故事引擎卡片",
+      "htmlSrc": "pages/artifact-engine.html",
+      "pageIndex": 5,
+      "visualNorthStar": "结构化展示故事引擎artifact：主角欲望、恐惧、价值取向、行动机制、变奏轴、长期线",
+      "compositionPattern": "artifact-card",
+      "continuityAnchors": { "shellTreatment": "极简顶栏+左侧导航，单栏聚焦", "surfaceModel": "surface-1卡片+border-default", "typographySystem": "Noto Sans SC + Noto Serif SC" },
+      "imagePlan": [],
+      "chartsRequired": false
+    },
+    {
+      "nodeId": "page-artifact-storycard",
+      "title": "故事卡卡片",
+      "htmlSrc": "pages/artifact-storycard.html",
+      "pageIndex": 6,
+      "visualNorthStar": "结构化展示故事卡artifact：目标、动机、七步进展、期待、完成标志",
+      "compositionPattern": "artifact-card",
+      "continuityAnchors": { "shellTreatment": "极简顶栏+左侧导航，单栏聚焦", "surfaceModel": "surface-1卡片+border-default", "typographySystem": "Noto Sans SC + Noto Serif SC" },
+      "imagePlan": [],
+      "chartsRequired": false
+    },
+    {
+      "nodeId": "page-artifact-expectation",
+      "title": "期待卡片",
+      "htmlSrc": "pages/artifact-expectation.html",
+      "pageIndex": 7,
+      "visualNorthStar": "结构化展示期待artifact：读者会问、兑现标准、线型、开启于",
+      "compositionPattern": "artifact-card",
+      "continuityAnchors": { "shellTreatment": "极简顶栏+左侧导航，单栏聚焦", "surfaceModel": "surface-1卡片+border-default", "typographySystem": "Noto Sans SC + Noto Serif SC" },
+      "imagePlan": [],
+      "chartsRequired": false
+    },
+    {
+      "nodeId": "page-storycard-picker",
+      "title": "故事卡选择",
+      "htmlSrc": "pages/storycard-picker.html",
+      "pageIndex": 8,
+      "visualNorthStar": "内联故事卡选择列表，每个选项是可点击卡片，AI推荐项有标记，底部确认按钮",
+      "compositionPattern": "single-column-focus",
+      "continuityAnchors": { "shellTreatment": "极简顶栏+左侧导航，单栏聚焦", "surfaceModel": "surface-1卡片+border-default", "typographySystem": "Noto Sans SC + Noto Serif SC" },
+      "imagePlan": [],
+      "chartsRequired": false
+    },
+    {
+      "nodeId": "page-decision-request",
+      "title": "决策请求",
+      "htmlSrc": "pages/decision-request.html",
+      "pageIndex": 9,
+      "visualNorthStar": "决策请求卡片：问题描述+可点击选项列表(radio样式)，每个选项含描述和风险标注，底部确认按钮",
+      "compositionPattern": "single-column-focus",
+      "continuityAnchorsors": { "shellTreatment": "极简顶栏+左侧导航，单栏聚焦", "surfaceModel": "surface-1卡片+border-default", "typographySystem": "Noto Sans SC + Noto Serif SC" },
+      "imagePlan": [],
+      "chartsRequired": false
+    },
+    {
+      "nodeId": "page-chapter-intent",
+      "title": "章节意图",
+      "htmlSrc": "pages/chapter-intent.html",
+      "pageIndex": 10,
+      "visualNorthStar": "章节意图AI预填：展示AI建议的章节目标(可编辑文本框)，底部就按这个写/我要调整按钮",
+      "compositionPattern": "single-column-focus",
+      "continuityAnchors": { "shellTreatment": "极简顶栏+左侧导航，单栏聚焦", "surfaceModel": "surface-1卡片+border-default", "typographySystem": "Noto Sans SC + Noto Serif SC" },
+      "imagePlan": [],
+      "chartsRequired": false
+    },
+    {
+      "nodeId": "page-opening-audit",
+      "title": "开篇检查",
+      "htmlSrc": "pages/opening-audit.html",
+      "pageIndex": 11,
+      "visualNorthStar": "开篇18元素检查清单：通过率进度条+逐项✓✗列表+重点修改建议+底部操作按钮",
+      "compositionPattern": "single-column-focus",
+      "continuityAnchors": { "shellTreatment": "极简顶栏+左侧导航，单栏聚焦", "surfaceModel": "surface-1卡片+border-default", "typographySystem": "Noto Sans SC + Noto Serif SC" },
+      "imagePlan": [],
+      "chartsRequired": false
+    },
+    {
+      "nodeId": "page-vocab-check",
+      "title": "词汇检测",
+      "htmlSrc": "pages/vocab-check.html",
+      "pageIndex": 12,
+      "visualNorthStar": "词汇检测结果：警告条+问题列表(词汇+出现次数+类型标签)，可点击定位",
+      "compositionPattern": "single-column-focus",
+      "continuityAnchors": { "shellTreatment": "极简顶栏+左侧导航，单栏聚焦", "surfaceModel": "surface-1卡片+border-default", "typographySystem": "Noto Sans SC + Noto Serif SC" },
+      "imagePlan": [],
+      "chartsRequired": false
+    },
+    {
+      "nodeId": "page-new-project-1",
+      "title": "新建项目-输入",
+      "htmlSrc": "pages/new-project-1.html",
+      "pageIndex": 13,
+      "visualNorthStar": "对话式新建项目第一屏：标题+一句话描述输入框+AI帮我搭框架按钮",
+      "compositionPattern": "single-column-focus",
+      "continuityAnchors": { "shellTreatment": "极简顶栏+左侧导航，单栏聚焦", "surfaceModel": "surface-1卡片+border-default", "typographySystem": "Noto Sans SC + Noto Serif SC" },
+      "imagePlan": [],
+      "chartsRequired": false
+    },
+    {
+      "nodeId": "page-new-project-2",
+      "title": "新建项目-确认",
+      "htmlSrc": "pages/new-project-2.html",
+      "pageIndex": 14,
+      "visualNorthStar": "AI草稿确认屏：书名(可换建议/我来改)+题材+首个目标(可改)+就这样开始创作/重新描述按钮",
+      "compositionPattern": "single-column-focus",
+      "continuityAnchors": { "shellTreatment": "极简顶栏+左侧导航，单栏聚焦", "surfaceModel": "surface-1卡片+border-default", "typographySystem": "Noto Sans SC + Noto Serif SC" },
+      "imagePlan": [],
+      "chartsRequired": false
+    },
+    {
+      "nodeId": "page-library",
+      "title": "故事库",
+      "htmlSrc": "pages/library.html",
+      "pageIndex": 15,
+      "visualNorthStar": "只读浏览已确认内容：项目列表+展开查看已确认的artifact结构化卡片",
+      "compositionPattern": "list-detail",
+      "continuityAnchors": { "shellTreatment": "极简顶栏+左侧导航", "surfaceModel": "surface-1卡片+border-default", "typographySystem": "Noto Sans SC + Noto Serif SC" },
+      "imagePlan": [],
+      "chartsRequired": false
+    },
+    {
+      "nodeId": "page-settings",
+      "title": "设置",
+      "htmlSrc": "pages/settings.html",
+      "pageIndex": 16,
+      "visualNorthStar": "模型配置：分组式设置项(模型选择/API配置/创作偏好)",
+      "compositionPattern": "settings-panel",
+      "continuityAnchors": { "shellTreatment": "极简顶栏+左侧导航", "surfaceModel": "surface-1卡片+border-default", "typographySystem": "Noto Sans SC + Noto Serif SC" },
+      "imagePlan": [],
+      "chartsRequired": false
+    },
+    {
+      "nodeId": "page-history-drawer",
+      "title": "历史抽屉",
+      "htmlSrc": "pages/history-drawer.html",
+      "pageIndex": 17,
+      "visualNorthStar": "右侧滑出抽屉，覆盖在工作台上：历史任务时间线列表，每项含时间+操作+结果",
+      "compositionPattern": "overlay-drawer",
+      "continuityAnchors": { "shellTreatment": "极简顶栏+左侧导航", "surfaceModel": "surface-2抽屉+border-strong", "typographySystem": "Noto Sans SC + Noto Serif SC" },
+      "imagePlan": [],
+      "chartsRequired": false
+    }
+  ],
+  "assets": [],
+  "wiringPlan": [],
+  "hiddenInteractionPlan": []
+}

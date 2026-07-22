@@ -10,6 +10,10 @@ class WorkspacePathViolationError(TameInkError):
     code = "WORKSPACE_PATH_VIOLATION"
 
 
+class ProjectNotFoundError(TameInkError):
+    code = "PROJECT_NOT_FOUND"
+
+
 class CanonContentError(TameInkError):
     code = "SCHEMA_VALIDATION_FAILED"
 
@@ -44,6 +48,18 @@ class RevisionLockError(TameInkError):
 
 class InvalidTaskTransitionError(TameInkError):
     code = "TASK_TRANSITION_INVALID"
+
+
+class InvalidArtifactTransitionError(TameInkError):
+    code = "ARTIFACT_TRANSITION_INVALID"
+
+
+class ArtifactNotFoundError(TameInkError):
+    code = "ARTIFACT_NOT_FOUND"
+
+
+class ArtifactDecisionError(TameInkError):
+    code = "ARTIFACT_DECISION_INVALID"
 
 
 class TaskNotFoundError(TameInkError):

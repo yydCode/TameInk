@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+# ruff: noqa: E402
 import argparse
 import json
 import os
 import sys
 import time
+from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
@@ -14,20 +16,23 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1] / "backend"
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
+from app.agents.context import ContextManifest, ManifestSource
+from app.agents.contracts import validate_skill_execution
+from app.agents.schemas import SkillExecutionContract
 from app.infrastructure.model import build_model
 from app.infrastructure.secrets import ApiKeyStore
 from app.infrastructure.settings import ModelSettings, SettingsRepository
 from app.infrastructure.usage import (
     Pricing,
-    UsageCaptureHandler,
     UsageBudgetExceededError,
+    UsageCaptureHandler,
     UsageRecorder,
     elapsed_ms,
     utc_now,
 )
 
-
 FIXTURE = Path(__file__).parent / "fixtures" / "continuity_cases.yaml"
+P0_SKILL_FIXTURE = Path(__file__).parent / "fixtures" / "p0_skill_cases.yaml"
 
 
 def load_cases() -> list[dict[str, Any]]:
@@ -42,6 +47,59 @@ def load_cases() -> list[dict[str, Any]]:
         if not isinstance(case["expected"], list) or not case["expected"]:
             raise ValueError("evaluation case must declare expected issue labels")
     return cases
+
+
+def validate_p0_skill_cases() -> int:
+    data = yaml.safe_load(P0_SKILL_FIXTURE.read_text(encoding="utf-8"))
+    cases = data.get("cases") if isinstance(data, dict) else None
+    if not isinstance(cases, list) or len(cases) < 2:
+        raise ValueError("P0 skill fixture must contain at least two cases")
+    expected = {"id", "scenario", "skill", "context", "output"}
+    seen_ids: set[str] = set()
+    ready_payloads: set[str] = set()
+    for case in cases:
+        if not isinstance(case, dict) or set(case) != expected:
+            raise ValueError("P0 skill case schema is invalid")
+        if not isinstance(case["id"], str) or case["id"] in seen_ids:
+            raise ValueError("P0 skill case id is invalid")
+        seen_ids.add(case["id"])
+        context = case["context"]
+        if not isinstance(context, dict) or set(context) != {"path", "content"}:
+            raise ValueError("P0 skill context is invalid")
+        if not isinstance(context["path"], str) or not isinstance(context["content"], str):
+            raise ValueError("P0 skill context is invalid")
+        content = context["content"]
+        source = ManifestSource(
+            path=context["path"],
+            sha256=sha256(content.encode()).hexdigest(),
+            excerpt=content,
+            location=f"chars:0-{len(content)}",
+            quote=content,
+        )
+        output = case["output"]
+        case_skill = case["skill"]
+        if (
+            not isinstance(case_skill, str)
+            or not isinstance(output, dict)
+            or output.get("skill") != case_skill
+        ):
+            raise ValueError("P0 skill output does not match declared skill")
+        enriched = {
+            **output,
+            "references": [
+                {"path": source.path, "location": source.location, "quote": source.quote}
+            ],
+        }
+        parsed = SkillExecutionContract.model_validate(enriched)
+        manifest = ContextManifest(sources=[source], retrieved=[])
+        validate_skill_execution(parsed, manifest, case_skill)
+        if parsed.status == "ready":
+            assert parsed.candidate is not None
+            payload = json.dumps(parsed.candidate.payload, ensure_ascii=False, sort_keys=True)
+            if payload in ready_payloads:
+                raise ValueError("P0 skill fixture candidates must not collapse distinct scenarios")
+            ready_payloads.add(payload)
+    return len(cases)
 
 
 def score(expected: set[str], predicted: set[str]) -> dict[str, float]:
@@ -128,10 +186,18 @@ def main() -> int:
     parser.add_argument("--report", type=Path)
     args = parser.parse_args()
     cases = load_cases()
-    result: dict[str, Any] = {"fixture": str(FIXTURE), "cases": len(cases), "status": "valid"}
+    result: dict[str, Any] = {
+        "fixture": str(FIXTURE),
+        "cases": len(cases),
+        "p0_skill_fixture": str(P0_SKILL_FIXTURE),
+        "p0_skill_cases": validate_p0_skill_cases(),
+        "status": "valid",
+    }
     if args.live:
         settings, api_key = resolve_model()
-        report_path = args.report or Path(__file__).resolve().parents[1] / "output/live/continuity.json"
+        report_path = args.report or (
+            Path(__file__).resolve().parents[1] / "output/live/continuity.json"
+        )
         report_path.parent.mkdir(parents=True, exist_ok=True)
         recorder = build_recorder(report_path, settings.model)
         model = build_model(settings, api_key)

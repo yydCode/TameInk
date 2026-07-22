@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中断恢复 - 驯墨</title>
+    <style id="theme-vars">
+/* ============================================================
+   驯墨 Tame Ink — 品牌设计令牌 · 夜墨主题 v2
+   ============================================================
+   核心理念：作者只做三件事——说想法、看结果、做取舍
+   暗色沉浸主题，单栏聚焦布局
+   ============================================================ */
+
+:root {
+  /* === 品牌主色 — 墨绿 === */
+  --brand: #6aae8d;
+  --brand-hover: #5d9a7d;
+  --brand-active: #4c8a6a;
+  --brand-muted: rgba(106, 174, 141, 0.12);
+  --brand-muted-hover: rgba(106, 174, 141, 0.2);
+  --brand-subtle: rgba(106, 174, 141, 0.06);
+  --brand-foreground: #ffffff;
+
+  /* === 表面色阶 === */
+  --surface-0: #0d1117;
+  --surface-1: #151c25;
+  --surface-2: #1a2332;
+  --surface-3: #222f40;
+  --surface-4: #2d3d52;
+
+  /* === 文本色阶 === */
+  --text-primary: #e6edf3;
+  --text-secondary: #a3b8cc;
+  --text-tertiary: #7a92ab;
+  --text-muted: #546a84;
+  --text-on-brand: #ffffff;
+
+  /* === 边框 === */
+  --border-default: rgba(148, 163, 184, 0.12);
+  --border-strong: rgba(148, 163, 184, 0.22);
+  --border-brand: rgba(106, 174, 141, 0.35);
+
+  /* === 状态色 === */
+  --state-success: #4ade80;
+  --state-success-bg: rgba(74, 222, 128, 0.1);
+  --state-warning: #fbbf24;
+  --state-warning-bg: rgba(251, 191, 36, 0.1);
+  --state-error: #f87171;
+  --state-error-bg: rgba(248, 113, 113, 0.1);
+  --state-info: #60a5fa;
+  --state-info-bg: rgba(96, 165, 250, 0.1);
+
+  /* === 语义别名 === */
+  --background: var(--surface-0);
+  --foreground: var(--text-primary);
+  --color-background: var(--surface-0);
+  --color-foreground: var(--text-primary);
+  --color-card: var(--surface-2);
+  --color-card-foreground: var(--text-primary);
+  --color-popover: var(--surface-3);
+  --color-popover-foreground: var(--text-primary);
+  --color-primary: var(--brand);
+  --color-primary-foreground: var(--brand-foreground);
+  --color-muted: var(--surface-3);
+  --color-muted-foreground: var(--text-secondary);
+  --color-border: var(--border-default);
+  --color-input: var(--border-default);
+  --color-ring: var(--brand);
+
+  /* === 圆角 === */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* === 字体 === */
+  --font-sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-serif: "Noto Serif SC", "Songti SC", "SimSun", Georgia, serif;
+  --font-mono: "SFMono-Regular", "JetBrains Mono", "Fira Code", Consolas, monospace;
+
+  /* === 字号 === */
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 18px;
+  --text-2xl: 22px;
+  --text-3xl: 28px;
+  --text-4xl: 36px;
+
+  /* === 间距 === */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* === 布局 === */
+  --sidebar-width: 200px;
+  --topbar-height: 48px;
+  --content-max-width: 760px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  min-height: 100vh;
+  color: var(--text-primary);
+  background: var(--surface-0);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 { font-family: var(--font-serif); font-weight: 700; line-height: 1.25; }
+a { color: var(--brand); text-decoration: none; transition: color 0.15s; }
+a:hover { color: var(--brand-hover); }
+button { color: inherit; font: inherit; cursor: pointer; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface-4); border-radius: 9999px; }
+::selection { background: var(--brand-muted); color: var(--brand-foreground); }
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--color-card);
+    --color-card-foreground: var(--color-card-foreground);
+    --color-popover: var(--color-popover);
+    --color-popover-foreground: var(--color-popover-foreground);
+    --color-primary: var(--color-primary);
+    --color-primary-foreground: var(--color-primary-foreground);
+    --color-muted: var(--color-muted);
+    --color-muted-foreground: var(--color-muted-foreground);
+    --color-border: var(--color-border);
+    --color-input: var(--color-input);
+    --color-ring: var(--color-ring);
+    --radius-sm: var(--radius-sm);
+    --radius-md: var(--radius-md);
+    --radius-lg: var(--radius-lg);
+    --radius-xl: var(--radius-xl);
+  }
+  @layer base {
+    body { background: var(--color-background); color: var(--color-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style id="semantic-token-fallback">
+      .bg-background { background-color: var(--background); }
+      .text-background { color: var(--background); }
+      .border-background { border-color: var(--background); }
+      .ring-background { --tw-ring-color: var(--background); }
+      .bg-foreground { background-color: var(--foreground); }
+      .text-foreground { color: var(--foreground); }
+      .border-foreground { border-color: var(--foreground); }
+      .ring-foreground { --tw-ring-color: var(--foreground); }
+      .bg-card { background-color: var(--color-card); }
+      .text-card { color: var(--color-card); }
+      .border-card { border-color: var(--color-card); }
+      .ring-card { --tw-ring-color: var(--color-card); }
+      .bg-card-foreground { background-color: var(--color-card-foreground); }
+      .text-card-foreground { color: var(--color-card-foreground); }
+      .border-card-foreground { border-color: var(--color-card-foreground); }
+      .ring-card-foreground { --tw-ring-color: var(--color-card-foreground); }
+      .bg-popover { background-color: var(--color-popover); }
+      .text-popover { color: var(--color-popover); }
+      .border-popover { border-color: var(--color-popover); }
+      .ring-popover { --tw-ring-color: var(--color-popover); }
+      .bg-popover-foreground { background-color: var(--color-popover-foreground); }
+      .text-popover-foreground { color: var(--color-popover-foreground); }
+      .border-popover-foreground { border-color: var(--color-popover-foreground); }
+      .ring-popover-foreground { --tw-ring-color: var(--color-popover-foreground); }
+      .bg-primary { background-color: var(--color-primary); }
+      .text-primary { color: var(--color-primary); }
+      .border-primary { border-color: var(--color-primary); }
+      .ring-primary { --tw-ring-color: var(--color-primary); }
+      .bg-primary-foreground { background-color: var(--color-primary-foreground); }
+      .text-primary-foreground { color: var(--color-primary-foreground); }
+      .border-primary-foreground { border-color: var(--color-primary-foreground); }
+      .ring-primary-foreground { --tw-ring-color: var(--color-primary-foreground); }
+      .bg-muted { background-color: var(--color-muted); }
+      .text-muted { color: var(--color-muted); }
+      .border-muted { border-color: var(--color-muted); }
+      .ring-muted { --tw-ring-color: var(--color-muted); }
+      .bg-muted-foreground { background-color: var(--color-muted-foreground); }
+      .text-muted-foreground { color: var(--color-muted-foreground); }
+      .border-muted-foreground { border-color: var(--color-muted-foreground); }
+      .ring-muted-foreground { --tw-ring-color: var(--color-muted-foreground); }
+      .bg-border { background-color: var(--color-border); }
+      .text-border { color: var(--color-border); }
+      .border-border { border-color: var(--color-border); }
+      .ring-border { --tw-ring-color: var(--color-border); }
+      .bg-input { background-color: var(--color-input); }
+      .text-input { color: var(--color-input); }
+      .border-input { border-color: var(--color-input); }
+      .ring-input { --tw-ring-color: var(--color-input); }
+      .bg-ring { background-color: var(--color-ring); }
+      .text-ring { color: var(--color-ring); }
+      .border-ring { border-color: var(--color-ring); }
+      .ring-ring { --tw-ring-color: var(--color-ring); }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+
+    <!-- ====== 共享项目外壳样式（来自 project-shell.html） ====== -->
+    <style id="project-shell">
+  /* === 应用外壳整体布局 === */
+  .app-shell {
+    display: grid;
+    grid-template-rows: var(--topbar-height) 1fr;
+    grid-template-columns: var(--sidebar-width) 1fr;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* === 顶栏 === */
+  .topbar {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: var(--topbar-height);
+    padding: 0 var(--space-5);
+    background: var(--surface-1);
+    border-bottom: 1px solid var(--border-default);
+  }
+
+  /* 品牌标识区 */
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .brand-mark {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: var(--brand);
+    color: var(--brand-foreground);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-serif);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    line-height: 1;
+  }
+  .brand-name {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.1;
+  }
+  .brand-name .name-main {
+    font-family: var(--font-serif);
+    font-size: var(--text-base);
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+  .brand-name .name-sub {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+  }
+
+  /* 顶栏右侧 */
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+  .connection-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+  }
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--state-success);
+    box-shadow: 0 0 0 3px var(--state-success-bg);
+  }
+  .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-tertiary);
+    transition: background 0.15s, color 0.15s;
+  }
+  .icon-btn:hover {
+    background: var(--surface-2);
+    color: var(--text-secondary);
+  }
+  .icon-btn i { width: 16px; height: 16px; }
+
+  /* === 侧边栏 === */
+  .sidebar {
+    background: var(--surface-1);
+    border-right: 1px solid var(--border-default);
+    padding: var(--space-4) var(--space-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    overflow-y: auto;
+  }
+
+  /* 新建故事按钮 */
+  .new-story-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    width: 100%;
+    height: 36px;
+    background: var(--brand-muted);
+    color: var(--brand);
+    border: 1px solid var(--border-brand);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    transition: background 0.15s, color 0.15s;
+  }
+  .new-story-btn:hover {
+    background: var(--brand-muted-hover);
+    color: var(--brand-hover);
+  }
+  .new-story-btn i { width: 16px; height: 16px; }
+
+  /* 侧边栏导航分隔 */
+  .sidebar-divider {
+    height: 1px;
+    background: var(--border-default);
+    margin: var(--space-1) 0;
+  }
+
+  /* 导航项 */
+  .nav-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    height: 36px;
+    padding: 0 var(--space-3);
+    background: transparent;
+    border: none;
+    border-left: 3px solid transparent;
+    border-radius: var(--radius-sm);
+    color: var(--text-tertiary);
+    font-size: var(--text-sm);
+    text-align: left;
+    transition: background 0.15s, color 0.15s;
+  }
+  .nav-item i { width: 16px; height: 16px; flex-shrink: 0; }
+  .nav-item:hover {
+    color: var(--text-secondary);
+    background: var(--surface-2);
+  }
+  /* 激活态 */
+  .nav-item[data-active="true"] {
+    color: var(--brand);
+    background: var(--brand-subtle);
+    border-left: 3px solid var(--brand);
+    font-weight: 600;
+  }
+
+  /* === 主内容区 === */
+  .main-content {
+    height: 100%;
+    overflow-y: auto;
+    background: var(--surface-0);
+  }
+
+  /* === 单栏聚焦容器 === */
+  .focus-container {
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    padding: var(--space-8) var(--space-6);
+  }
+    </style>
+
+    <!-- ====== 中断恢复页专属样式 ====== -->
+    <style id="page-recover">
+  /* === 双栏布局：左卡片 + 右期待热力图 === */
+  .recover-layout {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: var(--space-6);
+    align-items: start;
+  }
+  @media (max-width: 720px) {
+    .recover-layout { grid-template-columns: 1fr; }
+  }
+
+  /* === 中断恢复卡片 === */
+  .recover-card {
+    background: var(--surface-2);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  /* 标题条：mono 字体、三级文字色、底部分隔线 */
+  .card-header {
+    display: flex;
+    align-items: center;
+    padding: var(--space-3) var(--space-5);
+    border-bottom: 1px solid var(--border-default);
+    background: var(--surface-1);
+  }
+  .card-title {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+    letter-spacing: 0.3px;
+  }
+  /* 警告区域：居中 */
+  .card-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-10) var(--space-6) var(--space-8);
+    text-align: center;
+  }
+  .alert-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--state-warning-bg);
+    margin-bottom: var(--space-2);
+  }
+  .alert-icon i {
+    width: 32px;
+    height: 32px;
+    color: var(--state-warning);
+  }
+  .alert-text {
+    font-size: var(--text-base);
+    color: var(--text-secondary);
+  }
+  .alert-hint {
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+  }
+
+  /* 按钮组 */
+  .action-group {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-4);
+    margin-top: var(--space-4);
+  }
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    height: 36px;
+    padding: 0 var(--space-5);
+    background: var(--brand);
+    color: var(--brand-foreground);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    transition: background 0.15s;
+  }
+  .btn-primary:hover { background: var(--brand-hover); }
+  .btn-primary i { width: 16px; height: 16px; }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    height: 36px;
+    padding: 0 var(--space-5);
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    transition: background 0.15s, color 0.15s;
+  }
+  .btn-secondary:hover {
+    background: var(--surface-2);
+    color: var(--text-primary);
+  }
+
+  /* === 期待热力图面板 === */
+  .expectation-panel {
+    background: var(--surface-2);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+  }
+  .panel-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .panel-header i {
+    width: 16px;
+    height: 16px;
+    color: var(--brand);
+  }
+  .panel-title {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+  .panel-sub {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    margin: 2px 0 var(--space-3) 22px;
+  }
+  .heatmap {
+    display: grid;
+    grid-template-columns: 48px repeat(7, 1fr);
+    gap: 3px;
+    margin-bottom: var(--space-3);
+  }
+  .heatmap .col-label,
+  .heatmap .row-label {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+  }
+  .heatmap .col-label {
+    justify-content: center;
+    height: 16px;
+  }
+  .heatmap .row-label {
+    justify-content: flex-end;
+    padding-right: var(--space-2);
+  }
+  .heat-cell {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: var(--radius-xs);
+    background: var(--surface-3);
+  }
+  .heat-cell[data-level="1"] { background: rgba(106, 174, 141, 0.25); }
+  .heat-cell[data-level="2"] { background: rgba(106, 174, 141, 0.45); }
+  .heat-cell[data-level="3"] { background: rgba(106, 174, 141, 0.7); }
+  .heat-cell[data-level="4"] { background: var(--brand); }
+  .legend {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+  }
+  .legend-cells {
+    display: flex;
+    gap: 3px;
+  }
+  .legend-cells .heat-cell {
+    width: 12px;
+    height: 12px;
+    aspect-ratio: auto;
+  }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+    <main>
+<div class="app-shell">
+
+  <!-- ===== 顶栏 ===== -->
+  <header class="topbar">
+    <!-- 左侧：品牌标识 -->
+    <div class="brand">
+      <div class="brand-mark">墨</div>
+      <div class="brand-name">
+        <span class="name-main">驯墨</span>
+        <span class="name-sub">Tame Ink</span>
+      </div>
+    </div>
+
+    <!-- 右侧：连接状态 + 历史 -->
+    <div class="topbar-right">
+      <div class="connection-status">
+        <span class="status-dot"></span>
+        <span>已连接</span>
+      </div>
+      <button class="icon-btn" data-dom-id="open-history" aria-label="历史记录">
+        <i data-lucide="history"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- ===== 侧边栏 ===== -->
+  <aside class="sidebar">
+    <!-- 新建故事按钮 -->
+    <button class="new-story-btn" type="button">
+      <i data-lucide="plus"></i>
+      <span>新建故事</span>
+    </button>
+
+    <div class="sidebar-divider"></div>
+
+    <!-- 导航项（仅 3 项：工作台 / 故事库 / 设置） -->
+    <nav class="nav-list">
+      <button class="nav-item" type="button" data-nav-key="workspace" data-active="true">
+        <i data-lucide="layout-dashboard"></i>
+        <span>工作台</span>
+      </button>
+      <button class="nav-item" type="button" data-nav-key="library">
+        <i data-lucide="book-open"></i>
+        <span>故事库</span>
+      </button>
+      <button class="nav-item" type="button" data-nav-key="settings">
+        <i data-lucide="settings"></i>
+        <span>设置</span>
+      </button>
+    </nav>
+  </aside>
+
+  <!-- ===== 主内容区 ===== -->
+  <main class="main-content">
+    <!-- 单栏聚焦容器 -->
+    <div class="focus-container">
+      <!-- 双栏：左中断恢复卡片 + 右期待热力图 -->
+      <div class="recover-layout">
+
+        <!-- ===== 左：中断恢复卡片 ===== -->
+        <section class="recover-card">
+          <!-- 标题条 -->
+          <div class="card-header">
+            <span class="card-title">上一次生成未完成</span>
+          </div>
+
+          <!-- 警告区域 -->
+          <div class="card-body">
+            <!-- 居中警告图标 -->
+            <div class="alert-icon">
+              <i data-lucide="alert-triangle"></i>
+            </div>
+
+            <!-- 说明文字 -->
+            <p class="alert-text">读者契约的生成任务中途中断了。</p>
+            <p class="alert-hint">你可以重新生成，或者跳过这一步继续后续流程。</p>
+
+            <!-- 按钮组 -->
+            <div class="action-group">
+              <!-- 主按钮：重新生成 -->
+              <button class="btn-primary" type="button" data-action="regenerate">
+                <i data-lucide="refresh-cw"></i>
+                <span>重新生成</span>
+              </button>
+              <!-- 次按钮：跳过这步 -->
+              <button class="btn-secondary" type="button" data-action="skip">
+                <span>跳过这步</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== 右：期待热力图 ===== -->
+        <aside class="expectation-panel">
+          <!-- 面板标题 -->
+          <div class="panel-header">
+            <i data-lucide="flame"></i>
+            <span class="panel-title">读者期待</span>
+          </div>
+          <p class="panel-sub">各维度强度热力</p>
+
+          <!-- 热力网格：行=维度，列=章节 -->
+          <div class="heatmap" role="img" aria-label="读者期待热力图">
+            <!-- 表头：空位 + 7 个章节编号 -->
+            <span class="col-label"></span>
+            <span class="col-label">1</span>
+            <span class="col-label">2</span>
+            <span class="col-label">3</span>
+            <span class="col-label">4</span>
+            <span class="col-label">5</span>
+            <span class="col-label">6</span>
+            <span class="col-label">7</span>
+
+            <!-- 情感 -->
+            <span class="row-label">情感</span>
+            <span class="heat-cell" data-level="3"></span>
+            <span class="heat-cell" data-level="4"></span>
+            <span class="heat-cell" data-level="2"></span>
+            <span class="heat-cell" data-level="3"></span>
+            <span class="heat-cell" data-level="4"></span>
+            <span class="heat-cell" data-level="3"></span>
+            <span class="heat-cell" data-level="2"></span>
+
+            <!-- 节奏 -->
+            <span class="row-label">节奏</span>
+            <span class="heat-cell" data-level="2"></span>
+            <span class="heat-cell" data-level="3"></span>
+            <span class="heat-cell" data-level="4"></span>
+            <span class="heat-cell" data-level="3"></span>
+            <span class="heat-cell" data-level="2"></span>
+            <span class="heat-cell" data-level="3"></span>
+            <span class="heat-cell" data-level="4"></span>
+
+            <!-- 悬念 -->
+            <span class="row-label">悬念</span>
+            <span class="heat-cell" data-level="3"></span>
+            <span class="heat-cell" data-level="3"></span>
+            <span class="heat-cell" data-level="4"></span>
+            <span class="heat-cell" data-level="4"></span>
+            <span class="heat-cell" data-level="3"></span>
+            <span class="heat-cell" data-level="2"></span>
+            <span class="heat-cell" data-level="3"></span>
+
+            <!-- 人物 -->
+            <span class="row-label">人物</span>
+            <span class="heat-cell" data-level="2"></span>
+            <span class="heat-cell" data-level="3"></span>
+            <span class="heat-cell" data-level="3"></span>
+            <span class="heat-cell" data-level="4"></span>
+            <span class="heat-cell" data-level="4"></span>
+            <span class="heat-cell" data-level="3"></span>
+            <span class="heat-cell" data-level="3"></span>
+
+            <!-- 世界 -->
+            <span class="row-label">世界</span>
+            <span class="heat-cell" data-level="1"></span>
+            <span class="heat-cell" data-level="2"></span>
+            <span class="heat-cell" data-level="2"></span>
+            <span class="heat-cell" data-level="3"></span>
+            <span class="heat-cell" data-level="2"></span>
+            <span class="heat-cell" data-level="2"></span>
+            <span class="heat-cell" data-level="1"></span>
+
+            <!-- 文笔 -->
+            <span class="row-label">文笔</span>
+            <span class="heat-cell" data-level="3"></span>
+            <span class="heat-cell" data-level="3"></span>
+            <span class="heat-cell" data-level="2"></span>
+            <span class="heat-cell" data-level="3"></span>
+            <span class="heat-cell" data-level="4"></span>
+            <span class="heat-cell" data-level="3"></span>
+            <span class="heat-cell" data-level="4"></span>
+          </div>
+
+          <!-- 图例：弱 → 强 -->
+          <div class="legend">
+            <span>弱</span>
+            <div class="legend-cells">
+              <span class="heat-cell" data-level="0"></span>
+              <span class="heat-cell" data-level="1"></span>
+              <span class="heat-cell" data-level="2"></span>
+              <span class="heat-cell" data-level="3"></span>
+              <span class="heat-cell" data-level="4"></span>
+            </div>
+            <span>强</span>
+          </div>
+        </aside>
+
+      </div>
+    </div>
+  </main>
+
+</div>
+    </main>
+    <script>lucide.createIcons();</script>
+</body>
+</html>

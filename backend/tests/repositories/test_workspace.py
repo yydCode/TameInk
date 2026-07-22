@@ -2,7 +2,11 @@ from pathlib import Path
 
 import pytest
 
-from app.domain.errors import InvalidProjectIdError, WorkspacePathViolationError
+from app.domain.errors import (
+    InvalidProjectIdError,
+    ProjectNotFoundError,
+    WorkspacePathViolationError,
+)
 from app.repositories.workspace import WorkspaceRepository
 
 
@@ -27,6 +31,9 @@ def test_creates_the_confirmed_project_layout(tmp_path: Path) -> None:
         "canon/characters",
         "canon/world",
         "canon/chapters",
+        "canon/actual-events",
+        "commitments/story-cards",
+        "commitments/expectations",
         "memory/summaries/volumes",
         "memory/summaries/chapters",
         "memory/facts",
@@ -38,6 +45,34 @@ def test_creates_the_confirmed_project_layout(tmp_path: Path) -> None:
         ".tame-ink/runs",
     ):
         assert (project / relative).is_dir()
+
+
+def test_deletes_an_existing_project(tmp_path: Path) -> None:
+    workspace = WorkspaceRepository(tmp_path)
+    project = workspace.create_project("story-01")
+    (project / "project.yaml").write_text("id: story-01\n")
+    other = workspace.create_project("story-02")
+    (other / "project.yaml").write_text("id: story-02\n")
+
+    workspace.delete_project("story-01")
+
+    assert not project.exists()
+    assert other.is_dir()
+    assert workspace.project_ids() == ["story-02"]
+
+
+def test_delete_rejects_unknown_project(tmp_path: Path) -> None:
+    workspace = WorkspaceRepository(tmp_path)
+
+    with pytest.raises(ProjectNotFoundError):
+        workspace.delete_project("missing")
+
+
+def test_delete_rejects_invalid_project_id(tmp_path: Path) -> None:
+    workspace = WorkspaceRepository(tmp_path)
+
+    with pytest.raises(InvalidProjectIdError):
+        workspace.delete_project("../escape")
 
 
 @pytest.mark.parametrize("relative", ["../other/file.md", "/tmp/file.md"])

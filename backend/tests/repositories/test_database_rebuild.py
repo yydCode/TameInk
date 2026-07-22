@@ -45,7 +45,7 @@ def test_initialization_is_repeatable_and_records_schema_version(tmp_path: Path)
             connection.execute(
                 "SELECT value FROM metadata WHERE key = 'schema_version'"
             ).fetchone()[0]
-            == "6"
+            == "7"
         )
 
 
@@ -70,7 +70,7 @@ def test_initialization_migrates_real_v1_database_without_losing_fts_data(tmp_pa
             connection.execute(
                 "SELECT value FROM metadata WHERE key = 'schema_version'"
             ).fetchone()[0]
-            == "6"
+            == "7"
         )
         assert (
             connection.execute(
@@ -114,7 +114,7 @@ def test_initialization_migrates_v2_and_adds_commercial_observations(tmp_path: P
             connection.execute(
                 "SELECT value FROM metadata WHERE key = 'schema_version'"
             ).fetchone()[0]
-            == "6"
+            == "7"
         )
         assert (
             connection.execute(
@@ -156,7 +156,7 @@ def test_initialization_migrates_v3_tasks_without_losing_rows(tmp_path: Path) ->
         version = connection.execute(
             "SELECT value FROM metadata WHERE key = 'schema_version'"
         ).fetchone()[0]
-    assert version == "6"
+    assert version == "7"
     assert row == ("manual", None, None)
 
 
@@ -177,11 +177,94 @@ def test_initialization_migrates_v5_database_with_existing_tasks(tmp_path: Path)
         table = connection.execute(
             "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'task_logs'"
         ).fetchone()
-    assert version == "6"
+    assert version == "7"
     assert table == ("task_logs",)
 
 
-@pytest.mark.parametrize("version", ["0", "7", "future"])
+def test_initialization_migrates_v6_to_v7_without_losing_tasks(tmp_path: Path) -> None:
+    _, _, database = setup_project(tmp_path)
+    database.initialize("story-01")
+    with database.connect("story-01") as connection:
+        connection.execute(
+            """INSERT INTO tasks(
+                id, project_id, kind, purpose, status, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (
+                "00000000-0000-0000-0000-000000000001",
+                "story-01",
+                "read",
+                "manual",
+                "completed",
+                "2026-01-01T00:00:00+00:00",
+                "2026-01-01T00:00:01+00:00",
+            ),
+        )
+        connection.execute("DROP TABLE creative_artifacts")
+        connection.execute("DROP TABLE artifact_decisions")
+        connection.execute("UPDATE metadata SET value = '6' WHERE key = 'schema_version'")
+
+    database.initialize("story-01")
+
+    with database.connect("story-01") as connection:
+        version = connection.execute(
+            "SELECT value FROM metadata WHERE key = 'schema_version'"
+        ).fetchone()[0]
+        task_count = connection.execute("SELECT COUNT(*) FROM tasks").fetchone()[0]
+        objects = {
+            row[0]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type IN ('table', 'index', 'trigger')"
+            )
+        }
+    assert version == "7"
+    assert task_count == 1
+    assert {
+        "creative_artifacts",
+        "artifact_decisions",
+        "enforce_artifact_status_transition",
+        "protect_artifact_decision_updates",
+    } <= objects
+
+
+def test_v6_migration_rolls_back_new_objects_and_can_retry_after_failure(
+    tmp_path: Path,
+) -> None:
+    _, _, database = setup_project(tmp_path)
+    database.initialize("story-01")
+    with database.connect("story-01") as connection:
+        connection.execute("DROP TABLE creative_artifacts")
+        connection.execute("DROP TABLE artifact_decisions")
+        connection.execute("CREATE TABLE creative_artifacts (id TEXT PRIMARY KEY)")
+        connection.execute("UPDATE metadata SET value = '6' WHERE key = 'schema_version'")
+
+    with pytest.raises(sqlite3.OperationalError):
+        database.initialize("story-01")
+
+    with database.connect("story-01") as connection:
+        version = connection.execute(
+            "SELECT value FROM metadata WHERE key = 'schema_version'"
+        ).fetchone()[0]
+        decisions = connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'artifact_decisions'"
+        ).fetchone()
+        columns = [row[1] for row in connection.execute("PRAGMA table_info(creative_artifacts)")]
+        connection.execute("DROP TABLE creative_artifacts")
+    assert version == "6"
+    assert decisions is None
+    assert columns == ["id"]
+
+    database.initialize("story-01")
+
+    with database.connect("story-01") as connection:
+        assert (
+            connection.execute(
+                "SELECT value FROM metadata WHERE key = 'schema_version'"
+            ).fetchone()[0]
+            == "7"
+        )
+
+
+@pytest.mark.parametrize("version", ["0", "8", "future"])
 def test_initialization_rejects_unknown_schema_versions(tmp_path: Path, version: str) -> None:
     _, _, database = setup_project(tmp_path)
     with database.connect("story-01") as connection:
@@ -254,7 +337,7 @@ def test_v1_migration_rolls_back_all_ddl_and_can_retry_after_failure(tmp_path: P
             connection.execute(
                 "SELECT value FROM metadata WHERE key = 'schema_version'"
             ).fetchone()[0]
-            == "6"
+            == "7"
         )
         objects = {
             row[0]
@@ -322,6 +405,24 @@ def test_rebuild_rejects_formal_directory_symlink_escape(tmp_path: Path) -> None
 
     assert raised.value.code == "WORKSPACE_PATH_VIOLATION"
     assert database.search("story-01", "泄漏内容") == []
+
+
+def test_rebuild_rejects_commitment_root_symlink_escape(tmp_path: Path) -> None:
+    workspace, _, database = setup_project(tmp_path)
+    commitments = workspace.resolve_project_path("story-01", "commitments")
+    for child in commitments.iterdir():
+        child.rmdir()
+    commitments.rmdir()
+    outside = tmp_path / "outside-commitments"
+    outside.mkdir()
+    (outside / "reader-contract.yaml").write_text("core_experience: 外部泄漏")
+    commitments.symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(WorkspacePathViolationError) as raised:
+        database.rebuild("story-01")
+
+    assert raised.value.code == "WORKSPACE_PATH_VIOLATION"
+    assert database.search("story-01", "外部泄漏") == []
 
 
 @pytest.mark.parametrize("query", ["abc OR", '"abc', "abc:def"])

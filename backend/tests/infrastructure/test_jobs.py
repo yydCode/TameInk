@@ -1,12 +1,17 @@
+from datetime import UTC, datetime
 from pathlib import Path
 
-from app.agents.schemas import StorySetting
+from app.agents.schemas import SkillExecutionContract, StorySetting
+from app.domain.creation import CreativeBrief
+from app.domain.project import Project
 from app.domain.task import TaskKind, TaskPurpose
-from app.infrastructure.jobs import AgentJobKind, DurableAgentQueue
+from app.infrastructure.jobs import AgentJobKind, DurableAgentQueue, _run_job
+from app.repositories.canon import CanonRepository
 from app.repositories.database import DatabaseRepository
 from app.repositories.drafts import DraftRepository
 from app.repositories.tasks import TasksRepository
 from app.repositories.workspace import WorkspaceRepository
+from app.workflows.creative import CreativeService
 from app.workflows.new_book import NewBookRequest, NewBookService
 from app.workflows.task_service import TaskService
 
@@ -103,3 +108,66 @@ def test_running_job_cancels_after_current_model_boundary_and_discards_candidate
         ("worker", "worker.cancelled"),
         ("task", "task.status_changed"),
     ]
+
+
+def test_creative_skill_job_uses_skill_runner_and_stores_only_candidate(tmp_path: Path) -> None:
+    workspace = WorkspaceRepository(tmp_path)
+    workspace.create_project("creative-job")
+    CanonRepository(workspace).write_project(
+        Project(id="creative-job", title="创作任务", language="zh-CN")
+    )
+    now = datetime.now(UTC)
+    CanonRepository(workspace).write_creative_brief(
+        "creative-job",
+        CreativeBrief(
+            version=1,
+            platform="fanqie",
+            genre_scope="都市",
+            initial_intent="写一个都市成长故事。",
+            first_story_goal="完成第一笔交易。",
+            constraints=["第三人称"],
+            material_boundaries=["仅使用授权素材"],
+            created_at=now,
+            updated_at=now,
+        ),
+    )
+    DatabaseRepository(workspace).initialize("creative-job")
+    service = CreativeService(workspace)
+    task = service.create_skill_task("creative-job", "webnovel-design-reader-contract", {})
+    TaskService(TasksRepository(DatabaseRepository(workspace), "creative-job")).start(task.id)
+
+    class Runner:
+        def execute_skill(self, skill, payload):
+            assert skill == "webnovel-design-reader-contract"
+            assert payload == {"instruction": "设计读者契约"}
+            return SkillExecutionContract.model_validate(
+                {
+                    "id": "reader-result",
+                    "skill": skill,
+                    "status": "ready",
+                    "references": [
+                        {"path": "project.yaml", "location": "chars:0-1", "quote": "i"}
+                    ],
+                    "evidence": [],
+                    "candidate": {
+                        "artifact_kind": "reader_contract",
+                        "summary": "读者契约",
+                        "payload": {"id": "reader-1"},
+                    },
+                    "decision_requests": [],
+                    "effects": [],
+                }
+            )
+
+    result = _run_job(
+        AgentJobKind.CREATIVE_SKILL,
+        {"skill": "webnovel-design-reader-contract", "payload": {"instruction": "设计读者契约"}},
+        workspace,
+        "creative-job",
+        task.id,
+        Runner(),  # type: ignore[arg-type]
+    )
+
+    assert result.status.value == "awaiting_approval"
+    contract = workspace.project_path("creative-job") / "commitments/reader-contract.yaml"
+    assert not contract.exists()

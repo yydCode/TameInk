@@ -1,0 +1,1345 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>设置 — 驯墨</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style id="theme-vars">
+    :root {
+      --nw-primary: #1f6b54; --nw-primary-light: #2d8a6e; --nw-primary-dark: #155440;
+      --nw-primary-50: rgba(31,107,84,0.08); --nw-primary-100: rgba(31,107,84,0.15); --nw-primary-200: rgba(31,107,84,0.25);
+      --nw-amber: #d4a04a; --nw-amber-light: #e6b85c; --nw-amber-100: rgba(212,160,74,0.12);
+      --nw-ink-blue: #3b5998; --nw-ink-blue-light: #4a6ab0; --nw-ink-blue-100: rgba(59,89,152,0.12);
+      --nw-bg-base: #0d1117; --nw-bg-surface: #161b22; --nw-bg-elevated: #1c2333; --nw-bg-overlay: #222d3d;
+      --nw-bg-hover: rgba(255,255,255,0.04); --nw-bg-active: rgba(255,255,255,0.07);
+      --nw-border-default: rgba(255,255,255,0.08); --nw-border-subtle: rgba(255,255,255,0.04); --nw-border-strong: rgba(255,255,255,0.15);
+      --nw-text-primary: #e6edf3; --nw-text-secondary: #8b949e; --nw-text-tertiary: #5a6370; --nw-text-inverse: #0d1117; --nw-text-link: #2d8a6e;
+      --state-success: #2ea043; --state-warning: #d29922; --state-error: #f85149; --state-info: #58a6ff;
+      --fact-canon: #2ea043; --fact-canon-bg: rgba(46,160,67,0.08);
+      --fact-commitment: #58a6ff; --fact-commitment-bg: rgba(88,166,255,0.08);
+      --fact-candidate: #d29922; --fact-candidate-bg: rgba(210,153,34,0.08);
+      --fact-hypothesis: #a371f7; --fact-hypothesis-bg: rgba(163,113,247,0.08);
+      --radius-sm: 4px; --radius-md: 8px; --radius-lg: 12px; --radius-full: 9999px;
+      --font-display: 'Noto Serif SC','Georgia',serif; --font-body: 'Inter','Noto Sans SC',-apple-system,sans-serif; --font-mono: 'JetBrains Mono',monospace;
+      --text-xs:11px; --text-sm:13px; --text-base:14px; --text-lg:16px; --text-xl:20px; --text-2xl:24px; --text-3xl:30px;
+      --leading-tight:1.25; --leading-normal:1.6; --leading-relaxed:1.75;
+    }
+  </style>
+  <style id="semantic-token-fallback">
+    :root {
+      --nw-background: var(--nw-bg-base); --nw-foreground: var(--nw-text-primary);
+      --nw-card: var(--nw-bg-surface); --nw-card-foreground: var(--nw-text-primary);
+      --nw-popover: var(--nw-bg-elevated); --nw-popover-foreground: var(--nw-text-primary);
+      --nw-primary-foreground: #ffffff; --nw-muted: var(--nw-bg-elevated); --nw-muted-foreground: var(--nw-text-secondary);
+      --nw-border: var(--nw-border-default); --nw-input: var(--nw-border-default); --nw-ring: var(--nw-primary);
+    }
+  </style>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style type="text/tailwindcss">
+    @theme inline {
+      --color-nw-primary: var(--nw-primary); --color-nw-primary-light: var(--nw-primary-light); --color-nw-primary-dark: var(--nw-primary-dark);
+      --color-nw-amber: var(--nw-amber); --color-nw-amber-light: var(--nw-amber-light);
+      --color-nw-bg-base: var(--nw-bg-base); --color-nw-bg-surface: var(--nw-bg-surface); --color-nw-bg-elevated: var(--nw-bg-elevated);
+      --color-nw-bg-overlay: var(--nw-bg-overlay); --color-nw-bg-hover: var(--nw-bg-hover);
+      --color-nw-border-default: var(--nw-border-default); --color-nw-border-strong: var(--nw-border-strong);
+      --color-nw-text-primary: var(--nw-text-primary); --color-nw-text-secondary: var(--nw-text-secondary); --color-nw-text-tertiary: var(--nw-text-tertiary);
+      --color-state-success: var(--state-success); --color-state-warning: var(--state-warning); --color-state-error: var(--state-error); --color-state-info: var(--state-info);
+      --font-family-display: var(--font-display); --font-family-body: var(--font-body); --font-family-mono: var(--font-mono);
+      --radius-sm: var(--radius-sm); --radius-md: var(--radius-md); --radius-lg: var(--radius-lg);
+    }
+  </style>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--nw-bg-base);
+      color: var(--nw-text-primary);
+      font-family: var(--font-body);
+      font-size: var(--text-base);
+      line-height: var(--leading-normal);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.16); }
+
+    /* ===== Sidebar (must use !important) ===== */
+    .mo-sidebar { width: 240px !important; min-width: 240px !important; flex-shrink: 0 !important; background: var(--nw-bg-overlay) !important; border-right: 1px solid var(--nw-border-default) !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; min-height: 100vh !important; align-self: flex-start !important; position: sticky !important; top: 0 !important; }
+    .mo-sidebar .mo-brand { display: flex !important; align-items: center !important; gap: 12px !important; padding: 24px 24px 28px !important; color: #f5f7fa !important; }
+    .mo-sidebar .mo-brand-name { font-family: 'Noto Serif SC', serif !important; font-size: 18px !important; font-weight: 600 !important; letter-spacing: 2px !important; }
+    .mo-sidebar .mo-nav { flex: 1 !important; padding: 0 12px !important; overflow-y: auto !important; overflow-x: hidden !important; }
+    .mo-sidebar .mo-nav a { display: flex !important; align-items: center !important; gap: 12px !important; min-width: 0 !important; height: 38px !important; padding: 0 14px !important; margin-bottom: 4px !important; border-radius: 10px !important; color: #8c98a8 !important; background: transparent !important; font-size: 14px !important; line-height: 20px !important; text-decoration: none !important; box-sizing: border-box !important; }
+    .mo-sidebar .mo-nav a:hover { background: #1d232b !important; color: #d7dde6 !important; }
+    .mo-sidebar .mo-nav a.mo-active { background: #102922 !important; color: #35d99a !important; font-weight: 500 !important; }
+    .mo-sidebar .mo-nav svg { width: 18px !important; height: 18px !important; flex: 0 0 18px !important; display: block !important; stroke: currentColor !important; }
+    .mo-sidebar .mo-nav span { display: block !important; min-width: 0 !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+    .mo-sidebar .mo-user {
+      display: flex !important; align-items: center !important; gap: 10px !important;
+      padding: 16px 24px !important; border-top: 1px solid #242b33 !important;
+    }
+    .mo-sidebar .mo-user-avatar {
+      width: 32px !important; height: 32px !important; border-radius: 50% !important;
+      background: #2a3140 !important; display: flex !important; align-items: center !important;
+      justify-content: center !important; flex-shrink: 0 !important;
+    }
+    .mo-sidebar .mo-user-avatar svg { width: 16px !important; height: 16px !important; stroke: #6e7a8a !important; }
+    .mo-sidebar .mo-user-name { font-size: 13px !important; color: #c0c8d4 !important; flex: 1 !important; min-width: 0 !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+    .mo-sidebar .mo-user-gear { flex-shrink: 0 !important; cursor: pointer !important; color: #5a6370 !important; transition: color 0.15s !important; background: none !important; border: none !important; padding: 0 !important; display: flex !important; }
+    .mo-sidebar .mo-user-gear:hover { color: #8b949e !important; }
+    .mo-sidebar .mo-user-gear svg { width: 16px !important; height: 16px !important; display: block !important; stroke: currentColor !important; }
+
+    /* ===== Settings category nav ===== */
+    .settings-cat-nav {
+      width: 200px;
+      min-width: 200px;
+      flex-shrink: 0;
+      background: #161b22;
+      border-right: 1px solid var(--nw-border-default);
+      padding: 24px 0;
+      overflow-y: auto;
+    }
+    .settings-cat-nav .cat-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 20px;
+      font-size: 14px;
+      color: var(--nw-text-secondary);
+      cursor: pointer;
+      transition: color 0.15s, background 0.15s;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      font-family: var(--font-body);
+    }
+    .settings-cat-nav .cat-item:hover {
+      color: var(--nw-text-primary);
+      background: var(--nw-bg-hover);
+    }
+    .settings-cat-nav .cat-item.cat-active {
+      color: var(--nw-text-primary);
+      font-weight: 500;
+      background: var(--nw-primary-50);
+      border-right: 2px solid var(--nw-primary);
+    }
+    .settings-cat-nav .cat-item svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      stroke: currentColor;
+      fill: none;
+    }
+
+    /* ===== Settings content area ===== */
+    .settings-content {
+      flex: 1;
+      min-width: 0;
+      overflow-y: auto;
+      padding: 32px 40px;
+    }
+    .settings-section {
+      display: none;
+    }
+    .settings-section.section-active {
+      display: block;
+    }
+    .settings-section-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: var(--nw-text-primary);
+    }
+    .settings-section-desc {
+      font-size: 13px;
+      color: var(--nw-text-secondary);
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+    .settings-group {
+      margin-bottom: 28px;
+    }
+    .settings-group-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: var(--nw-text-primary);
+    }
+    .settings-item {
+      margin-bottom: 20px;
+    }
+    .settings-label {
+      font-size: 14px;
+      color: var(--nw-text-primary);
+      margin-bottom: 4px;
+    }
+    .settings-desc {
+      font-size: 12px;
+      color: var(--nw-text-secondary);
+      margin-top: 4px;
+    }
+
+    /* ===== Form components ===== */
+    .form-input,
+    .form-select {
+      background: #1c2333;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: #e6edf3;
+      font-size: 14px;
+      font-family: var(--font-body);
+      outline: none;
+      transition: border-color 0.15s;
+      width: 100%;
+    }
+    .form-input::placeholder {
+      color: #5a6370;
+    }
+    .form-input:focus,
+    .form-select:focus {
+      border-color: var(--nw-primary);
+    }
+    .form-input.input-error {
+      border-color: #f85149;
+    }
+    .form-error {
+      font-size: 12px;
+      color: #f85149;
+      margin-top: 4px;
+    }
+    .form-select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%238b949e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 4.5l3 3 3-3'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 32px;
+      cursor: pointer;
+    }
+    .form-select option {
+      background: #1c2333;
+      color: #e6edf3;
+    }
+
+    /* ===== Toggle switch ===== */
+    .toggle {
+      position: relative;
+      width: 40px;
+      height: 22px;
+      background: #242b33;
+      border-radius: 11px;
+      cursor: pointer;
+      transition: background 0.2s;
+      border: none;
+      flex-shrink: 0;
+      padding: 0;
+    }
+    .toggle::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 16px;
+      height: 16px;
+      background: #ffffff;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    .toggle.toggle-on {
+      background: var(--nw-primary);
+    }
+    .toggle.toggle-on::after {
+      transform: translateX(18px);
+    }
+
+    /* ===== Buttons ===== */
+    .btn-primary {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 6px; padding: 8px 20px;
+      background: var(--nw-primary); color: #ffffff;
+      border: none; border-radius: 8px;
+      font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+      font-family: var(--font-body);
+    }
+    .btn-primary:hover { background: #1f6b54; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(31,107,84,0.25); }
+    .btn-primary:active { transform: translateY(0); }
+
+    .btn-secondary {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 6px; padding: 8px 20px;
+      background: transparent; color: var(--nw-text-secondary);
+      border: 1px solid rgba(255,255,255,0.15); border-radius: 8px;
+      font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: background 0.15s, color 0.15s;
+      font-family: var(--font-body);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.04); color: var(--nw-text-primary); }
+
+    .btn-danger {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 6px; padding: 8px 20px;
+      background: transparent; color: #f85149;
+      border: 1px solid rgba(248,81,73,0.3); border-radius: 8px;
+      font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: background 0.15s;
+      font-family: var(--font-body);
+    }
+    .btn-danger:hover { background: rgba(248,81,73,0.08); }
+
+    .btn-sm {
+      padding: 5px 12px;
+      font-size: 12px;
+      border-radius: 6px;
+    }
+
+    /* ===== Model cards ===== */
+    .model-card {
+      background: var(--nw-bg-surface);
+      border: 1px solid var(--nw-border-default);
+      border-radius: var(--radius-lg);
+      padding: 20px 24px;
+      margin-bottom: 12px;
+      transition: border-color 0.2s ease, transform 0.2s ease;
+    }
+    .model-card:hover {
+      border-color: var(--nw-border-strong);
+      transform: translateY(-2px);
+    }
+    .model-card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .model-card-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--nw-text-primary);
+      margin-bottom: 4px;
+    }
+    .model-card-provider {
+      font-size: 13px;
+      color: var(--nw-text-secondary);
+    }
+    .model-card-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .model-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 10px;
+      border-radius: var(--radius-full);
+      font-size: 12px;
+      color: var(--nw-text-secondary);
+      background: var(--nw-bg-elevated);
+      border: 1px solid var(--nw-border-default);
+    }
+    .model-card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+    .status-dot.status-ok { background: #2ea043; }
+    .status-dot.status-err { background: #f85149; }
+    .model-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--nw-text-secondary);
+    }
+    .model-status.status-ok-text { color: #2ea043; }
+    .model-status.status-err-text { color: #f85149; }
+    .model-price {
+      font-size: 12px;
+      color: var(--nw-text-tertiary);
+      font-family: var(--font-mono);
+    }
+    .model-card-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .model-error-msg {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 12px;
+      padding: 8px 12px;
+      border-radius: var(--radius-md);
+      background: rgba(248,81,73,0.08);
+      border: 1px solid rgba(248,81,73,0.2);
+      font-size: 13px;
+      color: #f85149;
+    }
+
+    /* Add model card */
+    .model-card-add {
+      border: 1px dashed var(--nw-border-strong);
+      border-radius: var(--radius-lg);
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      color: var(--nw-text-secondary);
+      font-size: 14px;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      background: transparent;
+      width: 100%;
+      font-family: var(--font-body);
+    }
+    .model-card-add:hover {
+      background: var(--nw-bg-hover);
+      color: var(--nw-text-primary);
+      border-color: var(--nw-text-secondary);
+    }
+    .model-card-add svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      fill: none;
+    }
+
+    /* ===== Spinner ===== */
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: #ffffff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      display: inline-block;
+    }
+
+    /* ===== Toast ===== */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .toast {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      color: #ffffff;
+      background: #1c2333;
+      border: 1px solid rgba(46,160,67,0.3);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      animation: toast-in 0.25s ease;
+    }
+    .toast.toast-success { border-color: rgba(46,160,67,0.4); }
+    .toast.toast-success .toast-icon { color: #2ea043; }
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes toast-out {
+      from { opacity: 1; transform: translateY(0); }
+      to { opacity: 0; transform: translateY(-8px); }
+    }
+
+    /* ===== Progress bar ===== */
+    .progress-track {
+      width: 100%;
+      height: 6px;
+      background: #1c2333;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.4s ease;
+    }
+
+    /* ===== Budget bar chart (pure CSS) ===== */
+    .bar-chart {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .bar-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .bar-label {
+      width: 80px;
+      font-size: 13px;
+      color: var(--nw-text-secondary);
+      flex-shrink: 0;
+      text-align: right;
+    }
+    .bar-track {
+      flex: 1;
+      height: 8px;
+      background: #1c2333;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.4s ease;
+    }
+    .bar-value {
+      width: 52px;
+      font-size: 12px;
+      color: var(--nw-text-tertiary);
+      font-family: var(--font-mono);
+      flex-shrink: 0;
+    }
+
+    /* ===== Slider ===== */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      background: #1c2333;
+      border-radius: 3px;
+      outline: none;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--nw-primary);
+      border: 2px solid #3aa882;
+      cursor: pointer;
+      transition: box-shadow 0.15s;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      box-shadow: 0 0 0 4px rgba(45,138,110,0.2);
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--nw-primary);
+      border: 2px solid #3aa882;
+      cursor: pointer;
+    }
+    input[type="range"]::-moz-range-track {
+      background: #1c2333;
+      height: 6px;
+      border-radius: 3px;
+    }
+
+    /* ===== Radio ===== */
+    .radio-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .radio-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--nw-text-primary);
+    }
+    .radio-item input[type="radio"] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border: 1.5px solid var(--nw-border-strong);
+      border-radius: 50%;
+      background: #1c2333;
+      cursor: pointer;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .radio-item input[type="radio"]:checked {
+      border-color: var(--nw-primary);
+    }
+    .radio-item input[type="radio"]:checked::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--nw-primary);
+    }
+
+    /* ===== Log entries ===== */
+    .log-entry {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--nw-border-subtle);
+      font-size: 13px;
+    }
+    .log-entry:last-child { border-bottom: none; }
+    .log-time {
+      color: var(--nw-text-tertiary);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      flex-shrink: 0;
+      width: 68px;
+    }
+    .log-level {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 1px 6px;
+      border-radius: var(--radius-sm);
+      flex-shrink: 0;
+    }
+    .log-level.level-info { background: rgba(88,166,255,0.12); color: #58a6ff; }
+    .log-level.level-warn { background: rgba(210,153,34,0.12); color: #d29922; }
+    .log-level.level-error { background: rgba(248,81,73,0.12); color: #f85149; }
+    .log-level.level-debug { background: rgba(139,148,158,0.12); color: #8b949e; }
+    .log-msg {
+      color: var(--nw-text-secondary);
+      flex: 1;
+      min-width: 0;
+    }
+
+    /* ===== About section ===== */
+    .about-product-name {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--nw-text-primary);
+      margin-bottom: 4px;
+    }
+    .about-version {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--nw-text-tertiary);
+      margin-bottom: 24px;
+    }
+    .about-links {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .about-link {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: var(--nw-text-link);
+      text-decoration: none;
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+    .about-link:hover {
+      color: #3aa882;
+      text-decoration: underline;
+    }
+    .about-link svg {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+      fill: none;
+      flex-shrink: 0;
+    }
+
+    /* ===== Responsive: mobile category nav collapse ===== */
+    .mobile-cat-select {
+      display: none;
+      width: 100%;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .settings-cat-nav {
+        display: none;
+      }
+      .mobile-cat-select {
+        display: block;
+      }
+      .settings-content {
+        padding: 20px;
+      }
+    }
+
+    /* Global transitions */
+    * { transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease; }
+    button { transition: all 0.15s ease; }
+    a { transition: all 0.15s ease; }
+    .mo-sidebar * { transition: none !important; }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+    ::-webkit-scrollbar-corner { background: transparent; }
+
+    /* ===== Theme cards ===== */
+    .theme-card:hover { border-color: var(--nw-border-strong); transform: translateY(-2px); }
+    .theme-card.theme-card-active { border-color: var(--nw-primary); }
+    .theme-checkmark { display: none; align-items: center; justify-content: center; }
+    .theme-card.theme-card-active .theme-checkmark { display: flex; }
+    .theme-badge-active { display: none; }
+    .theme-badge-idle { display: inline-block; }
+    .theme-card.theme-card-active .theme-badge-active { display: inline-block; }
+    .theme-card.theme-card-active .theme-badge-idle { display: none; }
+  </style>
+</head>
+
+<body class="flex h-screen overflow-hidden">
+
+  <!-- ==================== SIDEBAR ==================== -->
+  <aside class="mo-sidebar" style="font-family: var(--font-body);">
+    <div class="mo-brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;flex-shrink:0;">
+        <path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+        <path d="m15 5 4 4"/>
+      </svg>
+      <span class="mo-brand-name">驯墨</span>
+      <span style="font-size:10px;color:#5a6370;letter-spacing:1px;margin-top:2px;display:block;">TAME INK</span>
+    </div>
+
+    <nav class="mo-nav">
+      <a href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>
+        </svg>
+        <span>工作台</span>
+      </a>
+      <a href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z"/>
+        </svg>
+        <span>创作</span>
+      </a>
+      <a href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+        </svg>
+        <span>故事库</span>
+      </a>
+      <a href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>
+        </svg>
+        <span>复盘</span>
+      </a>
+      <a href="#" class="mo-active">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>
+        </svg>
+        <span>设置</span>
+      </a>
+    </nav>
+
+    <div class="mo-user">
+      <div class="mo-user-avatar">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+        </svg>
+      </div>
+      <span class="mo-user-name">作者</span>
+      <button class="mo-user-gear" aria-label="设置">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ==================== SETTINGS MAIN ==================== -->
+  <div class="flex flex-1 min-w-0 h-screen overflow-hidden">
+
+    <!-- Left: Category navigation -->
+    <nav class="settings-cat-nav">
+      <button class="cat-item cat-active" data-section="models" onclick="switchSection('models', this)">
+        <svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 13L2 9z"/></svg>
+        模型连接
+      </button>
+      <button class="cat-item" data-section="budget" onclick="switchSection('budget', this)">
+        <svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        价格与预算
+      </button>
+      <button class="cat-item" data-section="workspace" onclick="switchSection('workspace', this)">
+        <svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        本地工作区
+      </button>
+      <button class="cat-item" data-section="theme" onclick="switchSection('theme', this)">
+        <svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+        外观主题
+      </button>
+      <button class="cat-item" data-section="diagnostics" onclick="switchSection('diagnostics', this)">
+        <svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        诊断与日志
+      </button>
+      <button class="cat-item" data-section="about" onclick="switchSection('about', this)">
+        <svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        关于
+      </button>
+    </nav>
+
+    <!-- Right: Content area -->
+    <div class="settings-content">
+
+      <!-- Mobile category dropdown -->
+      <select class="form-select mobile-cat-select" onchange="switchSectionMobile(this.value)">
+        <option value="models" selected>模型连接</option>
+        <option value="budget">价格与预算</option>
+        <option value="workspace">本地工作区</option>
+        <option value="theme">外观主题</option>
+        <option value="diagnostics">诊断与日志</option>
+        <option value="about">关于</option>
+      </select>
+
+      <!-- ========== Section: 模型连接 ========== -->
+      <div id="section-models" class="settings-section section-active">
+        <h2 class="settings-group-title">模型连接</h2>
+        <p class="settings-section-desc">配置用于创作的 AI 模型。模型错误将直接失败并报告，不会自动切换供应商。</p>
+
+        <!-- Model 1: Claude 4 Sonnet -->
+        <div class="model-card">
+          <div class="model-card-header">
+            <div>
+              <div class="model-card-name">Claude 4 Sonnet</div>
+              <div class="model-card-provider">Anthropic</div>
+            </div>
+            <div class="model-card-actions">
+              <button class="btn-secondary btn-sm" onclick="testConnection(this)">测试连接</button>
+              <button class="btn-secondary btn-sm">编辑</button>
+              <button class="toggle toggle-on" onclick="this.classList.toggle('toggle-on')"></button>
+            </div>
+          </div>
+          <div class="model-card-tags">
+            <span class="model-tag">正文生成</span>
+            <span class="model-tag">审稿</span>
+            <span class="model-tag">记忆提取</span>
+          </div>
+          <div class="model-card-footer">
+            <div class="model-status status-ok-text">
+              <span class="status-dot status-ok"></span>
+              已连接
+            </div>
+            <div class="model-price">$3/百万输入 &middot; $15/百万输出</div>
+          </div>
+        </div>
+
+        <!-- Model 2: GPT-4o -->
+        <div class="model-card">
+          <div class="model-card-header">
+            <div>
+              <div class="model-card-name">GPT-4o</div>
+              <div class="model-card-provider">OpenAI</div>
+            </div>
+            <div class="model-card-actions">
+              <button class="btn-secondary btn-sm" onclick="testConnection(this)">测试连接</button>
+              <button class="btn-secondary btn-sm">编辑</button>
+              <button class="toggle toggle-on" onclick="this.classList.toggle('toggle-on')"></button>
+            </div>
+          </div>
+          <div class="model-card-tags">
+            <span class="model-tag">研究</span>
+            <span class="model-tag">契约设计</span>
+          </div>
+          <div class="model-card-footer">
+            <div class="model-status status-ok-text">
+              <span class="status-dot status-ok"></span>
+              已连接
+            </div>
+            <div class="model-price">$2.5/百万输入 &middot; $10/百万输出</div>
+          </div>
+        </div>
+
+        <!-- Model 3: DeepSeek V3 (failed) -->
+        <div class="model-card" style="border-color: rgba(248,81,73,0.2);">
+          <div class="model-card-header">
+            <div>
+              <div class="model-card-name">DeepSeek V3</div>
+              <div class="model-card-provider">DeepSeek</div>
+            </div>
+            <div class="model-card-actions">
+              <button class="btn-danger btn-sm">重新配置</button>
+            </div>
+          </div>
+          <div class="model-error-msg">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            API 密钥无效或已过期
+          </div>
+          <div class="model-card-footer">
+            <div class="model-status status-err-text">
+              <span class="status-dot status-err"></span>
+              连接失败
+            </div>
+            <div class="model-price">$0.27/百万输入 &middot; $1.1/百万输出</div>
+          </div>
+        </div>
+
+        <!-- Add model -->
+        <button class="model-card-add" style="margin-top:12px;">
+          <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          添加模型
+        </button>
+      </div>
+
+      <!-- ========== Section: 价格与预算 ========== -->
+      <div id="section-budget" class="settings-section">
+        <h2 class="settings-group-title">价格与预算</h2>
+        <p class="settings-section-desc">管理月度预算限制和消费监控。</p>
+
+        <!-- Monthly budget -->
+        <div class="settings-group">
+          <div class="settings-label">月度预算上限</div>
+          <div class="settings-desc">设置每月 AI 调用的最大支出金额。</div>
+          <div style="display:flex;align-items:center;gap:16px;margin-top:12px;">
+            <span style="color:var(--nw-text-tertiary);font-size:13px;">$10</span>
+            <input type="range" min="10" max="200" step="10" value="50" style="flex:1;" id="budgetSlider" oninput="document.getElementById('budgetValue').value='$'+this.value; updateBudgetBar();" />
+            <span style="color:var(--nw-text-tertiary);font-size:13px;">$200</span>
+            <input type="text" class="form-input" value="$50" id="budgetValue" style="width:72px;text-align:center;" oninput="document.getElementById('budgetSlider').value=parseInt(this.value.replace('$',''))||10; updateBudgetBar();" />
+          </div>
+        </div>
+
+        <!-- Current month spending -->
+        <div class="settings-group">
+          <div class="settings-label">当前月消耗</div>
+          <div style="display:flex;align-items:baseline;gap:8px;margin-top:8px;">
+            <span style="font-size:24px;font-weight:600;color:var(--nw-text-primary);font-family:var(--font-mono);">$12.45</span>
+            <span style="font-size:14px;color:var(--nw-text-tertiary);">/ $50.00</span>
+          </div>
+          <div class="progress-track" style="margin-top:8px;">
+            <div class="progress-fill" id="budgetProgressFill" style="width:24.9%;background:var(--nw-primary);"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:6px;">
+            <span style="font-size:12px;color:var(--nw-text-tertiary);">已使用 24.9%</span>
+            <span style="font-size:12px;color:var(--nw-text-tertiary);">剩余 $37.55</span>
+          </div>
+        </div>
+
+        <!-- Usage by purpose -->
+        <div class="settings-group">
+          <div class="settings-label">按用途消耗分布</div>
+          <div class="bar-chart" style="margin-top:12px;">
+            <div class="bar-row">
+              <span class="bar-label">正文生成</span>
+              <div class="bar-track">
+                <div class="bar-fill" style="width:65%;background:var(--nw-primary);"></div>
+              </div>
+              <span class="bar-value">$8.09</span>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label">审稿</span>
+              <div class="bar-track">
+                <div class="bar-fill" style="width:22%;background:var(--nw-amber);"></div>
+              </div>
+              <span class="bar-value">$2.74</span>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label">记忆提取</span>
+              <div class="bar-track">
+                <div class="bar-fill" style="width:8%;background:var(--state-info);"></div>
+              </div>
+              <span class="bar-value">$1.00</span>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label">研究</span>
+              <div class="bar-track">
+                <div class="bar-fill" style="width:5%;background:var(--state-warning);"></div>
+              </div>
+              <span class="bar-value">$0.62</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Budget exhaustion behavior -->
+        <div class="settings-group">
+          <div class="settings-label">预算耗尽行为</div>
+          <div class="settings-desc">当月度支出达到预算上限时的处理方式。</div>
+          <div class="radio-group" style="margin-top:10px;">
+            <label class="radio-item">
+              <input type="radio" name="budget-action" value="stop" checked />
+              停止执行
+              <span style="font-size:12px;color:var(--nw-text-tertiary);margin-left:4px;">-- 立即中断所有进行中的 AI 调用</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="budget-action" value="warn" />
+              仅警告
+              <span style="font-size:12px;color:var(--nw-text-tertiary);margin-left:4px;">-- 显示通知但不中断操作</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== Section: 本地工作区 ========== -->
+      <div id="section-workspace" class="settings-section">
+        <h2 class="settings-group-title">本地工作区</h2>
+        <p class="settings-section-desc">管理本地文件存储、版本控制和数据备份。</p>
+
+        <!-- Workspace path -->
+        <div class="settings-group">
+          <div class="settings-label">工作区路径</div>
+          <div class="settings-desc">作品数据在本地的存储位置。</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+            <input type="text" class="form-input" value="C:\Users\作者\TameInk\星河万里" readonly style="flex:1;font-family:var(--font-mono);font-size:13px;" />
+            <button class="btn-secondary" style="flex-shrink:0;">浏览</button>
+          </div>
+        </div>
+
+        <!-- Storage usage -->
+        <div class="settings-group">
+          <div class="settings-label">存储使用</div>
+          <div style="display:flex;align-items:center;gap:16px;margin-top:10px;">
+            <div style="flex:1;">
+              <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                <span style="font-size:13px;color:var(--nw-text-secondary);">已用 2.3GB</span>
+                <span style="font-size:13px;color:var(--nw-text-tertiary);">可用 --</span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-fill" style="width:4.6%;background:var(--nw-primary);"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Git version control -->
+        <div class="settings-group">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <div class="settings-label">Git 版本控制</div>
+              <div class="settings-desc">自动追踪作品修改历史。</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span class="status-dot status-ok"></span>
+              <span style="font-size:13px;color:#2ea043;">已启用</span>
+              <span style="font-size:12px;color:var(--nw-text-tertiary);font-family:var(--font-mono);margin-left:4px;">main</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Backup -->
+        <div class="settings-group">
+          <div class="settings-label">数据备份</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;">
+            <div>
+              <div style="font-size:14px;color:var(--nw-text-primary);">自动备份</div>
+              <div class="settings-desc">上次备份: 2026-07-21 08:30</div>
+            </div>
+            <button class="toggle toggle-on" onclick="this.classList.toggle('toggle-on')"></button>
+          </div>
+          <div style="margin-top:12px;">
+            <button class="btn-secondary" onclick="showToast()">立即备份</button>
+          </div>
+        </div>
+
+        <!-- Export format -->
+        <div class="settings-group">
+          <div class="settings-label">默认导出格式</div>
+          <div class="settings-desc">导出作品时使用的默认文件格式。</div>
+          <select class="form-select" style="width:200px;margin-top:10px;">
+            <option value="txt">TXT (纯文本)</option>
+            <option value="docx" selected>DOCX (Word 文档)</option>
+            <option value="md">MD (Markdown)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- ========== Section: 外观主题 ========== -->
+      <div id="section-theme" class="settings-section">
+        <h2 class="settings-group-title">外观主题</h2>
+        <p class="settings-section-desc">选择适合你创作环境的主题。墨色沉浸适合夜间深度写作，宣纸暖白适合日间长时间阅读。</p>
+
+        <!-- 主题选择卡片 -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
+
+          <!-- 夜墨主题（当前选中） -->
+          <div class="theme-card theme-card-active" onclick="selectTheme(this, 'dark')" style="
+            background: var(--nw-bg-surface); border: 2px solid var(--nw-primary); border-radius: var(--radius-md);
+            padding: 20px; cursor: pointer; position: relative; transition: all 0.2s;">
+            <div class="theme-checkmark" style="position:absolute;top:12px;right:12px;width:20px;height:20px;background:var(--nw-primary);border-radius:50%;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <!-- 主题预览色块 -->
+            <div style="display:flex;gap:6px;margin-bottom:16px;">
+              <div style="width:40px;height:60px;background:#0d1117;border-radius:4px;border:1px solid rgba(255,255,255,0.08);"></div>
+              <div style="width:40px;height:60px;background:#161b22;border-radius:4px;border:1px solid rgba(255,255,255,0.08);"></div>
+              <div style="width:40px;height:60px;background:#1f6b54;border-radius:4px;"></div>
+              <div style="width:40px;height:60px;background:#d4a04a;border-radius:4px;"></div>
+            </div>
+            <div style="font-family:var(--font-display);font-size:18px;font-weight:600;color:var(--nw-text-primary);margin-bottom:4px;">夜墨</div>
+            <div style="font-size:12px;color:var(--nw-text-secondary);line-height:1.5;">近黑墨色基底，墨青绿主色，朱砂琥珀强调。适合夜间沉浸式创作。</div>
+            <div style="margin-top:12px;display:flex;align-items:center;gap:6px;">
+              <span class="theme-badge-active" style="font-size:11px;color:var(--nw-primary);background:var(--nw-primary-50);padding:2px 8px;border-radius:var(--radius-sm);font-weight:500;">当前使用</span>
+              <span class="theme-badge-idle" style="font-size:11px;color:var(--nw-text-tertiary);background:var(--nw-bg-elevated);padding:2px 8px;border-radius:var(--radius-sm);">点击切换</span>
+            </div>
+          </div>
+
+          <!-- 宣纸主题 -->
+          <div class="theme-card" onclick="selectTheme(this, 'light')" style="
+            background: var(--nw-bg-surface); border: 2px solid var(--nw-border-default); border-radius: var(--radius-md);
+            padding: 20px; cursor: pointer; position: relative; transition: all 0.2s;">
+            <div class="theme-checkmark" style="position:absolute;top:12px;right:12px;width:20px;height:20px;background:var(--nw-primary);border-radius:50%;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <!-- 主题预览色块 -->
+            <div style="display:flex;gap:6px;margin-bottom:16px;">
+              <div style="width:40px;height:60px;background:#faf7f0;border-radius:4px;border:1px solid rgba(0,0,0,0.08);"></div>
+              <div style="width:40px;height:60px;background:#f5f0e6;border-radius:4px;border:1px solid rgba(0,0,0,0.08);"></div>
+              <div style="width:40px;height:60px;background:#1f6b54;border-radius:4px;"></div>
+              <div style="width:40px;height:60px;background:#b8872e;border-radius:4px;"></div>
+            </div>
+            <div style="font-family:var(--font-display);font-size:18px;font-weight:600;color:var(--nw-text-primary);margin-bottom:4px;">宣纸</div>
+            <div style="font-size:12px;color:var(--nw-text-secondary);line-height:1.5;">宣纸暖白基底，墨黑文字，墨青绿主色。适合日间长时间阅读和写作。</div>
+            <div style="margin-top:12px;display:flex;align-items:center;gap:6px;">
+              <span class="theme-badge-active" style="font-size:11px;color:var(--nw-primary);background:var(--nw-primary-50);padding:2px 8px;border-radius:var(--radius-sm);font-weight:500;">当前使用</span>
+              <span class="theme-badge-idle" style="font-size:11px;color:var(--nw-text-tertiary);background:var(--nw-bg-elevated);padding:2px 8px;border-radius:var(--radius-sm);">点击切换</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 主题选项说明 -->
+        <div style="font-size:12px;font-weight:600;color:var(--nw-text-tertiary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;">主题说明</div>
+        <div style="background:var(--nw-bg-elevated);border-radius:var(--radius-md);padding:16px;margin-bottom:8px;">
+          <div style="font-size:13px;font-weight:500;color:var(--nw-text-primary);margin-bottom:4px;">夜墨主题</div>
+          <div style="font-size:12px;color:var(--nw-text-secondary);line-height:1.6;">深色基底降低屏幕亮度，减少眼部疲劳。朱砂琥珀色用于待决策提示和字数统计，四层事实颜色在深色背景上对比清晰。推荐在夜间或暗光环境下使用。</div>
+        </div>
+        <div style="background:var(--nw-bg-elevated);border-radius:var(--radius-md);padding:16px;margin-bottom:8px;">
+          <div style="font-size:13px;font-weight:500;color:var(--nw-text-primary);margin-bottom:4px;">宣纸主题</div>
+          <div style="font-size:12px;color:var(--nw-text-secondary);line-height:1.6;">暖白基底模拟宣纸质感，墨黑文字确保可读性。主色和四层事实颜色加深以适应浅色背景。推荐在日间或明亮环境下使用。</div>
+        </div>
+
+        <!-- 自动切换选项 -->
+        <div style="font-size:12px;font-weight:600;color:var(--nw-text-tertiary);text-transform:uppercase;letter-spacing:0.06em;margin:20px 0 12px;">自动切换</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--nw-border-subtle);">
+          <div>
+            <div style="font-size:13px;color:var(--nw-text-primary);">跟随系统主题</div>
+            <div style="font-size:12px;color:var(--nw-text-secondary);margin-top:2px;">根据系统深浅色模式自动切换</div>
+          </div>
+          <button class="toggle" onclick="this.classList.toggle('toggle-on')"></button>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;">
+          <div>
+            <div style="font-size:13px;color:var(--nw-text-primary);">定时切换</div>
+            <div style="font-size:12px;color:var(--nw-text-secondary);margin-top:2px;">18:00 自动切换为夜墨，06:00 切换为宣纸</div>
+          </div>
+          <button class="toggle" onclick="this.classList.toggle('toggle-on')"></button>
+        </div>
+      </div>
+
+      <!-- ========== Section: 诊断与日志 ========== -->
+      <div id="section-diagnostics" class="settings-section">
+        <h2 class="settings-group-title">诊断与日志</h2>
+        <p class="settings-section-desc">查看系统运行日志和诊断信息。</p>
+
+        <!-- Log level -->
+        <div class="settings-group">
+          <div class="settings-label">日志级别</div>
+          <div class="settings-desc">调整记录的日志详细程度。</div>
+          <select class="form-select" style="width:200px;margin-top:10px;">
+            <option value="debug">Debug -- 全部</option>
+            <option value="info" selected>Info -- 常规</option>
+            <option value="warn">Warning -- 仅警告与错误</option>
+            <option value="error">Error -- 仅错误</option>
+          </select>
+        </div>
+
+        <!-- Recent log entries -->
+        <div class="settings-group">
+          <div class="settings-label">最近日志</div>
+          <div style="background:var(--nw-bg-surface);border:1px solid var(--nw-border-default);border-radius:var(--radius-md);padding:12px 16px;margin-top:10px;">
+            <div class="log-entry">
+              <span class="log-time">08:32:15</span>
+              <span class="log-level level-info">INFO</span>
+              <span class="log-msg">模型连接测试完成: Claude 4 Sonnet -- 延迟 320ms</span>
+            </div>
+            <div class="log-entry">
+              <span class="log-time">08:32:14</span>
+              <span class="log-level level-error">ERROR</span>
+              <span class="log-msg">DeepSeek API 认证失败: 401 Unauthorized -- API 密钥无效或已过期</span>
+            </div>
+            <div class="log-entry">
+              <span class="log-time">08:31:02</span>
+              <span class="log-level level-info">INFO</span>
+              <span class="log-msg">自动备份完成: 星河万里 -- 2.3GB 已同步</span>
+            </div>
+            <div class="log-entry">
+              <span class="log-time">08:28:45</span>
+              <span class="log-level level-warn">WARN</span>
+              <span class="log-msg">月度预算已使用 24.9%，建议关注消耗趋势</span>
+            </div>
+            <div class="log-entry">
+              <span class="log-time">08:25:10</span>
+              <span class="log-level level-debug">DEBUG</span>
+              <span class="log-msg">Git commit: feat/chapter-12-draft -- 3 files changed</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Export logs -->
+        <div class="settings-group">
+          <button class="btn-secondary">导出日志</button>
+        </div>
+      </div>
+
+      <!-- ========== Section: 关于 ========== -->
+      <div id="section-about" class="settings-section">
+        <h2 class="settings-group-title">关于</h2>
+
+        <div class="about-product-name">驯墨 Tame Ink</div>
+        <div class="about-version">P0.1.0-alpha</div>
+
+        <div class="settings-group">
+          <div class="settings-label">链接</div>
+          <div class="about-links" style="margin-top:10px;">
+            <a class="about-link" href="#">
+              <svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+              文档
+            </a>
+            <a class="about-link" href="#">
+              <svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+              GitHub
+            </a>
+            <a class="about-link" href="#">
+              <svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              反馈
+            </a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Toast container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script>
+    // ===== Section switching =====
+    function switchSection(sectionId, btn) {
+      // Hide all sections
+      document.querySelectorAll('.settings-section').forEach(function(s) {
+        s.classList.remove('section-active');
+      });
+      // Show target
+      var target = document.getElementById('section-' + sectionId);
+      if (target) target.classList.add('section-active');
+
+      // Update nav active state
+      document.querySelectorAll('.cat-item').forEach(function(c) {
+        c.classList.remove('cat-active');
+      });
+      if (btn) btn.classList.add('cat-active');
+
+      // Sync mobile select
+      var mobileSelect = document.querySelector('.mobile-cat-select');
+      if (mobileSelect) mobileSelect.value = sectionId;
+    }
+
+    function switchSectionMobile(sectionId) {
+      var btn = document.querySelector('.cat-item[data-section="' + sectionId + '"]');
+      switchSection(sectionId, btn);
+    }
+
+    // ===== Test connection (demo) =====
+    function testConnection(btn) {
+      var originalText = btn.textContent;
+      btn.innerHTML = '<span class="spinner"></span> 测试中...';
+      btn.disabled = true;
+      btn.style.opacity = '0.7';
+
+      setTimeout(function() {
+        btn.textContent = originalText;
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        showToast();
+      }, 1500);
+    }
+
+    // ===== Toast =====
+    function showToast() {
+      var container = document.getElementById('toastContainer');
+      var toast = document.createElement('div');
+      toast.className = 'toast toast-success';
+      toast.innerHTML = '<svg class="toast-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> 设置已保存';
+      container.appendChild(toast);
+
+      setTimeout(function() {
+        toast.style.animation = 'toast-out 0.25s ease forwards';
+        setTimeout(function() {
+          if (toast.parentNode) toast.parentNode.removeChild(toast);
+        }, 250);
+      }, 3000);
+    }
+
+    // ===== Budget bar update =====
+    function updateBudgetBar() {
+      var slider = document.getElementById('budgetSlider');
+      var fill = document.getElementById('budgetProgressFill');
+      if (slider && fill) {
+        var pct = (12.45 / parseInt(slider.value)) * 100;
+        fill.style.width = Math.min(pct, 100) + '%';
+        if (pct > 90) {
+          fill.style.background = 'var(--state-error)';
+        } else if (pct > 70) {
+          fill.style.background = 'var(--state-warning)';
+        } else {
+          fill.style.background = 'var(--nw-primary)';
+        }
+      }
+    }
+
+    // ===== Theme selection =====
+    function selectTheme(el, theme) {
+      document.querySelectorAll('.theme-card').forEach(function(card) {
+        card.classList.remove('theme-card-active');
+        card.style.borderColor = 'var(--nw-border-default)';
+      });
+      el.classList.add('theme-card-active');
+      el.style.borderColor = 'var(--nw-primary)';
+
+      // 显示 toast
+      var container = document.getElementById('toastContainer');
+      var toast = document.createElement('div');
+      toast.className = 'toast toast-success';
+      var themeName = theme === 'dark' ? '夜墨' : '宣纸';
+      toast.innerHTML = '<svg class="toast-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> 已切换为' + themeName + '主题';
+      container.appendChild(toast);
+
+      setTimeout(function() {
+        toast.style.animation = 'toast-out 0.25s ease forwards';
+        setTimeout(function() {
+          if (toast.parentNode) toast.parentNode.removeChild(toast);
+        }, 250);
+      }, 3000);
+    }
+  </script>
+</body>
+</html>

@@ -1,6 +1,8 @@
 from pathlib import Path
 
 from app.agents.context import ContextBudget, ContextIntent, ContextRequest
+from app.agents.skills import P0Skill
+from app.domain.creation import validate_record_id
 from app.repositories.workspace import WorkspaceRepository
 
 
@@ -35,6 +37,70 @@ class ChapterContextCompiler:
             budget=ContextBudget(),
         )
 
+    def request_for_skill(self, skill: P0Skill, payload: dict[str, object]) -> ContextRequest:
+        project = self.workspace.project_path(self.project_id)
+        common = self._existing(
+            project, ["project.yaml", "commitments/creative-brief.yaml"]
+        )
+        commitments = self._existing(
+            project,
+            ["commitments/reader-contract.yaml", "commitments/story-engine.yaml"],
+        )
+        record_paths = self._record_paths(project, payload)
+        intent = self._intent(payload)
+        fixed = common
+        entities: list[str] = []
+        if skill == "webnovel-research-genre":
+            fixed = common
+        elif skill == "webnovel-design-reader-contract":
+            fixed = common
+        elif skill == "webnovel-design-story-engine":
+            fixed = [*common, *commitments[:1]]
+        elif skill == "webnovel-plan-rolling-story":
+            fixed = [*common, *commitments]
+            entities = record_paths["characters"] + record_paths["expectations"]
+        elif skill in {
+            "webnovel-plan-chapter",
+            "webnovel-draft",
+            "webnovel-audit",
+            "webnovel-opening-audit",
+            "webnovel-poison-check",
+        }:
+            fixed = [*common, *commitments, *record_paths["story_cards"]]
+            entities = [
+                *record_paths["characters"],
+                *record_paths["expectations"],
+                *record_paths["actual_events"],
+                *record_paths["chapters"],
+            ]
+        elif skill == "webnovel-curate-memory":
+            fixed = [*common, *commitments]
+            entities = [
+                *record_paths["chapters"],
+                *record_paths["characters"],
+                *record_paths["expectations"],
+                *record_paths["actual_events"],
+            ]
+        elif skill == "webnovel-plan-ending":
+            fixed = [*common, *commitments, "commitments/ending-plan.yaml"]
+            entities = [
+                *record_paths["characters"],
+                *record_paths["expectations"],
+                *record_paths["actual_events"],
+                *record_paths["story_cards"],
+            ]
+        else:
+            raise ValueError("SKILL_CONTEXT_UNSUPPORTED")
+        return ContextRequest(
+            stage=skill,
+            fixed_rules=self._existing(project, fixed),
+            volume=[],
+            summaries=[],
+            entities=self._existing(project, entities),
+            fts_queries=intent.queries() if intent is not None else [],
+            budget=ContextBudget(),
+        )
+
     @staticmethod
     def _existing(project: Path, candidates: list[str]) -> list[str]:
         return [path for path in candidates if (project / path).is_file()]
@@ -62,6 +128,28 @@ class ChapterContextCompiler:
                 path.relative_to(project).as_posix() for _, path in reversed(previous)
             )
         return self._existing(project, candidates)
+
+    @staticmethod
+    def _record_paths(project: Path, payload: dict[str, object]) -> dict[str, list[str]]:
+        def paths(key: str, directory: str, suffix: str) -> list[str]:
+            raw = payload.get(key, [])
+            if raw is None:
+                return []
+            if not isinstance(raw, list) or not all(isinstance(item, str) for item in raw):
+                raise ValueError("SKILL_CONTEXT_IDS_INVALID")
+            result: list[str] = []
+            for record_id in raw:
+                validate_record_id(record_id)
+                result.append(f"{directory}/{record_id}{suffix}")
+            return result
+
+        return {
+            "characters": paths("character_ids", "canon/characters", ".yaml"),
+            "expectations": paths("expectation_ids", "commitments/expectations", ".yaml"),
+            "actual_events": paths("actual_event_ids", "canon/actual-events", ".yaml"),
+            "story_cards": paths("story_card_ids", "commitments/story-cards", ".yaml"),
+            "chapters": paths("confirmed_chapter_ids", "canon/chapters", ".md"),
+        }
 
     @staticmethod
     def _intent(payload: dict[str, object]) -> ContextIntent | None:

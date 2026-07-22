@@ -1,0 +1,141 @@
+{
+  "skillProvenance": {
+    "name": "solo-design",
+    "version": "2026.07.06.8",
+    "version_source": "skill-version.json",
+    "runtime_skill_dir": "/Users/dyan/.trae-cn/builtin/design/default/skills/solo-design",
+    "recorded_at": "2026-07-22T12:00:00+08:00"
+  },
+  "project": {
+    "name": "驯墨 UI 设计",
+    "path": "/Users/dyan/Documents/work/Code/Tame-Ink/tame-ink-ui-design",
+    "operation": "create",
+    "deviceType": "desktop",
+    "language": "zh-CN",
+    "dashboardMode": true,
+    "designRead": "创作工具 / 网文作者 / 沉浸专注 / 信息密度适中 / 避免泛蓝紫渐变",
+    "designDials": { "layoutVariance": 3, "motionIntensity": 2, "visualDensity": 3 },
+    "intentProfile": {
+      "caseFamily": "free_exploration",
+      "graphicStrategy": null,
+      "sourceType": null,
+      "routingReason": "全新 UI 设计，基于项目分析"
+    },
+    "cssPreflightEvidence": {
+      "applies": true,
+      "status": "passed",
+      "brandPrefix": null
+    },
+    "generationTree": {
+      "root": {
+        "nodeId": "gen-project-shell",
+        "kind": "project-shell",
+        "output": "partials/project-shell.html",
+        "status": "planned",
+        "children": ["gen-page-workspace", "gen-page-editor", "gen-page-stories", "gen-page-review", "gen-page-settings"]
+      }
+    }
+  },
+  "designSource": {
+    "operatingMode": "free-explore",
+    "styleConstraints": {
+      "radiusMax": 12,
+      "staticShadowAlphaMax": 0.05
+    }
+  },
+  "pages": [
+    {
+      "nodeId": "page-workspace",
+      "title": "工作台",
+      "htmlSrc": "pages/workspace.html",
+      "pageIndex": 1,
+      "visualNorthStar": "命令中心式的创作工作台，清晰呈现今日写作目标、进行中任务和项目进度概览",
+      "compositionPattern": "dashboard-3col",
+      "continuityAnchors": {
+        "shellTreatment": "深色顶栏+左侧导航，品牌墨绿色作为激活状态",
+        "surfaceModel": "border-led layering, surface-0/1/2/3 递进",
+        "typographySystem": "Noto Sans SC body + Noto Serif SC headings, 14px base"
+      },
+      "imagePlan": [],
+      "chartsRequired": false
+    },
+    {
+      "nodeId": "page-editor",
+      "title": "创作",
+      "htmlSrc": "pages/editor.html",
+      "pageIndex": 2,
+      "visualNorthStar": "沉浸式写作编辑器，AI 助手侧栏可折叠，章节大纲可展开，核心编辑区域最大化",
+      "compositionPattern": "editor-split-view",
+      "continuityAnchors": {
+        "shellTreatment": "深色顶栏+左侧导航，品牌墨绿色作为激活状态",
+        "surfaceModel": "border-led layering, surface-0/1/2/3 递进",
+        "typographySystem": "Noto Sans SC body + Noto Serif SC headings, 14px base"
+      },
+      "imagePlan": [],
+      "chartsRequired": false
+    },
+    {
+      "nodeId": "page-stories",
+      "title": "故事库",
+      "htmlSrc": "pages/stories.html",
+      "pageIndex": 3,
+      "visualNorthStar": "作品管理仪表盘，卡片式展示所有故事项目，支持搜索筛选和状态标记",
+      "compositionPattern": "card-grid-dashboard",
+      "continuityAnchors": {
+        "shellTreatment": "深色顶栏+左侧导航，品牌墨绿色作为激活状态",
+        "surfaceModel": "border-led layering, surface-0/1/2/3 递进",
+        "typographySystem": "Noto Sans SC body + Noto Serif SC headings, 14px base"
+      },
+      "imagePlan": [],
+      "chartsRequired": false
+    },
+    {
+      "nodeId": "page-review",
+      "title": "复盘",
+      "htmlSrc": "pages/review.html",
+      "pageIndex": 4,
+      "visualNorthStar": "创作数据统计与分析仪表盘，图表+数字面板呈现写作趋势和效率指标",
+      "compositionPattern": "analytics-dashboard",
+      "continuityAnchors": {
+        "shellTreatment": "深色顶栏+左侧导航，品牌墨绿色作为激活状态",
+        "surfaceModel": "border-led layering, surface-0/1/2/3 递进",
+        "typographySystem": "Noto Sans SC body + Noto Serif SC headings, 14px base"
+      },
+      "imagePlan": [],
+      "chartsRequired": true
+    },
+    {
+      "nodeId": "page-settings",
+      "title": "设置",
+      "htmlSrc": "pages/settings.html",
+      "pageIndex": 5,
+      "visualNorthStar": "简洁的配置面板，分组式设置项，清晰的表单控件和开关",
+      "compositionPattern": "settings-panel",
+      "continuityAnchors": {
+        "shellTreatment": "深色顶栏+左侧导航，品牌墨绿色作为激活状态",
+        "surfaceModel": "border-led layering, surface-0/1/2/3 递进",
+        "typographySystem": "Noto Sans SC body + Noto Serif SC headings, 14px base"
+      },
+      "imagePlan": [],
+      "chartsRequired": false
+    }
+  ],
+  "assets": [],
+  "wiringPlan": [
+    { "from": "page-workspace", "to": "page-editor", "domId": "cta-editor", "label": "开始创作" },
+    { "from": "page-editor", "to": "page-stories", "domId": "nav-stories", "label": "返回故事库" },
+    { "from": "page-stories", "to": "page-review", "domId": "cta-review", "label": "查看复盘" },
+    { "from": "page-review", "to": "page-settings", "domId": "cta-settings", "label": "前往设置" }
+  ],
+  "hiddenInteractionPlan": [
+    { "from": "page-workspace", "to": "page-stories", "domId": "shortcut-stories", "hideEdge": true, "reason": "侧栏导航" },
+    { "from": "page-workspace", "to": "page-review", "domId": "shortcut-review", "hideEdge": true, "reason": "侧栏导航" },
+    { "from": "page-workspace", "to": "page-settings", "domId": "shortcut-settings", "hideEdge": true, "reason": "侧栏导航" },
+    { "from": "page-editor", "to": "page-workspace", "domId": "nav-workspace", "hideEdge": true, "reason": "侧栏导航" },
+    { "from": "page-stories", "to": "page-workspace", "domId": "nav-workspace-back", "hideEdge": true, "reason": "侧栏导航" },
+    { "from": "page-stories", "to": "page-editor", "domId": "shortcut-editor", "hideEdge": true, "reason": "侧栏导航" },
+    { "from": "page-review", "to": "page-workspace", "domId": "nav-workspace-back2", "hideEdge": true, "reason": "侧栏导航" },
+    { "from": "page-review", "to": "page-stories", "domId": "shortcut-stories-back", "hideEdge": true, "reason": "侧栏导航" },
+    { "from": "page-settings", "to": "page-workspace", "domId": "nav-workspace-back3", "hideEdge": true, "reason": "侧栏导航" }
+  ]
+}

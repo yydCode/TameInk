@@ -2,9 +2,24 @@ import re
 import sqlite3
 from pathlib import Path
 
+import jieba
+
 from app.domain.errors import DatabaseSchemaError, SearchQueryError
 from app.domain.paths import iter_formal_files
 from app.repositories.workspace import WorkspaceRepository
+
+# Initialize jieba once at module level to avoid repeated dictionary loading
+jieba.initialize()
+
+
+def _tokenize_for_fts(text: str) -> str:
+    """Tokenize Chinese/mixed text with jieba for FTS5 indexing.
+
+    Returns space-separated tokens. FTS5 will use unicode61 tokenizer
+    on the pre-tokenized text, so each jieba token becomes a search term.
+    """
+    tokens = jieba.lcut(text)
+    return " ".join(tokens)
 
 
 class DatabaseRepository:
@@ -37,7 +52,7 @@ class DatabaseRepository:
             if version is None or version in {"1", "2"}:
                 migration = f"""BEGIN IMMEDIATE;
 {schema}
-INSERT INTO metadata(key, value) VALUES ('schema_version', '6')
+INSERT INTO metadata(key, value) VALUES ('schema_version', '7')
 ON CONFLICT(key) DO UPDATE SET value = excluded.value;
 COMMIT;
 """
@@ -51,12 +66,17 @@ COMMIT;
                 self._migrate_v3_to_v4(connection)
                 self._migrate_v4_to_v5(connection)
                 self._migrate_v5_to_v6(connection)
+                self._migrate_v6_to_v7(connection)
             elif version == "4":
                 self._migrate_v4_to_v5(connection)
                 self._migrate_v5_to_v6(connection)
+                self._migrate_v6_to_v7(connection)
             elif version == "5":
                 self._migrate_v5_to_v6(connection)
-            elif version != "6":
+                self._migrate_v6_to_v7(connection)
+            elif version == "6":
+                self._migrate_v6_to_v7(connection)
+            elif version != "7":
                 raise DatabaseSchemaError(f"unsupported schema version: {version}")
 
     @staticmethod
@@ -132,6 +152,21 @@ COMMIT;
                 connection.rollback()
             raise
 
+    @staticmethod
+    def _migrate_v6_to_v7(connection: sqlite3.Connection) -> None:
+        schema = Path(__file__).with_name("schema.sql").read_text()
+        migration = f"""BEGIN IMMEDIATE;
+{schema}
+UPDATE metadata SET value = '7' WHERE key = 'schema_version';
+COMMIT;
+"""
+        try:
+            connection.executescript(migration)
+        except sqlite3.Error:
+            if connection.in_transaction:
+                connection.rollback()
+            raise
+
     def rebuild(self, project_id: str) -> None:
         self.initialize(project_id)
         project = self.workspace.project_path(project_id)
@@ -141,17 +176,22 @@ COMMIT;
             connection.executemany(
                 "INSERT INTO content_fts(path, content) VALUES (?, ?)",
                 (
-                    (str(path.relative_to(project)), path.read_text())
+                    (
+                        str(path.relative_to(project)),
+                        _tokenize_for_fts(path.read_text(encoding="utf-8")),
+                    )
                     for path in sorted(formal)
                     if path.is_file()
                 ),
             )
 
     def search(self, project_id: str, query: str) -> list[str]:
-        return self._search(project_id, query, query)
+        tokenized_query = _tokenize_for_fts(query)
+        return self._search(project_id, query, tokenized_query)
 
     def search_literal(self, project_id: str, query: str) -> list[str]:
-        escaped = query.replace('"', '""')
+        tokenized_query = _tokenize_for_fts(query)
+        escaped = tokenized_query.replace('"', '""')
         return self._search(project_id, query, f'"{escaped}"')
 
     def _search(self, project_id: str, display_query: str, match_query: str) -> list[str]:

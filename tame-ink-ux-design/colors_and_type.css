@@ -1,0 +1,121 @@
+/* ============================================================
+   驯墨 Tame Ink — 品牌设计令牌 · 夜墨主题 v2
+   ============================================================
+   核心理念：作者只做三件事——说想法、看结果、做取舍
+   暗色沉浸主题，单栏聚焦布局
+   ============================================================ */
+
+:root {
+  /* === 品牌主色 — 墨绿 === */
+  --brand: #6aae8d;
+  --brand-hover: #5d9a7d;
+  --brand-active: #4c8a6a;
+  --brand-muted: rgba(106, 174, 141, 0.12);
+  --brand-muted-hover: rgba(106, 174, 141, 0.2);
+  --brand-subtle: rgba(106, 174, 141, 0.06);
+  --brand-foreground: #ffffff;
+
+  /* === 表面色阶 === */
+  --surface-0: #0d1117;
+  --surface-1: #151c25;
+  --surface-2: #1a2332;
+  --surface-3: #222f40;
+  --surface-4: #2d3d52;
+
+  /* === 文本色阶 === */
+  --text-primary: #e6edf3;
+  --text-secondary: #a3b8cc;
+  --text-tertiary: #7a92ab;
+  --text-muted: #546a84;
+  --text-on-brand: #ffffff;
+
+  /* === 边框 === */
+  --border-default: rgba(148, 163, 184, 0.12);
+  --border-strong: rgba(148, 163, 184, 0.22);
+  --border-brand: rgba(106, 174, 141, 0.35);
+
+  /* === 状态色 === */
+  --state-success: #4ade80;
+  --state-success-bg: rgba(74, 222, 128, 0.1);
+  --state-warning: #fbbf24;
+  --state-warning-bg: rgba(251, 191, 36, 0.1);
+  --state-error: #f87171;
+  --state-error-bg: rgba(248, 113, 113, 0.1);
+  --state-info: #60a5fa;
+  --state-info-bg: rgba(96, 165, 250, 0.1);
+
+  /* === 语义别名 === */
+  --background: var(--surface-0);
+  --foreground: var(--text-primary);
+  --color-background: var(--surface-0);
+  --color-foreground: var(--text-primary);
+  --color-card: var(--surface-2);
+  --color-card-foreground: var(--text-primary);
+  --color-popover: var(--surface-3);
+  --color-popover-foreground: var(--text-primary);
+  --color-primary: var(--brand);
+  --color-primary-foreground: var(--brand-foreground);
+  --color-muted: var(--surface-3);
+  --color-muted-foreground: var(--text-secondary);
+  --color-border: var(--border-default);
+  --color-input: var(--border-default);
+  --color-ring: var(--brand);
+
+  /* === 圆角 === */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* === 字体 === */
+  --font-sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-serif: "Noto Serif SC", "Songti SC", "SimSun", Georgia, serif;
+  --font-mono: "SFMono-Regular", "JetBrains Mono", "Fira Code", Consolas, monospace;
+
+  /* === 字号 === */
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 18px;
+  --text-2xl: 22px;
+  --text-3xl: 28px;
+  --text-4xl: 36px;
+
+  /* === 间距 === */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* === 布局 === */
+  --sidebar-width: 200px;
+  --topbar-height: 48px;
+  --content-max-width: 760px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  min-height: 100vh;
+  color: var(--text-primary);
+  background: var(--surface-0);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 { font-family: var(--font-serif); font-weight: 700; line-height: 1.25; }
+a { color: var(--brand); text-decoration: none; transition: color 0.15s; }
+a:hover { color: var(--brand-hover); }
+button { color: inherit; font: inherit; cursor: pointer; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface-4); border-radius: 9999px; }
+::selection { background: var(--brand-muted); color: var(--brand-foreground); }

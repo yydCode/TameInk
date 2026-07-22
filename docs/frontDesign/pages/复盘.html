@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>复盘 — 驯墨</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style id="theme-vars">
+    :root {
+      --nw-primary: #1f6b54; --nw-primary-light: #2d8a6e; --nw-primary-dark: #155440;
+      --nw-primary-50: rgba(31,107,84,0.08); --nw-primary-100: rgba(31,107,84,0.15); --nw-primary-200: rgba(31,107,84,0.25);
+      --nw-amber: #d4a04a; --nw-amber-light: #e6b85c; --nw-amber-100: rgba(212,160,74,0.12);
+      --nw-ink-blue: #3b5998; --nw-ink-blue-light: #4a6ab0; --nw-ink-blue-100: rgba(59,89,152,0.12);
+      --nw-bg-base: #0d1117; --nw-bg-surface: #161b22; --nw-bg-elevated: #1c2333; --nw-bg-overlay: #222d3d;
+      --nw-bg-hover: rgba(255,255,255,0.04); --nw-bg-active: rgba(255,255,255,0.07);
+      --nw-border-default: rgba(255,255,255,0.08); --nw-border-subtle: rgba(255,255,255,0.04); --nw-border-strong: rgba(255,255,255,0.15);
+      --nw-text-primary: #e6edf3; --nw-text-secondary: #8b949e; --nw-text-tertiary: #5a6370; --nw-text-inverse: #0d1117; --nw-text-link: #2d8a6e;
+      --state-success: #2ea043; --state-warning: #d29922; --state-error: #f85149; --state-info: #58a6ff;
+      --fact-canon: #2ea043; --fact-canon-bg: rgba(46,160,67,0.08);
+      --fact-commitment: #58a6ff; --fact-commitment-bg: rgba(88,166,255,0.08);
+      --fact-candidate: #d29922; --fact-candidate-bg: rgba(210,153,34,0.08);
+      --fact-hypothesis: #a371f7; --fact-hypothesis-bg: rgba(163,113,247,0.08);
+      --radius-sm: 4px; --radius-md: 8px; --radius-lg: 12px; --radius-full: 9999px;
+      --font-display: 'Noto Serif SC','Georgia',serif; --font-body: 'Inter','Noto Sans SC',-apple-system,sans-serif; --font-mono: 'JetBrains Mono',monospace;
+      --text-xs:11px; --text-sm:13px; --text-base:14px; --text-lg:16px; --text-xl:20px; --text-2xl:24px; --text-3xl:30px;
+      --leading-tight:1.25; --leading-normal:1.6; --leading-relaxed:1.75;
+    }
+  </style>
+  <style id="semantic-token-fallback">
+    :root {
+      --nw-background: var(--nw-bg-base); --nw-foreground: var(--nw-text-primary);
+      --nw-card: var(--nw-bg-surface); --nw-card-foreground: var(--nw-text-primary);
+      --nw-popover: var(--nw-bg-elevated); --nw-popover-foreground: var(--nw-text-primary);
+      --nw-primary-foreground: #ffffff; --nw-muted: var(--nw-bg-elevated); --nw-muted-foreground: var(--nw-text-secondary);
+      --nw-border: var(--nw-border-default); --nw-input: var(--nw-border-default); --nw-ring: var(--nw-primary);
+    }
+  </style>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style type="text/tailwindcss">
+    @theme inline {
+      --color-nw-primary: var(--nw-primary); --color-nw-primary-light: var(--nw-primary-light); --color-nw-primary-dark: var(--nw-primary-dark);
+      --color-nw-amber: var(--nw-amber); --color-nw-amber-light: var(--nw-amber-light);
+      --color-nw-bg-base: var(--nw-bg-base); --color-nw-bg-surface: var(--nw-bg-surface); --color-nw-bg-elevated: var(--nw-bg-elevated);
+      --color-nw-bg-overlay: var(--nw-bg-overlay); --color-nw-bg-hover: var(--nw-bg-hover);
+      --color-nw-border-default: var(--nw-border-default); --color-nw-border-strong: var(--nw-border-strong);
+      --color-nw-text-primary: var(--nw-text-primary); --color-nw-text-secondary: var(--nw-text-secondary); --color-nw-text-tertiary: var(--nw-text-tertiary);
+      --color-state-success: var(--state-success); --color-state-warning: var(--state-warning); --color-state-error: var(--state-error); --color-state-info: var(--state-info);
+      --font-family-display: var(--font-display); --font-family-body: var(--font-body); --font-family-mono: var(--font-mono);
+      --radius-sm: var(--radius-sm); --radius-md: var(--radius-md); --radius-lg: var(--radius-lg);
+    }
+  </style>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--nw-bg-base);
+      color: var(--nw-text-primary);
+      font-family: var(--font-body);
+      font-size: var(--text-base);
+      line-height: var(--leading-normal);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.16); }
+
+    /* ===== Sidebar (must use !important) ===== */
+    .mo-sidebar { width: 240px !important; min-width: 240px !important; flex-shrink: 0 !important; background: var(--nw-bg-overlay) !important; border-right: 1px solid var(--nw-border-default) !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; min-height: 100vh !important; align-self: flex-start !important; position: sticky !important; top: 0 !important; }
+    .mo-sidebar .mo-brand { display: flex !important; align-items: center !important; gap: 12px !important; padding: 24px 24px 28px !important; color: #f5f7fa !important; }
+    .mo-sidebar .mo-brand-name { font-family: 'Noto Serif SC', serif !important; font-size: 18px !important; font-weight: 600 !important; letter-spacing: 2px !important; }
+    .mo-sidebar .mo-nav { flex: 1 !important; padding: 0 12px !important; overflow-y: auto !important; overflow-x: hidden !important; }
+    .mo-sidebar .mo-nav a { display: flex !important; align-items: center !important; gap: 12px !important; min-width: 0 !important; height: 38px !important; padding: 0 14px !important; margin-bottom: 4px !important; border-radius: 10px !important; color: #8c98a8 !important; background: transparent !important; font-size: 14px !important; line-height: 20px !important; text-decoration: none !important; box-sizing: border-box !important; }
+    .mo-sidebar .mo-nav a:hover { background: #1d232b !important; color: #d7dde6 !important; }
+    .mo-sidebar .mo-nav a.mo-active { background: #102922 !important; color: #35d99a !important; font-weight: 500 !important; }
+    .mo-sidebar .mo-nav svg { width: 18px !important; height: 18px !important; flex: 0 0 18px !important; display: block !important; stroke: currentColor !important; }
+    .mo-sidebar .mo-nav span { display: block !important; min-width: 0 !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+
+    /* User area */
+    .mo-sidebar .mo-user { padding: 12px 12px 16px !important; border-top: 1px solid #242b33 !important; display: flex !important; align-items: center !important; gap: 10px !important; }
+    .mo-sidebar .mo-user-avatar { width: 32px !important; height: 32px !important; border-radius: 50% !important; background: #242b33 !important; display: flex !important; align-items: center !important; justify-content: center !important; color: #8b949e !important; flex-shrink: 0 !important; }
+    .mo-sidebar .mo-user-avatar svg { width: 18px !important; height: 18px !important; display: block !important; stroke: currentColor !important; }
+    .mo-sidebar .mo-user-name { flex: 1 !important; font-size: 13px !important; color: #e6edf3 !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+    .mo-sidebar .mo-user-gear { background: none !important; border: none !important; padding: 6px !important; color: #5a6370 !important; cursor: pointer !important; border-radius: 6px !important; display: flex !important; align-items: center !important; justify-content: center !important; }
+    .mo-sidebar .mo-user-gear:hover { color: #8b949e !important; }
+    .mo-sidebar .mo-user-gear svg { width: 16px !important; height: 16px !important; display: block !important; stroke: currentColor !important; }
+
+    /* ===== Review page specific ===== */
+    .rv-card {
+      background: var(--nw-bg-surface);
+      border: 1px solid var(--nw-border-default);
+      border-radius: var(--radius-md);
+    }
+
+    /* Tab navigation */
+    .rv-tab-bar {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--nw-border-default);
+      margin-bottom: 24px;
+    }
+    .rv-tab-btn {
+      position: relative;
+      padding: 8px 16px;
+      font-size: 14px;
+      color: var(--nw-text-secondary);
+      background: none;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-body);
+      transition: color 0.15s;
+      white-space: nowrap;
+    }
+    .rv-tab-btn:hover {
+      color: var(--nw-text-primary);
+    }
+    .rv-tab-btn.rv-tab-active {
+      color: var(--nw-primary-light);
+    }
+    .rv-tab-btn.rv-tab-active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 16px;
+      right: 16px;
+      height: 2px;
+      background: var(--nw-primary);
+      border-radius: 1px;
+    }
+    .rv-tab-badge {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      padding: 1px 7px;
+      border-radius: var(--radius-sm);
+      background: rgba(255,255,255,0.06);
+      color: var(--nw-text-tertiary);
+      line-height: 1.5;
+    }
+    .rv-tab-active .rv-tab-badge {
+      background: var(--nw-primary-100);
+      color: var(--nw-primary-light);
+    }
+
+    /* Time range selector */
+    .rv-time-range {
+      display: flex;
+      background: var(--nw-bg-elevated);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--nw-border-default);
+      overflow: hidden;
+    }
+    .rv-time-btn {
+      padding: 6px 14px;
+      font-size: 13px;
+      color: var(--nw-text-secondary);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: var(--font-body);
+      transition: all 0.15s;
+    }
+    .rv-time-btn:hover {
+      color: var(--nw-text-primary);
+      background: var(--nw-bg-hover);
+    }
+    .rv-time-btn.rv-time-active {
+      color: var(--nw-text-primary);
+      background: var(--nw-bg-active);
+    }
+
+    /* Stat cards */
+    .rv-stat-card {
+      background: var(--nw-bg-surface);
+      border: 1px solid var(--nw-border-default);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      flex: 1;
+      min-width: 0;
+    }
+    .rv-stat-label {
+      font-size: var(--text-sm);
+      color: var(--nw-text-secondary);
+      margin-bottom: 8px;
+    }
+    .rv-stat-value {
+      font-family: var(--font-mono);
+      font-size: var(--text-2xl);
+      font-weight: 500;
+      color: var(--nw-text-primary);
+      line-height: var(--leading-tight);
+    }
+    .rv-stat-sub {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      color: var(--nw-text-tertiary);
+      margin-top: 4px;
+    }
+
+    /* Progress bar */
+    .rv-progress-track {
+      width: 100%;
+      height: 6px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 3px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+    .rv-progress-fill {
+      height: 100%;
+      background: var(--state-success);
+      border-radius: 3px;
+      transition: width 0.4s ease;
+    }
+
+    /* Timeline */
+    .rv-timeline {
+      position: relative;
+      padding-left: 140px;
+    }
+    .rv-timeline::before {
+      content: '';
+      position: absolute;
+      left: 133px;
+      top: 8px;
+      bottom: 8px;
+      width: 2px;
+      background: #242b33;
+    }
+    .rv-timeline-item {
+      position: relative;
+      padding-bottom: 28px;
+    }
+    .rv-timeline-item:last-child {
+      padding-bottom: 0;
+    }
+    .rv-timeline-time {
+      position: absolute;
+      left: -140px;
+      top: 2px;
+      width: 120px;
+      text-align: right;
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      color: var(--nw-text-tertiary);
+      line-height: var(--leading-tight);
+      padding-right: 20px;
+      white-space: nowrap;
+    }
+    .rv-timeline-dot {
+      position: absolute;
+      left: -7px;
+      top: 5px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      z-index: 1;
+    }
+    .rv-timeline-card {
+      background: var(--nw-bg-surface);
+      border: 1px solid var(--nw-border-default);
+      border-radius: var(--radius-md);
+      padding: 16px 20px;
+    }
+    .rv-timeline-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    .rv-timeline-title {
+      font-size: var(--text-base);
+      font-weight: 500;
+      color: var(--nw-text-primary);
+    }
+    .rv-timeline-detail {
+      font-size: var(--text-sm);
+      color: var(--nw-text-secondary);
+      line-height: var(--leading-relaxed);
+      margin-bottom: 12px;
+    }
+    .rv-timeline-meta {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      font-size: var(--text-xs);
+      color: var(--nw-text-tertiary);
+    }
+    .rv-timeline-meta span {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Type badge */
+    .rv-type-badge {
+      font-size: 12px;
+      padding: 2px 10px;
+      border-radius: var(--radius-sm);
+      font-weight: 500;
+      line-height: 1.6;
+      white-space: nowrap;
+    }
+    .rv-type-badge.accept { background: rgba(46,160,67,0.12); color: var(--state-success); }
+    .rv-type-badge.direction { background: rgba(88,166,255,0.12); color: var(--state-info); }
+    .rv-type-badge.reject { background: rgba(248,81,73,0.12); color: var(--state-error); }
+    .rv-type-badge.mixed { background: rgba(210,153,34,0.12); color: var(--state-warning); }
+    .rv-type-badge.replan { background: rgba(88,166,255,0.12); color: var(--state-info); }
+
+    /* Buttons */
+    .rv-btn-primary {
+      background: var(--nw-primary);
+      color: #ffffff;
+      border: none;
+      padding: 7px 18px;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-family: var(--font-body);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+    }
+    .rv-btn-primary:hover {
+      background: var(--nw-primary-light);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(31,107,84,0.25);
+    }
+    .rv-btn-primary:active { transform: translateY(0); }
+    .rv-btn-secondary {
+      background: none;
+      color: var(--nw-text-secondary);
+      border: 1px solid var(--nw-border-strong);
+      padding: 7px 18px;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-family: var(--font-body);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s;
+    }
+    .rv-btn-secondary:hover {
+      color: var(--nw-text-primary);
+      border-color: rgba(255,255,255,0.25);
+    }
+
+    /* Deviation note */
+    .rv-deviation {
+      margin-top: 10px;
+      padding: 10px 14px;
+      background: rgba(210,153,34,0.06);
+      border-left: 3px solid var(--state-warning);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      font-size: var(--text-sm);
+      color: var(--nw-text-secondary);
+      line-height: var(--leading-relaxed);
+    }
+    .rv-deviation-label {
+      font-size: var(--text-xs);
+      color: var(--state-warning);
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    /* ===== Hidden states ===== */
+    .rv-state { display: none; }
+    .rv-state.is-visible { display: block; }
+
+    /* Skeleton animation */
+    @keyframes rv-skeleton-pulse {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 0.6; }
+    }
+    .rv-skeleton-row {
+      display: flex;
+      gap: 16px;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--nw-border-subtle);
+    }
+    .rv-skeleton-block {
+      height: 14px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.08);
+      animation: rv-skeleton-pulse 1.8s ease-in-out infinite;
+    }
+
+    /* Empty state */
+    .rv-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+      color: var(--nw-text-tertiary);
+    }
+    .rv-empty-icon {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 16px;
+      border-radius: 50%;
+      background: var(--nw-bg-elevated);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .rv-empty-icon svg {
+      width: 36px;
+      height: 36px;
+      stroke: var(--nw-text-tertiary);
+    }
+    .rv-empty-text {
+      font-size: var(--text-lg);
+      margin-bottom: 4px;
+    }
+    .rv-empty-hint {
+      font-size: var(--text-sm);
+      color: var(--nw-text-tertiary);
+    }
+
+    /* Error state */
+    .rv-error {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+      color: var(--nw-text-tertiary);
+    }
+    .rv-error-icon {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 16px;
+      color: var(--state-error);
+    }
+
+    /* Version history row */
+    .rv-version-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--nw-border-subtle);
+    }
+    .rv-version-row:last-child {
+      border-bottom: none;
+    }
+    .rv-version-num {
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      color: var(--nw-primary-light);
+      min-width: 64px;
+      padding-top: 2px;
+    }
+    .rv-version-time {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      color: var(--nw-text-tertiary);
+      min-width: 110px;
+      padding-top: 2px;
+    }
+    .rv-version-summary {
+      flex: 1;
+      font-size: var(--text-sm);
+      color: var(--nw-text-primary);
+    }
+    .rv-version-chapter {
+      font-size: var(--text-xs);
+      color: var(--nw-text-tertiary);
+      padding-top: 2px;
+    }
+
+    /* Task row */
+    .rv-task-header {
+      display: grid;
+      grid-template-columns: 2fr 1.2fr 80px 80px 100px;
+      gap: 12px;
+      padding: 10px 20px;
+      font-size: var(--text-xs);
+      color: var(--nw-text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-bottom: 1px solid var(--nw-border-default);
+    }
+    .rv-task-row {
+      display: grid;
+      grid-template-columns: 2fr 1.2fr 80px 80px 100px;
+      gap: 12px;
+      padding: 12px 20px;
+      font-size: var(--text-sm);
+      color: var(--nw-text-secondary);
+      border-bottom: 1px solid var(--nw-border-subtle);
+      align-items: center;
+    }
+
+    /* Model consumption table */
+    .rv-model-header {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 12px;
+      padding: 10px 20px;
+      font-size: var(--text-xs);
+      color: var(--nw-text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-bottom: 1px solid var(--nw-border-default);
+    }
+    .rv-model-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 12px;
+      padding: 12px 20px;
+      font-size: var(--text-sm);
+      color: var(--nw-text-secondary);
+      border-bottom: 1px solid var(--nw-border-subtle);
+      align-items: center;
+    }
+
+    /* Diagnosis item */
+    .rv-diagnosis-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--nw-border-subtle);
+    }
+    .rv-diagnosis-item:last-child {
+      border-bottom: none;
+    }
+    .rv-diagnosis-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-top: 5px;
+      flex-shrink: 0;
+    }
+
+    /* Status badges */
+    .rv-status {
+      font-size: 12px;
+      padding: 2px 10px;
+      border-radius: var(--radius-sm);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .rv-status-success { background: rgba(46,160,67,0.12); color: var(--state-success); }
+    .rv-status-error { background: rgba(248,81,73,0.12); color: var(--state-error); }
+    .rv-status-running { background: rgba(88,166,255,0.12); color: var(--state-info); }
+    .rv-status-warning { background: rgba(210,153,34,0.12); color: var(--state-warning); }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .mo-sidebar { display: none !important; }
+      .rv-stats-row { flex-direction: column; }
+      .rv-timeline { padding-left: 24px; }
+      .rv-timeline::before { left: 7px; }
+      .rv-timeline-time {
+        position: static;
+        width: auto;
+        text-align: left;
+        padding-right: 0;
+        padding-bottom: 6px;
+        font-size: var(--text-xs);
+      }
+      .rv-timeline-dot {
+        left: -20px;
+        top: -14px;
+      }
+      .rv-timeline-item {
+        display: flex;
+        flex-direction: column;
+      }
+      .rv-task-header,
+      .rv-task-row,
+      .rv-model-header,
+      .rv-model-row {
+        grid-template-columns: 1fr 1fr;
+      }
+      .rv-top-controls {
+        flex-direction: column;
+        align-items: flex-start !important;
+      }
+    }
+
+    /* Global transitions */
+    * { transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease; }
+    button { transition: all 0.15s ease; }
+    a { transition: all 0.15s ease; }
+    .mo-sidebar * { transition: none !important; }
+
+    /* Card hover */
+    .rv-card:hover, .rv-stat-card:hover, .rv-timeline-card:hover { border-color: var(--nw-border-strong); }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+    ::-webkit-scrollbar-corner { background: transparent; }
+  </style>
+</head>
+
+<body class="flex h-screen overflow-hidden">
+
+  <!-- ==================== SIDEBAR ==================== -->
+  <aside class="mo-sidebar" style="font-family: var(--font-body);">
+    <!-- Brand -->
+    <div class="mo-brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;flex-shrink:0;">
+        <path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+        <path d="m15 5 4 4"/>
+      </svg>
+      <span class="mo-brand-name">驯墨</span>
+      <span style="font-size:10px;color:#5a6370;letter-spacing:1px;margin-top:2px;display:block;">TAME INK</span>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="mo-nav">
+      <!-- 1. 工作台 -->
+      <a href="workspace.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>
+        </svg>
+        <span>工作台</span>
+      </a>
+      <!-- 2. 创作 -->
+      <a href="creation.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z"/>
+        </svg>
+        <span>创作</span>
+      </a>
+      <!-- 3. 故事库 -->
+      <a href="story-library.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+        </svg>
+        <span>故事库</span>
+      </a>
+      <!-- 4. 复盘 (active) -->
+      <a href="#" class="mo-active">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>
+        </svg>
+        <span>复盘</span>
+      </a>
+      <!-- 5. 设置 -->
+      <a href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>
+        </svg>
+        <span>设置</span>
+      </a>
+    </nav>
+
+    <!-- User area -->
+    <div class="mo-user">
+      <div class="mo-user-avatar">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+        </svg>
+      </div>
+      <span class="mo-user-name">作者</span>
+      <button class="mo-user-gear" aria-label="设置">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ==================== MAIN CONTENT ==================== -->
+  <main class="flex-1 min-w-0 h-screen overflow-y-auto" style="background:var(--nw-bg-base);padding:32px;">
+
+    <!-- ===== Top title bar ===== -->
+    <div class="rv-top-controls" style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px;min-width:0;">
+      <h1 style="font-family:var(--font-display);font-size:var(--text-2xl);font-weight:600;color:var(--nw-text-primary);letter-spacing:0.02em;">
+        复盘
+      </h1>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <!-- Time range selector -->
+        <div class="rv-time-range">
+          <button class="rv-time-btn rv-time-active">近7天</button>
+          <button class="rv-time-btn">近30天</button>
+          <button class="rv-time-btn">全部</button>
+        </div>
+        <!-- Export button -->
+        <button class="rv-btn-secondary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          导出
+        </button>
+      </div>
+    </div>
+
+    <!-- ===== Tab navigation ===== -->
+    <div class="rv-tab-bar">
+      <button class="rv-tab-btn rv-tab-active" data-tab="decisions">
+        决策记录
+        <span class="rv-tab-badge">23</span>
+      </button>
+      <button class="rv-tab-btn" data-tab="versions">
+        版本历史
+        <span class="rv-tab-badge">47</span>
+      </button>
+      <button class="rv-tab-btn" data-tab="tasks">
+        任务运行
+        <span class="rv-tab-badge">156</span>
+      </button>
+      <button class="rv-tab-btn" data-tab="consumption">
+        模型消耗
+        <span class="rv-tab-badge">&mdash;</span>
+      </button>
+      <button class="rv-tab-btn" data-tab="diagnosis">
+        安全诊断
+        <span class="rv-tab-badge">3</span>
+      </button>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Tab 1: 决策记录 (active by default)                          -->
+    <!-- ============================================================ -->
+    <div id="tab-decisions" class="rv-tab-content">
+
+      <!-- Stat summary row -->
+      <div class="rv-stats-row" style="display:flex;gap:16px;margin-bottom:28px;flex-wrap:wrap;">
+        <!-- Total decisions -->
+        <div class="rv-stat-card">
+          <div class="rv-stat-label">总决策数</div>
+          <div class="rv-stat-value">23</div>
+          <div class="rv-stat-sub">本周 <span style="color:var(--nw-primary-light);">5</span></div>
+        </div>
+        <!-- Acceptance rate -->
+        <div class="rv-stat-card">
+          <div class="rv-stat-label">接受率</div>
+          <div class="rv-stat-value">78%</div>
+          <div class="rv-progress-track">
+            <div class="rv-progress-fill" style="width: 78%;"></div>
+          </div>
+        </div>
+        <!-- Average decision time -->
+        <div class="rv-stat-card">
+          <div class="rv-stat-label">平均决策耗时</div>
+          <div class="rv-stat-value">2.3</div>
+          <div class="rv-stat-sub">分钟 / 次决策</div>
+        </div>
+      </div>
+
+      <!-- Decision timeline -->
+      <div class="rv-timeline">
+
+        <!-- Decision 1 -->
+        <div class="rv-timeline-item">
+          <div class="rv-timeline-time">2026-07-20<br/>14:32</div>
+          <div class="rv-timeline-dot" style="background:var(--state-success);"></div>
+          <div class="rv-timeline-card">
+            <div class="rv-timeline-header">
+              <span class="rv-type-badge accept">接受</span>
+              <span class="rv-timeline-title">确认第6章场景2正文</span>
+            </div>
+            <div class="rv-timeline-detail">接受 AI 候选 A，局部修改场景3的对话部分</div>
+            <div class="rv-timeline-meta">
+              <span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;">
+                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                </svg>
+                StoryCard #11 &middot; Scene 2
+              </span>
+              <span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                </svg>
+                更新3个人物状态，兑现1条期待
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Decision 2 -->
+        <div class="rv-timeline-item">
+          <div class="rv-timeline-time">2026-07-20<br/>11:15</div>
+          <div class="rv-timeline-dot" style="background:var(--state-info);"></div>
+          <div class="rv-timeline-card">
+            <div class="rv-timeline-header">
+              <span class="rv-type-badge direction">方向确认</span>
+              <span class="rv-timeline-title">主角选择独自潜入</span>
+            </div>
+            <div class="rv-timeline-detail">从3个候选方向中选择方案A：独自潜入组织总部</div>
+            <div class="rv-timeline-meta">
+              <span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;">
+                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                </svg>
+                StoryCard #12 &middot; NeedsDecision
+              </span>
+              <span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                </svg>
+                新增2条期待，更新故事卡硬约束
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Decision 3 -->
+        <div class="rv-timeline-item">
+          <div class="rv-timeline-time">2026-07-19<br/>22:08</div>
+          <div class="rv-timeline-dot" style="background:var(--state-error);"></div>
+          <div class="rv-timeline-card">
+            <div class="rv-timeline-header">
+              <span class="rv-type-badge reject">拒绝</span>
+              <span class="rv-timeline-title">拒绝第5章候选B结尾</span>
+            </div>
+            <div class="rv-timeline-detail">节奏过快，缺少情感缓冲。要求重做场景4-5</div>
+            <div class="rv-timeline-meta">
+              <span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;">
+                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                </svg>
+                StoryCard #10 &middot; AwaitingApproval
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Decision 4 -->
+        <div class="rv-timeline-item">
+          <div class="rv-timeline-time">2026-07-19<br/>16:45</div>
+          <div class="rv-timeline-dot" style="background:var(--state-warning);"></div>
+          <div class="rv-timeline-card">
+            <div class="rv-timeline-header">
+              <span class="rv-type-badge mixed">混合</span>
+              <span class="rv-timeline-title">混合第5章场景3对话</span>
+            </div>
+            <div class="rv-timeline-detail">采用候选A的对话框架，替换为候选B的具体措辞</div>
+            <div class="rv-timeline-meta">
+              <span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;">
+                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                </svg>
+                StoryCard #10 &middot; Scene 3
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Decision 5 -->
+        <div class="rv-timeline-item">
+          <div class="rv-timeline-time">2026-07-19<br/>10:20</div>
+          <div class="rv-timeline-dot" style="background:var(--state-info);"></div>
+          <div class="rv-timeline-card">
+            <div class="rv-timeline-header">
+              <span class="rv-type-badge replan">重规划</span>
+              <span class="rv-timeline-title">重规划故事卡#10后续场景</span>
+            </div>
+            <div class="rv-timeline-detail">正文偏离软计划，重规划场景3-5的执行顺序</div>
+            <div class="rv-deviation">
+              <div class="rv-deviation-label">偏差说明</div>
+              原计划主角在城内搜集情报，正文发展为直接前往据点
+            </div>
+          </div>
+        </div>
+
+        <!-- Decision 6 — 按差异块接受 -->
+        <div class="rv-timeline-item">
+          <div class="rv-timeline-time">2026-07-20<br/>14:32</div>
+          <div class="rv-timeline-dot" style="background:var(--state-success);"></div>
+          <div class="rv-timeline-card">
+            <div class="rv-timeline-header">
+              <span class="rv-type-badge accept">按差异块接受</span>
+              <span class="rv-timeline-title">第12章 第3场景审批</span>
+            </div>
+            <div class="rv-timeline-detail">接受第1-3段和第5-7段（动作描写），拒绝第4段（内心独白偏离人物核心），对第8段接受并手工修改。</div>
+            <div class="rv-timeline-meta">
+              <span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;">
+                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                </svg>
+                StoryCard #12 &middot; Scene 3
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Decision 7 — 手工修改后确认 -->
+        <div class="rv-timeline-item">
+          <div class="rv-timeline-time">2026-07-20<br/>14:45</div>
+          <div class="rv-timeline-dot" style="background:var(--state-success);"></div>
+          <div class="rv-timeline-card">
+            <div class="rv-timeline-header">
+              <span class="rv-type-badge accept">手工修改后确认</span>
+              <span class="rv-timeline-title">第12章 最终确认</span>
+            </div>
+            <div class="rv-timeline-detail">作者手工改写第8段对话后确认。修改内容：将"冷声"改为"语气平淡但目光锐利"以符合人物压力下决策模式。</div>
+            <div class="rv-timeline-meta">
+              <span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;">
+                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                </svg>
+                StoryCard #12
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Decision 8 — 只重做指定范围 -->
+        <div class="rv-timeline-item">
+          <div class="rv-timeline-time">2026-07-20<br/>15:02</div>
+          <div class="rv-timeline-dot" style="background:var(--state-warning);"></div>
+          <div class="rv-timeline-card">
+            <div class="rv-timeline-header">
+              <span class="rv-type-badge mixed">只重做指定范围</span>
+              <span class="rv-timeline-title">第12章 第3场景重做</span>
+            </div>
+            <div class="rv-timeline-detail">仅重做第4段（内心独白），保留其他已接受段落。原因为人物恐惧维度展现不足。</div>
+            <div class="rv-timeline-meta">
+              <span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;">
+                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                </svg>
+                StoryCard #12 &middot; Scene 3
+              </span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <!-- end .rv-timeline -->
+    </div>
+    <!-- end #tab-decisions -->
+
+
+    <!-- ============================================================ -->
+    <!-- Tab 2: 版本历史 (basic structure with comments)              -->
+    <!-- ============================================================ -->
+    <div id="tab-versions" class="rv-tab-content" style="display:none;">
+      <!-- 版本历史：按时间倒序展示每一版正文/大纲的快照记录 -->
+      <!-- 每条记录包含：版本号、保存时间、变更摘要、关联章节 -->
+
+      <div class="rv-card" style="overflow:hidden;">
+        <div class="rv-version-row">
+          <span class="rv-version-num">v0.6.12</span>
+          <span class="rv-version-time">2026-07-20 14:32</span>
+          <span class="rv-version-summary">确认第6章场景2正文，局部修改场景3对话</span>
+          <span class="rv-version-chapter">第6章 &middot; Scene 2-3</span>
+        </div>
+        <div class="rv-version-row">
+          <span class="rv-version-num">v0.6.11</span>
+          <span class="rv-version-time">2026-07-20 11:15</span>
+          <span class="rv-version-summary">更新故事卡#12方向约束，确认潜入方案</span>
+          <span class="rv-version-chapter">第6章 &middot; StoryCard #12</span>
+        </div>
+        <div class="rv-version-row">
+          <span class="rv-version-num">v0.6.10</span>
+          <span class="rv-version-time">2026-07-19 22:08</span>
+          <span class="rv-version-summary">拒绝候选B结尾，回退场景4-5至待重做状态</span>
+          <span class="rv-version-chapter">第5章 &middot; Scene 4-5</span>
+        </div>
+        <div class="rv-version-row">
+          <span class="rv-version-num">v0.6.9</span>
+          <span class="rv-version-time">2026-07-19 16:45</span>
+          <span class="rv-version-summary">混合场景3对话：A框架 + B措辞</span>
+          <span class="rv-version-chapter">第5章 &middot; Scene 3</span>
+        </div>
+        <!-- 更多版本记录通过分页/无限滚动加载 -->
+      </div>
+    </div>
+    <!-- end #tab-versions -->
+
+
+    <!-- ============================================================ -->
+    <!-- Tab 3: 任务运行 (basic structure with comments)              -->
+    <!-- ============================================================ -->
+    <div id="tab-tasks" class="rv-tab-content" style="display:none;">
+      <!-- 任务运行：记录每次 AI Skill 的执行情况 -->
+      <!-- 每条任务包含：任务名、调用的 Skill 名、运行状态、耗时、token 消耗 -->
+
+      <div class="rv-card" style="overflow:hidden;">
+        <div class="rv-task-header">
+          <span>任务名称</span>
+          <span>Skill</span>
+          <span>状态</span>
+          <span>耗时</span>
+          <span>Token</span>
+        </div>
+        <div class="rv-task-row">
+          <span style="color:var(--nw-text-primary);">生成第6章场景2候选</span>
+          <span style="font-family:var(--font-mono);font-size:var(--text-xs);">webnovel-draft</span>
+          <span class="rv-status rv-status-success">成功</span>
+          <span style="font-family:var(--font-mono);font-size:var(--text-sm);">42s</span>
+          <span style="font-family:var(--font-mono);font-size:var(--text-sm);">8,421</span>
+        </div>
+        <div class="rv-task-row">
+          <span style="color:var(--nw-text-primary);">一致性检查 - 第5章</span>
+          <span style="font-family:var(--font-mono);font-size:var(--text-xs);">webnovel-audit (连续性)</span>
+          <span class="rv-status rv-status-success">成功</span>
+          <span style="font-family:var(--font-mono);font-size:var(--text-sm);">18s</span>
+          <span style="font-family:var(--font-mono);font-size:var(--text-sm);">3,207</span>
+        </div>
+        <div class="rv-task-row">
+          <span style="color:var(--nw-text-primary);">生成候选方向</span>
+          <span style="font-family:var(--font-mono);font-size:var(--text-xs);">webnovel-plan-rolling-story</span>
+          <span class="rv-status rv-status-error">失败</span>
+          <span style="font-family:var(--font-mono);font-size:var(--text-sm);">6s</span>
+          <span style="font-family:var(--font-mono);font-size:var(--text-sm);">1,102</span>
+        </div>
+        <div class="rv-task-row">
+          <span style="color:var(--nw-text-primary);">期待兑现检查</span>
+          <span style="font-family:var(--font-mono);font-size:var(--text-xs);">webnovel-audit (承诺)</span>
+          <span class="rv-status rv-status-running">运行中</span>
+          <span style="font-family:var(--font-mono);font-size:var(--text-sm);">--</span>
+          <span style="font-family:var(--font-mono);font-size:var(--text-sm);">--</span>
+        </div>
+        <!-- 更多任务通过分页加载 -->
+        <div class="rv-task-row" style="border-left:3px solid var(--state-warning);">
+          <span style="color:var(--nw-text-primary);">记忆整理 - 第6章</span>
+          <span style="font-family:var(--font-mono);font-size:var(--text-xs);">webnovel-curate-memory</span>
+          <span class="rv-status rv-status-warning">等待决策</span>
+          <span style="font-family:var(--font-mono);font-size:var(--text-sm);">4.2s</span>
+          <span style="font-family:var(--font-mono);font-size:var(--text-sm);">2,847</span>
+        </div>
+        <div style="padding:8px 20px 12px;font-size:11px;color:var(--nw-text-tertiary);border-bottom:1px solid var(--nw-border-subtle);">
+          状态: needs_decision — 提取了3条实际事件，2条人物状态变化，等待作者确认回写
+        </div>
+      </div>
+    </div>
+    <!-- end #tab-tasks -->
+
+
+    <!-- ============================================================ -->
+    <!-- Tab 4: 模型消耗 (basic structure with comments)              -->
+    <!-- ============================================================ -->
+    <div id="tab-consumption" class="rv-tab-content" style="display:none;">
+      <!-- 模型消耗：按模型分组统计 token 使用量和费用 -->
+      <!-- 每条记录包含：模型名称、调用次数、总 token、总费用 -->
+
+      <div class="rv-card" style="overflow:hidden;">
+        <div class="rv-model-header">
+          <span>模型</span>
+          <span>调用次数</span>
+          <span>总 Token</span>
+          <span>总费用</span>
+        </div>
+        <div class="rv-model-row">
+          <span style="color:var(--nw-text-primary);">Claude 4 Sonnet</span>
+          <span style="font-family:var(--font-mono);font-size:var(--text-sm);">89</span>
+          <span style="font-family:var(--font-mono);font-size:var(--text-sm);">1,245,630</span>
+          <span style="font-family:var(--font-mono);font-size:var(--text-sm);color:var(--nw-text-primary);">&yen;18.72</span>
+        </div>
+        <div class="rv-model-row">
+          <span style="color:var(--nw-text-primary);">GPT-4o</span>
+          <span style="font-family:var(--font-mono);font-size:var(--text-sm);">42</span>
+          <span style="font-family:var(--font-mono);font-size:var(--text-sm);">523,180</span>
+          <span style="font-family:var(--font-mono);font-size:var(--text-sm);color:var(--nw-text-primary);">&yen;5.23</span>
+        </div>
+        <div class="rv-model-row">
+          <span style="color:var(--nw-text-primary);">Claude 3.5 Haiku</span>
+          <span style="font-family:var(--font-mono);font-size:var(--text-sm);">25</span>
+          <span style="font-family:var(--font-mono);font-size:var(--text-sm);">187,400</span>
+          <span style="font-family:var(--font-mono);font-size:var(--text-sm);color:var(--nw-text-primary);">&yen;0.93</span>
+        </div>
+        <!-- 合计行 -->
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:12px;padding:14px 20px;border-top:1px solid var(--nw-border-default);font-weight:500;">
+          <span style="color:var(--nw-text-primary);font-size:var(--text-sm);">合计</span>
+          <span style="font-family:var(--font-mono);font-size:var(--text-sm);color:var(--nw-text-primary);">156</span>
+          <span style="font-family:var(--font-mono);font-size:var(--text-sm);color:var(--nw-text-primary);">1,956,210</span>
+          <span style="font-family:var(--font-mono);font-size:var(--text-sm);color:var(--nw-primary-light);">&yen;24.88</span>
+        </div>
+      </div>
+    </div>
+    <!-- end #tab-consumption -->
+
+
+    <!-- ============================================================ -->
+    <!-- Tab 5: 安全诊断 (basic structure with comments)              -->
+    <!-- ============================================================ -->
+    <div id="tab-diagnosis" class="rv-tab-content" style="display:none;">
+      <!-- 安全诊断：自动检测故事一致性与潜在风险 -->
+      <!-- 3条诊断结果，状态分为：正常 / 警告 / 错误 -->
+
+      <div class="rv-card" style="overflow:hidden;">
+        <!-- Diagnosis 1: 正常 -->
+        <div class="rv-diagnosis-item">
+          <div class="rv-diagnosis-dot" style="background:var(--state-success);"></div>
+          <div style="flex:1;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+              <span class="rv-status rv-status-success">正常</span>
+              <span style="font-size:var(--text-base);color:var(--nw-text-primary);">无正式事实冲突</span>
+            </div>
+            <p style="font-size:var(--text-sm);color:var(--nw-text-secondary);">已完成对全部5章的事实一致性扫描，未发现角色、时间线或设定层面的正式冲突。</p>
+          </div>
+        </div>
+
+        <!-- Diagnosis 2: 警告 -->
+        <div class="rv-diagnosis-item">
+          <div class="rv-diagnosis-dot" style="background:var(--state-warning);"></div>
+          <div style="flex:1;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+              <span class="rv-status rv-status-warning">警告</span>
+              <span style="font-size:var(--text-base);color:var(--nw-text-primary);">期待 #4 已超过15章未兑现</span>
+            </div>
+            <p style="font-size:var(--text-sm);color:var(--nw-text-secondary);">"林霜向主角透露组织内部结构"这条期待自第1章设立以来，至第6章仍未被兑现或推进。建议在后续场景中安排相关情节。</p>
+          </div>
+        </div>
+
+        <!-- Diagnosis 3: 正常 -->
+        <div class="rv-diagnosis-item">
+          <div class="rv-diagnosis-dot" style="background:var(--state-success);"></div>
+          <div style="flex:1;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+              <span class="rv-status rv-status-success">正常</span>
+              <span style="font-size:var(--text-base);color:var(--nw-text-primary);">所有任务来源可追溯</span>
+            </div>
+            <p style="font-size:var(--text-sm);color:var(--nw-text-secondary);">全部156条任务记录均可追溯至对应 StoryCard 或 Orchestrator 决策节点，无孤立任务。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- end #tab-diagnosis -->
+
+
+    <!-- ============================================================ -->
+    <!-- Hidden states (controlled via CSS class)                     -->
+    <!-- ============================================================ -->
+
+    <!-- Loading state: skeleton animation -->
+    <div class="rv-state" id="state-loading">
+      <div style="padding:4px 0;">
+        <div class="rv-skeleton-row">
+          <div class="rv-skeleton-block" style="width:60px;"></div>
+          <div class="rv-skeleton-block" style="width:320px;"></div>
+        </div>
+        <div class="rv-skeleton-row">
+          <div class="rv-skeleton-block" style="width:60px;"></div>
+          <div class="rv-skeleton-block" style="width:280px;"></div>
+        </div>
+        <div class="rv-skeleton-row">
+          <div class="rv-skeleton-block" style="width:60px;"></div>
+          <div class="rv-skeleton-block" style="width:300px;"></div>
+        </div>
+        <div class="rv-skeleton-row">
+          <div class="rv-skeleton-block" style="width:60px;"></div>
+          <div class="rv-skeleton-block" style="width:260px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty state -->
+    <div class="rv-state" id="state-empty">
+      <div class="rv-empty">
+        <div class="rv-empty-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>
+          </svg>
+        </div>
+        <div class="rv-empty-text">暂无决策记录</div>
+        <div class="rv-empty-hint">开始创作后，你的决策将自动记录在此处</div>
+      </div>
+    </div>
+
+    <!-- Error state -->
+    <div class="rv-state" id="state-error">
+      <div class="rv-error">
+        <svg class="rv-error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+        </svg>
+        <div style="font-size:var(--text-lg);color:var(--nw-text-primary);margin-bottom:4px;">数据加载失败</div>
+        <div style="font-size:var(--text-sm);color:var(--nw-text-tertiary);margin-bottom:16px;">无法连接到复盘数据服务，请检查网络后重试</div>
+        <button class="rv-btn-primary">重试</button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ===== Tab switching logic ===== -->
+  <script>
+    (function() {
+      const tabs = document.querySelectorAll('.rv-tab-btn');
+      const panels = document.querySelectorAll('.rv-tab-content');
+
+      tabs.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          // Deactivate all tabs
+          tabs.forEach(function(t) { t.classList.remove('rv-tab-active'); });
+          // Hide all panels
+          panels.forEach(function(p) { p.style.display = 'none'; });
+          // Activate clicked tab
+          btn.classList.add('rv-tab-active');
+          // Show corresponding panel
+          var target = btn.getAttribute('data-tab');
+          var panel = document.getElementById('tab-' + target);
+          if (panel) panel.style.display = 'block';
+        });
+      });
+
+      // Time range selector
+      var timeBtns = document.querySelectorAll('.rv-time-btn');
+      timeBtns.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          timeBtns.forEach(function(b) { b.classList.remove('rv-time-active'); });
+          btn.classList.add('rv-time-active');
+        });
+      });
+    })();
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,346 @@
+<!-- ============================================================
+     驯墨 Tame Ink — 共享项目外壳片段
+     包含: topbar + sidebar + 主内容区占位
+     被: workspace / editor / stories / review / settings 页面引用
+     ============================================================ -->
+<style>
+/* === 项目外壳布局 === */
+.app-shell {
+  display: grid;
+  grid-template-rows: 52px 1fr;
+  grid-template-columns: 220px 1fr;
+  min-height: 100vh;
+}
+
+/* === 顶栏 === */
+.topbar {
+  grid-column: 1 / -1;
+  height: 52px;
+  background: var(--ink-900);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--border-default);
+  z-index: 100;
+}
+
+/* 顶栏左侧 */
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/* 品牌标识 */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+/* 品牌图标：墨绿色方块 */
+.brand-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: var(--brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--brand-foreground);
+  font-size: 14px;
+  font-weight: var(--font-bold);
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.brand-name {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.brand-subtitle {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-weight: var(--font-regular);
+}
+
+/* 项目选择器 */
+.project-selector {
+  position: relative;
+}
+
+.project-selector-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: background 0.15s;
+  height: 32px;
+}
+
+.project-selector-btn:hover {
+  background: var(--surface-4);
+}
+
+.project-selector-btn .project-name {
+  font-weight: var(--font-medium);
+}
+
+/* 顶栏右侧 */
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* 连接状态指示灯 */
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--state-success);
+  box-shadow: 0 0 6px rgba(74, 222, 128, 0.4);
+}
+
+/* 设置齿轮按钮 */
+.topbar-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.topbar-icon-btn:hover {
+  background: var(--surface-3);
+  color: var(--text-secondary);
+}
+
+.topbar-icon-btn i {
+  width: 18px;
+  height: 18px;
+}
+
+/* === 侧边栏 === */
+.sidebar {
+  width: 220px;
+  background: var(--surface-1);
+  border-right: 1px solid var(--border-default);
+  position: sticky;
+  top: 0;
+  height: calc(100vh - 52px);
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* "新建故事" 按钮 */
+.btn-new-story {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--brand-muted);
+  border: 1px solid transparent;
+  color: var(--brand);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: background 0.15s;
+  height: 36px;
+}
+
+.btn-new-story:hover {
+  background: var(--brand-muted-hover);
+}
+
+.btn-new-story i {
+  width: 16px;
+  height: 16px;
+}
+
+/* 导航分隔线 */
+.nav-divider {
+  height: 1px;
+  background: var(--border-default);
+  margin: var(--space-2) 0;
+}
+
+/* 导航项 */
+.nav-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0;
+  margin: 0;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 40px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  border: none;
+  border-left: 3px solid transparent;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-regular);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  text-align: left;
+}
+
+.nav-item i {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+/* 导航项 hover 态（未激活时） */
+.nav-item:not([data-active="true"]):hover {
+  background: var(--surface-2);
+  color: var(--text-secondary);
+}
+
+/* 导航项激活态 */
+.nav-item[data-active="true"] {
+  background: var(--brand-subtle);
+  border-left-color: var(--brand);
+  color: var(--brand);
+  font-weight: 600;
+}
+
+/* === 主内容区域 === */
+.main-content {
+  padding: 24px;
+  overflow-y: auto;
+  background: var(--surface-0);
+  /* SLOT: pageContent */
+}
+</style>
+
+<div class="app-shell">
+  <!-- ==================== 顶栏 ==================== -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <!-- 品牌标识 -->
+      <div class="brand">
+        <div class="brand-icon">墨</div>
+        <div class="brand-text">
+          <span class="brand-name">驯墨</span>
+          <span class="brand-subtitle">Tame Ink</span>
+        </div>
+      </div>
+
+      <!-- 项目选择器 -->
+      <div class="project-selector">
+        <button class="project-selector-btn">
+          <i data-lucide="folder-open"></i>
+          <span class="project-name">星际征途</span>
+          <i data-lucide="chevron-down" style="width:14px;height:14px;color:var(--text-muted)"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <!-- 连接状态 -->
+      <div class="connection-status">
+        <span class="status-dot"></span>
+        <span>已连接</span>
+      </div>
+
+      <!-- 设置按钮 -->
+      <button class="topbar-icon-btn" title="设置">
+        <i data-lucide="settings"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- ==================== 侧边栏 ==================== -->
+  <nav class="sidebar">
+    <!-- 新建故事按钮 -->
+    <button class="btn-new-story">
+      <i data-lucide="plus"></i>
+      新建故事
+    </button>
+
+    <div class="nav-divider"></div>
+
+    <!-- 导航列表 -->
+    <ul class="nav-list">
+      <li>
+        <button class="nav-item" data-nav-key="workspace" data-active="false">
+          <i data-lucide="layout-dashboard"></i>
+          <span>工作台</span>
+        </button>
+      </li>
+      <li>
+        <button class="nav-item" data-nav-key="editor" data-active="false">
+          <i data-lucide="pen-line"></i>
+          <span>创作</span>
+        </button>
+      </li>
+      <li>
+        <button class="nav-item" data-nav-key="stories" data-active="false">
+          <i data-lucide="book-open"></i>
+          <span>故事库</span>
+        </button>
+      </li>
+      <li>
+        <button class="nav-item" data-nav-key="review" data-active="false">
+          <i data-lucide="bar-chart-3"></i>
+          <span>复盘</span>
+        </button>
+      </li>
+      <li>
+        <button class="nav-item" data-nav-key="settings" data-active="false">
+          <i data-lucide="settings"></i>
+          <span>设置</span>
+        </button>
+      </li>
+    </ul>
+  </nav>
+
+  <!-- ==================== 主内容区 ==================== -->
+  <main class="main-content">
+    <!-- SLOT: pageContent -->
+  </main>
+</div>

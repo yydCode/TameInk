@@ -1,4 +1,4 @@
 interface:
-  display_name: "网络小说工作室"
-  short_description: "策划、写作、审稿并维护中文网络小说"
-  default_prompt: "帮我策划、写作、审稿或续写一部商业中文网络小说。"
+  display_name: "网文创作系统边界"
+  short_description: "管理候选、正式事实、作者决策和来源证据的网文创作系统边界"
+  default_prompt: "Use $webnovel-studio to enforce human-in-the-loop writing rules."

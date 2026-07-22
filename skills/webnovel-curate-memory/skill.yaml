@@ -1,0 +1,8 @@
+name: webnovel-curate-memory
+agent: MemoryCurator
+candidate_kinds:
+  - memory_proposal
+  - actual_event
+  - character_state
+  - expectation
+purpose: 仅从作者确认的正文提取待审批的实际状态变化。

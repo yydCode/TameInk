@@ -83,7 +83,7 @@ def test_initialize_migrates_schema_and_preserves_rebuild(tmp_path: Path) -> Non
             )
         }
 
-    assert version == "6"
+    assert version == "7"
     assert {
         "tasks",
         "task_events",

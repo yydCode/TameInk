@@ -10,6 +10,7 @@ from app.agents.schemas import (
     MemoryCuration,
     Outline,
     RevisionProposal,
+    SkillExecutionContract,
     SourceReference,
     StorySetting,
     StyleIssue,
@@ -166,3 +167,114 @@ def test_draft_citation_has_parseable_exact_character_range() -> None:
 def test_draft_citation_rejects_unparseable_or_reversed_range(location: str) -> None:
     with pytest.raises(ValidationError):
         DraftCitation.model_validate({"source": "draft", "location": location, "quote": "正文"})
+
+
+def test_skill_execution_contract_distinguishes_ready_decision_and_conflict() -> None:
+    ready = SkillExecutionContract.model_validate(
+        {
+            "id": "execution-1",
+            "skill": "webnovel-plan-rolling-story",
+            "status": "ready",
+            "references": [REFERENCE],
+            "evidence": [],
+            "candidate": {
+                "artifact_kind": "story_card",
+                "summary": "下一单元候选",
+                "payload": {"goal": "拿到线索"},
+            },
+            "decision_requests": [],
+            "effects": [],
+        }
+    )
+    needs_decision = SkillExecutionContract.model_validate(
+        {
+            "id": "execution-2",
+            "skill": "webnovel-design-reader-contract",
+            "status": "needs_decision",
+            "references": [REFERENCE],
+            "evidence": [],
+            "candidate": None,
+            "decision_requests": [
+                {"id": "decision-1", "question": "主角是否公开身份？", "options": ["公开"]}
+            ],
+            "effects": [],
+        }
+    )
+    conflict = SkillExecutionContract.model_validate(
+        {
+            "id": "execution-3",
+            "skill": "webnovel-audit",
+            "status": "conflict",
+            "references": [REFERENCE],
+            "evidence": [
+                {
+                    "kind": "conflict",
+                    "description": "正式身份互相冲突",
+                    "reference": REFERENCE,
+                }
+            ],
+            "candidate": None,
+            "decision_requests": [
+                {"id": "decision-2", "question": "采用哪个身份？", "options": ["流民"]}
+            ],
+            "effects": [],
+        }
+    )
+
+    assert ready.status == "ready"
+    assert needs_decision.status == "needs_decision"
+    assert conflict.status == "conflict"
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {
+            "id": "bad-ready",
+            "skill": "webnovel-draft",
+            "status": "ready",
+            "references": [REFERENCE],
+            "evidence": [],
+            "candidate": None,
+            "decision_requests": [],
+            "effects": [],
+        },
+        {
+            "id": "bad-conflict",
+            "skill": "webnovel-audit",
+            "status": "conflict",
+            "references": [REFERENCE],
+            "evidence": [],
+            "candidate": None,
+            "decision_requests": [],
+            "effects": [],
+        },
+    ],
+)
+def test_skill_execution_contract_rejects_hidden_fallbacks(payload: dict[str, object]) -> None:
+    with pytest.raises(ValidationError):
+        SkillExecutionContract.model_validate(payload)
+
+
+def test_skill_execution_contract_rejects_effects_when_author_decision_is_required() -> None:
+    with pytest.raises(ValidationError, match="BLOCKED_EFFECTS_UNEXPECTED"):
+        SkillExecutionContract.model_validate(
+            {
+                "id": "blocked-effects",
+                "skill": "webnovel-design-reader-contract",
+                "status": "needs_decision",
+                "references": [REFERENCE],
+                "evidence": [],
+                "candidate": None,
+                "decision_requests": [
+                    {"id": "direction", "question": "选择核心体验", "options": ["逆袭"]}
+                ],
+                "effects": [
+                    {
+                        "artifact_kind": "reader_contract",
+                        "record_id": "contract-1",
+                        "description": "错误的预先影响",
+                    }
+                ],
+            }
+        )

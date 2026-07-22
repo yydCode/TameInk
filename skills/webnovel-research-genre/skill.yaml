@@ -1,0 +1,5 @@
+name: webnovel-research-genre
+agent: Researcher
+candidate_kinds:
+  - evidence_finding
+purpose: 整理平台、题材和对标证据，并明确未验证假设。

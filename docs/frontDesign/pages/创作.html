@@ -1,0 +1,1840 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>创作 — 驯墨</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style id="theme-vars">
+    :root {
+      --nw-primary: #1f6b54; --nw-primary-light: #2d8a6e; --nw-primary-dark: #155440;
+      --nw-primary-50: rgba(31,107,84,0.08); --nw-primary-100: rgba(31,107,84,0.15); --nw-primary-200: rgba(31,107,84,0.25);
+      --nw-amber: #d4a04a; --nw-amber-light: #e6b85c; --nw-amber-100: rgba(212,160,74,0.12);
+      --nw-ink-blue: #3b5998; --nw-ink-blue-light: #4a6ab0; --nw-ink-blue-100: rgba(59,89,152,0.12);
+      --nw-bg-base: #0d1117; --nw-bg-surface: #161b22; --nw-bg-elevated: #1c2333; --nw-bg-overlay: #222d3d;
+      --nw-bg-hover: rgba(255,255,255,0.04); --nw-bg-active: rgba(255,255,255,0.07);
+      --nw-border-default: rgba(255,255,255,0.08); --nw-border-subtle: rgba(255,255,255,0.04); --nw-border-strong: rgba(255,255,255,0.15);
+      --nw-text-primary: #e6edf3; --nw-text-secondary: #8b949e; --nw-text-tertiary: #5a6370; --nw-text-inverse: #0d1117; --nw-text-link: #2d8a6e;
+      --state-success: #2ea043; --state-warning: #d29922; --state-error: #f85149; --state-info: #58a6ff;
+      --fact-canon: #2ea043; --fact-canon-bg: rgba(46,160,67,0.08);
+      --fact-commitment: #58a6ff; --fact-commitment-bg: rgba(88,166,255,0.08);
+      --fact-candidate: #d29922; --fact-candidate-bg: rgba(210,153,34,0.08);
+      --fact-hypothesis: #a371f7; --fact-hypothesis-bg: rgba(163,113,247,0.08);
+      --radius-sm: 4px; --radius-md: 8px; --radius-lg: 12px; --radius-full: 9999px;
+      --font-display: 'Noto Serif SC','Georgia',serif; --font-body: 'Inter','Noto Sans SC',-apple-system,sans-serif; --font-mono: 'JetBrains Mono',monospace;
+      --text-xs:11px; --text-sm:13px; --text-base:14px; --text-lg:16px; --text-xl:20px; --text-2xl:24px; --text-3xl:30px;
+      --leading-tight:1.25; --leading-normal:1.6; --leading-relaxed:1.75;
+    }
+  </style>
+  <style id="semantic-token-fallback">
+    :root {
+      --nw-background: var(--nw-bg-base); --nw-foreground: var(--nw-text-primary);
+      --nw-card: var(--nw-bg-surface); --nw-card-foreground: var(--nw-text-primary);
+      --nw-popover: var(--nw-bg-elevated); --nw-popover-foreground: var(--nw-text-primary);
+      --nw-primary-foreground: #ffffff; --nw-muted: var(--nw-bg-elevated); --nw-muted-foreground: var(--nw-text-secondary);
+      --nw-border: var(--nw-border-default); --nw-input: var(--nw-border-default); --nw-ring: var(--nw-primary);
+    }
+  </style>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style type="text/tailwindcss">
+    @theme inline {
+      --color-nw-primary: var(--nw-primary); --color-nw-primary-light: var(--nw-primary-light); --color-nw-primary-dark: var(--nw-primary-dark);
+      --color-nw-amber: var(--nw-amber); --color-nw-amber-light: var(--nw-amber-light);
+      --color-nw-bg-base: var(--nw-bg-base); --color-nw-bg-surface: var(--nw-bg-surface); --color-nw-bg-elevated: var(--nw-bg-elevated);
+      --color-nw-bg-overlay: var(--nw-bg-overlay); --color-nw-bg-hover: var(--nw-bg-hover);
+      --color-nw-border-default: var(--nw-border-default); --color-nw-border-strong: var(--nw-border-strong);
+      --color-nw-text-primary: var(--nw-text-primary); --color-nw-text-secondary: var(--nw-text-secondary); --color-nw-text-tertiary: var(--nw-text-tertiary);
+      --color-state-success: var(--state-success); --color-state-warning: var(--state-warning); --color-state-error: var(--state-error); --color-state-info: var(--state-info);
+      --font-family-display: var(--font-display); --font-family-body: var(--font-body); --font-family-mono: var(--font-mono);
+      --radius-sm: var(--radius-sm); --radius-md: var(--radius-md); --radius-lg: var(--radius-lg);
+    }
+  </style>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--nw-bg-base);
+      color: var(--nw-text-primary);
+      font-family: var(--font-body);
+      font-size: var(--text-base);
+      line-height: var(--leading-normal);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.16); }
+
+    /* ===== Sidebar (must use !important) ===== */
+    .mo-sidebar { width: 240px !important; min-width: 240px !important; flex-shrink: 0 !important; background: var(--nw-bg-overlay) !important; border-right: 1px solid var(--nw-border-default) !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; min-height: 100vh !important; align-self: flex-start !important; position: sticky !important; top: 0 !important; }
+    .mo-sidebar .mo-brand { display: flex !important; align-items: center !important; gap: 12px !important; padding: 24px 24px 28px !important; color: #f5f7fa !important; }
+    .mo-sidebar .mo-brand-name { font-family: 'Noto Serif SC', serif !important; font-size: 18px !important; font-weight: 600 !important; letter-spacing: 2px !important; }
+    .mo-sidebar .mo-nav { flex: 1 !important; padding: 0 12px !important; overflow-y: auto !important; overflow-x: hidden !important; }
+    .mo-sidebar .mo-nav a { display: flex !important; align-items: center !important; gap: 12px !important; min-width: 0 !important; height: 38px !important; padding: 0 14px !important; margin-bottom: 4px !important; border-radius: 10px !important; color: #8c98a8 !important; background: transparent !important; font-size: 14px !important; line-height: 20px !important; text-decoration: none !important; box-sizing: border-box !important; }
+    .mo-sidebar .mo-nav a:hover { background: #1d232b !important; color: #d7dde6 !important; }
+    .mo-sidebar .mo-nav a.mo-active { background: #102922 !important; color: #35d99a !important; font-weight: 500 !important; }
+    .mo-sidebar .mo-nav svg { width: 18px !important; height: 18px !important; flex: 0 0 18px !important; display: block !important; stroke: currentColor !important; }
+    .mo-sidebar .mo-nav span { display: block !important; min-width: 0 !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+    .mo-sidebar .mo-user { display: flex !important; align-items: center !important; gap: 10px !important; padding: 16px 24px !important; border-top: 1px solid #242b33 !important; }
+    .mo-sidebar .mo-user-avatar { width: 32px !important; height: 32px !important; border-radius: 50% !important; background: #2a3140 !important; display: flex !important; align-items: center !important; justify-content: center !important; flex-shrink: 0 !important; }
+    .mo-sidebar .mo-user-avatar svg { width: 16px !important; height: 16px !important; stroke: #6e7a8a !important; }
+    .mo-sidebar .mo-user-name { font-size: 13px !important; color: #c0c8d4 !important; flex: 1 !important; min-width: 0 !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+    .mo-sidebar .mo-user-gear { flex-shrink: 0 !important; cursor: pointer !important; color: #5a6370 !important; transition: color 0.15s !important; background: none !important; border: none !important; padding: 0 !important; display: flex !important; }
+    .mo-sidebar .mo-user-gear:hover { color: #8b949e !important; }
+    .mo-sidebar .mo-user-gear svg { width: 16px !important; height: 16px !important; display: block !important; stroke: currentColor !important; }
+
+    /* ===== Buttons ===== */
+    .btn-primary {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 6px; padding: 8px 20px;
+      background: var(--nw-primary); color: #ffffff;
+      border: none; border-radius: var(--radius-md);
+      font-size: var(--text-sm); font-weight: 500;
+      cursor: pointer; transition: background 0.15s;
+      font-family: var(--font-body);
+    }
+    .btn-primary:hover { background: var(--nw-primary-dark); transform: translateY(-1px); box-shadow: 0 2px 8px rgba(31,107,84,0.25); }
+    .btn-primary:active { transform: translateY(0); }
+
+    .btn-secondary {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 6px; padding: 8px 20px;
+      background: transparent; color: var(--nw-text-secondary);
+      border: 1px solid rgba(255,255,255,0.15); border-radius: var(--radius-md);
+      font-size: var(--text-sm); font-weight: 500;
+      cursor: pointer; transition: background 0.15s, color 0.15s;
+      font-family: var(--font-body);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.04); color: var(--nw-text-primary); }
+
+    .btn-sm {
+      padding: 4px 12px; font-size: 12px; border-radius: var(--radius-sm);
+    }
+
+    /* ===== Badge ===== */
+    .badge {
+      display: inline-flex; align-items: center;
+      padding: 2px 10px; border-radius: var(--radius-full);
+      font-size: 12px; font-weight: 500; white-space: nowrap;
+    }
+
+    /* ===== Tab buttons ===== */
+    .tab-group {
+      display: flex; align-items: center; gap: 0;
+      border-bottom: 1px solid var(--nw-border-default);
+      padding: 0;
+      flex-shrink: 0;
+    }
+    .tab-btn {
+      padding: 6px 14px; font-size: 13px; color: var(--nw-text-tertiary);
+      background: none; border: none; border-bottom: 2px solid transparent;
+      cursor: pointer; font-family: var(--font-body); font-weight: 400;
+      transition: color 0.15s, border-color 0.15s; white-space: nowrap;
+    }
+    .tab-btn:hover { color: var(--nw-text-secondary); }
+    .tab-btn.tab-active {
+      color: var(--nw-primary-light); border-bottom-color: var(--nw-primary);
+      font-weight: 500;
+    }
+
+    /* ===== Three-column layout ===== */
+    .creation-layout {
+      display: flex; flex: 1; min-width: 0; height: 100vh; overflow: hidden;
+    }
+    .col-left {
+      width: 280px; min-width: 280px; flex-shrink: 0;
+      border-right: 1px solid var(--nw-border-default);
+      display: flex; flex-direction: column;
+      background: var(--nw-bg-base);
+      overflow: hidden;
+    }
+    .col-center {
+      flex: 1; min-width: 0;
+      display: flex; flex-direction: column;
+      background: var(--nw-bg-base);
+      overflow: hidden;
+    }
+    .col-right {
+      width: 320px; min-width: 320px; flex-shrink: 0;
+      border-left: 1px solid var(--nw-border-default);
+      display: flex; flex-direction: column;
+      background: var(--nw-bg-base);
+      overflow: hidden;
+    }
+
+    /* ===== Left panel: story card ===== */
+    .story-card-header {
+      padding: 20px 20px 12px; flex-shrink: 0;
+    }
+    .story-card-body {
+      flex: 1; overflow-y: auto; padding: 0 20px 20px;
+    }
+    .constraint-item {
+      display: flex; gap: 10px; padding: 10px 0;
+      border-bottom: 1px solid var(--nw-border-subtle);
+    }
+    .constraint-item:last-child { border-bottom: none; }
+    .constraint-bar {
+      width: 3px; border-radius: 2px; flex-shrink: 0;
+    }
+    .constraint-bar.canon { background: #2ea043; }
+    .soft-plan-item {
+      display: flex; gap: 10px; padding: 10px 0;
+      border-bottom: 1px solid var(--nw-border-subtle);
+      color: var(--nw-text-secondary);
+    }
+    .soft-plan-item:last-child { border-bottom: none; }
+    .soft-plan-bar {
+      width: 3px; border-radius: 2px; flex-shrink: 0;
+      background: var(--nw-text-tertiary);
+    }
+    .soft-plan-label {
+      font-size: 11px; color: var(--nw-text-tertiary);
+      background: rgba(255,255,255,0.04);
+      padding: 1px 6px; border-radius: var(--radius-sm);
+      white-space: nowrap; flex-shrink: 0;
+    }
+
+    /* ===== Left panel: scene list ===== */
+    .scene-item {
+      background: var(--nw-bg-surface);
+      border: 1px solid var(--nw-border-default);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      margin-bottom: 10px;
+      transition: border-color 0.15s;
+    }
+    .scene-item:hover { border-color: var(--nw-border-strong); }
+    .scene-item.scene-active {
+      border-color: var(--nw-primary);
+      background: var(--nw-primary-50);
+    }
+    .scene-num {
+      font-size: 11px; font-family: var(--font-mono);
+      color: var(--nw-text-tertiary); margin-right: 6px;
+    }
+
+    /* ===== Center: editor toolbar ===== */
+    .editor-toolbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 24px; flex-shrink: 0;
+      border-bottom: 1px solid var(--nw-border-default);
+      background: var(--nw-bg-surface);
+      gap: 16px; min-width: 0;
+    }
+    .chapter-title-input {
+      font-family: var(--font-display);
+      font-size: var(--text-lg);
+      font-weight: 600;
+      color: var(--nw-text-primary);
+      background: none; border: 1px solid transparent;
+      padding: 4px 8px; border-radius: var(--radius-sm);
+      outline: none; transition: border-color 0.15s;
+      min-width: 0; flex: 1;
+    }
+    .chapter-title-input:hover { border-color: var(--nw-border-default); }
+    .chapter-title-input:focus { border-color: var(--nw-primary); background: var(--nw-bg-elevated); }
+    .toolbar-actions {
+      display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+    }
+    .toolbar-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px; font-size: 13px;
+      color: var(--nw-text-secondary); background: none;
+      border: 1px solid var(--nw-border-default); border-radius: var(--radius-md);
+      cursor: pointer; font-family: var(--font-body);
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      white-space: nowrap;
+    }
+    .toolbar-btn:hover { background: var(--nw-bg-hover); color: var(--nw-text-primary); border-color: var(--nw-border-strong); }
+    .toolbar-divider {
+      width: 1px; height: 20px;
+      background: var(--nw-border-default);
+      flex-shrink: 0; margin: 0 4px;
+    }
+    /* 工具栏按钮隐藏文字（小屏幕） */
+    .toolbar-btn-text { display: inline; }
+    .word-count {
+      font-size: 12px; color: var(--nw-text-tertiary);
+      font-family: var(--font-mono); white-space: nowrap;
+      padding: 4px 10px; background: var(--nw-bg-elevated);
+      border-radius: var(--radius-sm);
+    }
+
+    /* ===== Center: editor area ===== */
+    .editor-scroll {
+      flex: 1; overflow-y: auto; padding: 40px 0 60px;
+    }
+    .editor-paper {
+      max-width: 720px; margin: 0 auto; padding: 0 48px;
+      min-height: 100%;
+    }
+    .editor-paragraph {
+      font-family: var(--font-display);
+      font-size: 16px; line-height: 1.85;
+      color: var(--nw-text-primary);
+      margin-bottom: 1.6em;
+      text-indent: 2em;
+    }
+
+    /* ===== Diff block ===== */
+    .diff-block {
+      position: relative;
+      background: rgba(212, 160, 74, 0.08);
+      border: 1px solid rgba(212, 160, 74, 0.2);
+      border-radius: var(--radius-md);
+      margin: 12px 0 24px; padding: 20px 20px 20px 24px;
+    }
+    .diff-block-label {
+      position: absolute; top: 8px; right: 8px;
+      display: flex; align-items: center; gap: 4px;
+      font-size: 11px; color: var(--nw-amber);
+      background: rgba(212, 160, 74, 0.12);
+      padding: 2px 8px; border-radius: var(--radius-sm);
+      font-weight: 500;
+    }
+    .diff-actions {
+      position: absolute; top: 8px; right: 120px;
+      display: flex; gap: 4px;
+    }
+    .diff-action-btn {
+      padding: 3px 10px; font-size: 11px; border-radius: var(--radius-sm);
+      border: 1px solid var(--nw-border-default); background: var(--nw-bg-elevated);
+      color: var(--nw-text-secondary); cursor: pointer; font-family: var(--font-body);
+      transition: all 0.15s;
+    }
+    .diff-action-btn:hover { background: var(--nw-bg-hover); color: var(--nw-text-primary); }
+    .diff-action-btn.accept-btn:hover { border-color: var(--state-success); color: var(--state-success); }
+    .diff-action-btn.reject-btn:hover { border-color: var(--state-error); color: var(--state-error); }
+    .diff-line {
+      font-family: var(--font-display);
+      font-size: 16px; line-height: 1.85;
+      padding: 4px 0; text-indent: 2em;
+      margin-bottom: 8px;
+    }
+    .diff-line:last-child { margin-bottom: 0; }
+    .diff-line-added {
+      color: var(--state-success);
+      background: rgba(46, 160, 67, 0.06);
+      border-left: 3px solid var(--state-success);
+      padding-left: 4px;
+    }
+    .diff-line-removed {
+      color: var(--state-error);
+      background: rgba(248, 81, 73, 0.06);
+      border-left: 3px solid var(--state-error);
+      padding-left: 4px;
+      text-decoration: line-through;
+      opacity: 0.7;
+    }
+
+    /* ===== Center: status bar ===== */
+    .editor-status {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 24px; flex-shrink: 0;
+      border-top: 1px solid var(--nw-border-default);
+      background: var(--nw-bg-surface);
+      font-size: 12px; color: var(--nw-text-tertiary);
+      gap: 12px; min-width: 0;
+    }
+    .status-segment {
+      display: flex; align-items: center; gap: 6px; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+    .status-segment.center-segment {
+      flex: 1; justify-content: center; min-width: 0;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+
+    /* ===== Right panel: diagnosis ===== */
+    .diagnosis-filters {
+      display: flex; flex-wrap: wrap; gap: 4px;
+      padding: 12px 20px; flex-shrink: 0;
+      border-bottom: 1px solid var(--nw-border-subtle);
+    }
+    .diag-filter-btn {
+      padding: 3px 10px; font-size: 12px;
+      color: var(--nw-text-tertiary); background: none;
+      border: 1px solid var(--nw-border-subtle); border-radius: var(--radius-full);
+      cursor: pointer; font-family: var(--font-body);
+      transition: all 0.15s; white-space: nowrap;
+    }
+    .diag-filter-btn:hover { color: var(--nw-text-secondary); border-color: var(--nw-border-default); }
+    .diag-filter-btn.diag-active {
+      color: var(--nw-primary-light); border-color: var(--nw-primary);
+      background: var(--nw-primary-50);
+    }
+    .diagnosis-list {
+      flex: 1; overflow-y: auto; padding: 16px 20px;
+    }
+    .diagnosis-item {
+      background: var(--nw-bg-surface);
+      border: 1px solid var(--nw-border-default);
+      border-radius: var(--radius-md);
+      padding: 12px; margin-bottom: 10px;
+      border-left: 3px solid transparent;
+    }
+    .diagnosis-item.diag-hard {
+      border-left-color: var(--state-error);
+    }
+    .diagnosis-item.diag-soft {
+      border-left-color: var(--state-warning);
+    }
+    .diag-header {
+      display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px;
+    }
+    .diag-icon {
+      width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px;
+    }
+    .diag-title {
+      font-size: 13px; font-weight: 500; color: var(--nw-text-primary);
+      line-height: 1.4;
+    }
+    .diag-quote {
+      font-size: 12px; color: var(--nw-text-tertiary);
+      background: var(--nw-bg-elevated);
+      border-radius: var(--radius-sm);
+      padding: 6px 10px; margin-bottom: 8px;
+      line-height: 1.5;
+      font-style: italic;
+    }
+    .diag-reason {
+      font-size: 12px; color: var(--nw-text-secondary);
+      line-height: 1.5; margin-bottom: 8px;
+    }
+    .diag-scope {
+      display: inline-flex; align-items: center;
+      font-size: 11px; color: var(--nw-text-tertiary);
+      padding: 2px 8px; border-radius: var(--radius-sm);
+      background: var(--nw-bg-elevated);
+      border: 1px solid var(--nw-border-subtle);
+    }
+    .diag-gate-badge {
+      display: inline-flex; align-items: center;
+      font-size: 11px; font-weight: 500; color: var(--state-error);
+      padding: 1px 8px; border-radius: var(--radius-sm);
+      background: rgba(248,81,73,0.1);
+      border: 1px solid rgba(248,81,73,0.2);
+      margin-left: 6px;
+    }
+
+    /* ===== Right panel: impact scope ===== */
+    .impact-tree { padding: 20px; }
+    .impact-group { margin-bottom: 16px; }
+    .impact-group-title {
+      font-size: 12px; font-weight: 500; color: var(--nw-text-secondary);
+      margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .impact-item {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 6px 0 6px 12px; font-size: 13px;
+      color: var(--nw-text-primary); line-height: 1.5;
+    }
+    .impact-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      flex-shrink: 0; margin-top: 6px;
+    }
+    .impact-dot.canon { background: #2ea043; }
+    .impact-dot.commitment { background: #58a6ff; }
+    .impact-dot.candidate { background: #d29922; }
+    .impact-dot.hypothesis { background: #a371f7; }
+
+    /* ===== Right panel: approval ===== */
+    .approval-panel { padding: 20px; }
+    .approval-btn-main {
+      width: 100%; padding: 12px 20px; margin-bottom: 10px;
+    }
+    .approval-btn-secondary {
+      width: 100%; padding: 10px 20px; margin-bottom: 8px;
+    }
+    .checklist { margin-top: 16px; }
+    .checklist-item {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 8px 0; font-size: 13px; color: var(--nw-text-secondary);
+    }
+    .checklist-checkbox {
+      width: 16px; height: 16px; border-radius: 4px;
+      border: 1.5px solid var(--nw-border-strong);
+      flex-shrink: 0; margin-top: 1px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .checklist-checkbox.checked {
+      background: var(--nw-primary); border-color: var(--nw-primary);
+    }
+    .checklist-checkbox.checked svg { display: block; }
+    .checklist-checkbox svg {
+      width: 10px; height: 10px; stroke: #ffffff;
+      stroke-width: 3; display: none;
+    }
+
+    /* ===== Overlay states (hidden by default) ===== */
+    .editor-overlay {
+      position: absolute; inset: 0;
+      display: none; align-items: center; justify-content: center;
+      background: rgba(14, 17, 23, 0.85);
+      z-index: 20; border-radius: var(--radius-md);
+    }
+    .editor-overlay.visible { display: flex; }
+
+    @keyframes pulse-glow {
+      0%, 100% { opacity: 0.5; transform: scale(0.98); }
+      50% { opacity: 1; transform: scale(1); }
+    }
+    .overlay-loading {
+      display: flex; flex-direction: column; align-items: center; gap: 16px;
+    }
+    .overlay-loading-icon {
+      width: 40px; height: 40px; border-radius: 50%;
+      border: 3px solid var(--nw-border-default);
+      border-top-color: var(--nw-primary);
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .overlay-loading-text {
+      font-size: 14px; color: var(--nw-text-secondary);
+      animation: pulse-glow 2s ease-in-out infinite;
+    }
+    .overlay-error {
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+      text-align: center; padding: 24px;
+    }
+    .overlay-error-text {
+      font-size: 14px; color: var(--state-error);
+    }
+    .overlay-error-actions {
+      display: flex; gap: 8px;
+    }
+
+    /* ===== Four-level fact colors ===== */
+    .fact-canon { border-left: 3px solid #2ea043; padding-left: 12px; }
+    .fact-commitment { border-left: 3px solid #58a6ff; padding-left: 12px; }
+    .fact-candidate { border-left: 3px solid #d29922; padding-left: 12px; }
+    .fact-hypothesis { border-left: 3px solid #a371f7; padding-left: 12px; }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 1200px) {
+      .col-right {
+        position: fixed; bottom: 0; left: 240px; right: 0;
+        width: auto !important; min-width: 0 !important;
+        height: 40vh; border-left: none;
+        border-top: 1px solid var(--nw-border-default);
+        z-index: 30; transform: translateY(100%);
+        transition: transform 0.3s ease;
+      }
+      .col-right.right-open { transform: translateY(0); }
+      .col-left {
+        position: fixed; top: 0; left: 240px;
+        width: 300px !important; min-width: 0 !important;
+        height: 100vh; z-index: 30;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+      }
+      .col-left.left-open { transform: translateX(0); }
+      .mobile-toggle-left,
+      .mobile-toggle-right {
+        display: inline-flex !important;
+      }
+      .creation-layout { position: relative; }
+    }
+    @media (max-width: 768px) {
+      .mo-sidebar { width: 56px !important; min-width: 56px !important; }
+      .mo-sidebar .mo-brand-name { display: none !important; }
+      .mo-sidebar .mo-nav a { justify-content: center !important; padding: 0 !important; }
+      .mo-sidebar .mo-nav a span { display: none !important; }
+      .mo-sidebar .mo-user-name { display: none !important; }
+      .col-left { left: 56px; }
+      .col-right { left: 56px; }
+    }
+    .mobile-toggle-left,
+    .mobile-toggle-right {
+      display: none; align-items: center; justify-content: center;
+      width: 32px; height: 32px; border-radius: var(--radius-sm);
+      border: 1px solid var(--nw-border-default); background: var(--nw-bg-surface);
+      color: var(--nw-text-secondary); cursor: pointer; flex-shrink: 0;
+    }
+    .mobile-toggle-left svg,
+    .mobile-toggle-right svg { width: 16px; height: 16px; stroke: currentColor; }
+
+    /* ===== Generation mode selector §4.9 ===== */
+    .gen-mode-selector { position: relative; }
+    .gen-mode-btn { gap: 4px; }
+    .gen-mode-menu {
+      position: absolute; top: 100%; left: 0; margin-top: 4px;
+      background: var(--nw-bg-elevated); border: 1px solid var(--nw-border-strong);
+      border-radius: var(--radius-md); padding: 4px; min-width: 200px;
+      z-index: 50; box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    }
+    .gen-mode-option {
+      padding: 8px 12px; font-size: 13px; color: var(--nw-text-secondary);
+      cursor: pointer; border-radius: var(--radius-sm); transition: background 0.15s;
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    .gen-mode-option:hover { background: var(--nw-bg-hover); color: var(--nw-text-primary); }
+    .gen-mode-option.gen-mode-active { color: var(--nw-primary-light); background: var(--nw-primary-50); }
+    .gen-mode-desc { font-size: 11px; color: var(--nw-text-tertiary); white-space: nowrap; }
+
+    /* ===== A/B comparison toggle §4.5 ===== */
+    .ab-toggle {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; font-size: 12px;
+      color: var(--nw-text-secondary); background: var(--nw-bg-elevated);
+      border: 1px solid var(--nw-border-default); border-radius: var(--radius-sm);
+      cursor: pointer; font-family: var(--font-body); transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .ab-toggle:hover { border-color: var(--nw-border-strong); color: var(--nw-text-primary); }
+    .ab-toggle.ab-active {
+      color: var(--nw-primary-light); border-color: var(--nw-primary);
+      background: var(--nw-primary-50);
+    }
+    .ab-comparison-view {
+      display: none; gap: 12px; padding: 0 40px; max-width: 100%;
+    }
+    .ab-comparison-view.visible { display: flex; }
+    .ab-candidate-col {
+      flex: 1; min-width: 0;
+      border: 1px solid var(--nw-border-default); border-radius: var(--radius-md);
+      padding: 16px; background: var(--nw-bg-surface);
+    }
+    .ab-candidate-col.ab-selected { border-color: var(--nw-primary); background: var(--nw-primary-50); }
+    .ab-candidate-label {
+      font-size: 12px; font-weight: 600; color: var(--nw-text-secondary);
+      margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .ab-candidate-text {
+      font-family: var(--font-display); font-size: 14px; line-height: 1.85;
+      color: var(--nw-text-primary); text-indent: 2em;
+    }
+    .ab-comparison-meta {
+      font-size: 11px; color: var(--nw-text-tertiary); margin-top: 8px;
+      padding: 8px; background: var(--nw-bg-elevated); border-radius: var(--radius-sm);
+    }
+
+    /* ===== Writeback preview §4.12 ===== */
+    .writeback-section {
+      margin-bottom: 16px;
+    }
+    .writeback-section-title {
+      font-size: 12px; font-weight: 600; color: var(--nw-text-secondary);
+      text-transform: uppercase; letter-spacing: 0.06em;
+      margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+    }
+    .writeback-item {
+      display: flex; gap: 10px; padding: 8px 0;
+      border-bottom: 1px solid var(--nw-border-subtle);
+      font-size: 13px; color: var(--nw-text-primary); line-height: 1.5;
+    }
+    .writeback-item:last-child { border-bottom: none; }
+    .writeback-bar {
+      width: 3px; border-radius: 2px; flex-shrink: 0;
+    }
+    .writeback-bar.candidate { background: #d29922; }
+    .writeback-bar.canon { background: #2ea043; }
+
+    /* ===== Modal ===== */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 100;
+      display: none; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(2px);
+    }
+    .modal-overlay.visible { display: flex; }
+    .modal-container {
+      background: var(--nw-bg-surface); border: 1px solid var(--nw-border-strong);
+      border-radius: var(--radius-lg); max-width: 640px; width: 90%;
+      max-height: 80vh; overflow-y: auto; box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+    }
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 24px; border-bottom: 1px solid var(--nw-border-default);
+    }
+    .modal-title {
+      font-family: var(--font-display); font-size: 18px; font-weight: 600;
+      color: var(--nw-text-primary);
+    }
+    .modal-close {
+      width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+      border: none; background: none; cursor: pointer; color: var(--nw-text-tertiary);
+      border-radius: var(--radius-sm); transition: all 0.15s;
+    }
+    .modal-close:hover { background: var(--nw-bg-hover); color: var(--nw-text-primary); }
+    .modal-body { padding: 20px 24px; }
+    .modal-footer {
+      display: flex; gap: 8px; justify-content: flex-end;
+      padding: 16px 24px; border-top: 1px solid var(--nw-border-default);
+    }
+
+    /* ===== Stuck resolution §4.13 ===== */
+    .stuck-step {
+      display: flex; gap: 12px; padding: 12px 0;
+      border-bottom: 1px solid var(--nw-border-subtle);
+    }
+    .stuck-step:last-child { border-bottom: none; }
+    .stuck-step-num {
+      width: 24px; height: 24px; border-radius: 50%;
+      background: var(--nw-primary-100); color: var(--nw-primary-light);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 600; flex-shrink: 0;
+    }
+    .stuck-step-content { flex: 1; }
+    .stuck-step-title { font-size: 13px; font-weight: 500; color: var(--nw-text-primary); margin-bottom: 4px; }
+    .stuck-step-desc { font-size: 12px; color: var(--nw-text-secondary); line-height: 1.5; }
+
+    /* ===== Ending planning §4.14 ===== */
+    .ending-matrix {
+      width: 100%; border-collapse: collapse; margin: 8px 0;
+    }
+    .ending-matrix th, .ending-matrix td {
+      padding: 8px 12px; text-align: left;
+      border-bottom: 1px solid var(--nw-border-subtle);
+      font-size: 12px;
+    }
+    .ending-matrix th {
+      color: var(--nw-text-tertiary); font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.04em; font-size: 11px;
+    }
+    .ending-matrix td { color: var(--nw-text-primary); }
+    .ending-matrix .status-paid { color: var(--state-success); }
+    .ending-matrix .status-pending { color: var(--nw-amber); }
+    .ending-matrix .status-unrecycled { color: var(--state-error); }
+
+    /* Global transitions */
+    * { transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease; }
+    button { transition: all 0.15s ease; }
+    a { transition: all 0.15s ease; }
+    .mo-sidebar * { transition: none !important; }
+
+    /* Card hover */
+    .diagnosis-item:hover { border-color: var(--nw-border-strong); }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+    ::-webkit-scrollbar-corner { background: transparent; }
+  </style>
+</head>
+
+<body class="flex h-screen overflow-hidden">
+
+  <!-- ==================== SIDEBAR ==================== -->
+  <aside class="mo-sidebar" style="font-family: var(--font-body);">
+    <!-- Brand -->
+    <div class="mo-brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;flex-shrink:0;">
+        <path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+        <path d="m15 5 4 4"/>
+      </svg>
+      <span class="mo-brand-name">驯墨</span>
+      <span style="font-size:10px;color:#5a6370;letter-spacing:1px;margin-top:2px;display:block;">TAME INK</span>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="mo-nav">
+      <!-- 1. 工作台 -->
+      <a href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>
+        </svg>
+        <span>工作台</span>
+      </a>
+      <!-- 2. 创作 (active) -->
+      <a href="#" class="mo-active">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z"/>
+        </svg>
+        <span>创作</span>
+      </a>
+      <!-- 3. 故事库 -->
+      <a href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+        </svg>
+        <span>故事库</span>
+      </a>
+      <!-- 4. 复盘 -->
+      <a href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>
+        </svg>
+        <span>复盘</span>
+      </a>
+      <!-- 5. 设置 -->
+      <a href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>
+        </svg>
+        <span>设置</span>
+      </a>
+    </nav>
+
+    <!-- User area -->
+    <div class="mo-user">
+      <div class="mo-user-avatar">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+        </svg>
+      </div>
+      <span class="mo-user-name">作者</span>
+      <button class="mo-user-gear" aria-label="设置">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ==================== THREE-COLUMN CREATION LAYOUT ==================== -->
+  <div class="creation-layout">
+
+    <!-- ========== LEFT COLUMN (280px) ========== -->
+    <div class="col-left" id="colLeft">
+      <!-- Tab switcher -->
+      <div class="tab-group">
+        <button class="tab-btn tab-active" onclick="switchLeftTab('storycard', this)">故事卡</button>
+        <button class="tab-btn" onclick="switchLeftTab('scenelist', this)">场景清单</button>
+      </div>
+
+      <!-- Story Card Tab -->
+      <div id="leftTab-storycard">
+        <div class="story-card-header">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
+            <span style="font-size:var(--text-sm);font-weight:600;color:var(--nw-text-primary);">故事卡 #12 -- 潜入总部</span>
+            <span class="badge" style="background:rgba(88,166,255,0.12);color:#58a6ff;">执行中</span>
+          </div>
+          <p style="font-size:12px;color:var(--nw-text-secondary);line-height:1.6;margin-bottom:4px;">
+            目标：林远舟需要潜入天枢阁总部，在藏经楼找到记载星脉残图的古卷，同时避开暗哨的巡查。此场景需展示林远舟对天枢阁内部结构的了解以及他的隐匿功夫。
+          </p>
+        </div>
+        <div class="story-card-body">
+          <!-- Motivation (SS4.6) -->
+          <div style="font-size:11px;font-weight:600;color:var(--nw-text-tertiary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;margin-top:4px;">
+            动机 (motivation)
+          </div>
+          <div style="font-size:13px;color:var(--nw-text-secondary);line-height:1.6;margin-bottom:12px;padding:8px;background:var(--nw-bg-elevated);border-radius:var(--radius-sm);">
+            星脉残图可能指向失传的归元心法，这是突破当前修炼瓶颈的关键线索。主角需要获取它来完成师兄未竟的遗愿。
+          </div>
+          <!-- Expectations (SS4.6 / SS5.2) -->
+          <div style="font-size:11px;font-weight:600;color:var(--nw-text-tertiary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">
+            关联期待
+          </div>
+          <div style="margin-bottom:12px;">
+            <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--fact-commitment-bg);border-left:3px solid var(--fact-commitment);border-radius:0 var(--radius-sm) var(--radius-sm) 0;margin-bottom:4px;">
+              <span style="font-size:11px;color:var(--fact-commitment);font-weight:500;">承诺</span>
+              <span style="font-size:12px;color:var(--nw-text-primary);">星脉残图能否找到完整版？</span>
+              <span style="font-size:10px;color:var(--nw-text-tertiary);margin-left:auto;">strengthened</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--fact-commitment-bg);border-left:3px solid var(--fact-commitment);border-radius:0 var(--radius-sm) var(--radius-sm) 0;margin-bottom:4px;">
+              <span style="font-size:11px;color:var(--fact-commitment);font-weight:500;">承诺</span>
+              <span style="font-size:12px;color:var(--nw-text-primary);">林远舟的身份何时暴露？</span>
+              <span style="font-size:10px;color:var(--nw-text-tertiary);margin-left:auto;">opened</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--fact-candidate-bg);border-left:3px solid var(--fact-candidate);border-radius:0 var(--radius-sm) var(--radius-sm) 0;">
+              <span style="font-size:11px;color:var(--fact-candidate);font-weight:500;">候选</span>
+              <span style="font-size:12px;color:var(--nw-text-primary);">师兄留下令牌的真实意图是什么？</span>
+              <span style="font-size:10px;color:var(--nw-text-tertiary);margin-left:auto;">opened</span>
+            </div>
+          </div>
+          <!-- Reaction Targets (SS4.6) -->
+          <div style="font-size:11px;font-weight:600;color:var(--nw-text-tertiary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">
+            反应目标 (reaction_targets)
+          </div>
+          <div style="font-size:12px;color:var(--nw-text-secondary);line-height:1.6;margin-bottom:12px;">
+            <span style="display:inline-block;padding:2px 8px;background:var(--nw-bg-elevated);border-radius:var(--radius-sm);margin:2px 4px 2px 0;font-size:11px;">暗哨队长</span>
+            <span style="display:inline-block;padding:2px 8px;background:var(--nw-bg-elevated);border-radius:var(--radius-sm);margin:2px 4px 2px 0;font-size:11px;">藏经楼守卫</span>
+            <span style="display:inline-block;padding:2px 8px;background:var(--nw-bg-elevated);border-radius:var(--radius-sm);margin:2px 4px 2px 0;font-size:11px;">苏婉清（远程策应）</span>
+          </div>
+          <!-- Long Line Contribution (SS4.6) -->
+          <div style="font-size:11px;font-weight:600;color:var(--nw-text-tertiary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">
+            长线贡献
+          </div>
+          <div style="font-size:12px;color:var(--nw-text-secondary);line-height:1.6;margin-bottom:12px;">
+            <span style="color:var(--nw-ink-blue);">归元心法长线</span> — 推进第3/7个关键节点
+          </div>
+          <!-- Hard constraints -->
+          <div style="font-size:11px;font-weight:600;color:var(--nw-text-tertiary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;margin-top:4px;">
+            硬约束
+          </div>
+          <div class="constraint-item">
+            <div class="constraint-bar canon"></div>
+            <div>
+              <div style="font-size:13px;color:var(--nw-text-primary);line-height:1.5;">林远舟于酉时三刻（约18:45）到达天枢阁外围</div>
+              <div style="font-size:11px;color:var(--nw-text-tertiary);margin-top:2px;">来源: 第5章 正式事实</div>
+            </div>
+          </div>
+          <div class="constraint-item">
+            <div class="constraint-bar canon"></div>
+            <div>
+              <div style="font-size:13px;color:var(--nw-text-primary);line-height:1.5;">天枢阁藏经楼位于后院第三进，需通过两道暗哨</div>
+              <div style="font-size:11px;color:var(--nw-text-tertiary);margin-top:2px;">来源: 第3章 worldbuilding 设定</div>
+            </div>
+          </div>
+          <div class="constraint-item">
+            <div class="constraint-bar canon"></div>
+            <div>
+              <div style="font-size:13px;color:var(--nw-text-primary);line-height:1.5;">林远舟身上携带师兄留下的令牌，可开启一道侧门</div>
+              <div style="font-size:11px;color:var(--nw-text-tertiary);margin-top:2px;">来源: 第4章 承诺</div>
+            </div>
+          </div>
+          <div class="constraint-item">
+            <div class="constraint-bar canon"></div>
+            <div>
+              <div style="font-size:13px;color:var(--nw-text-primary);line-height:1.5;">此场景不可暴露林远舟的真实身份，仅以蒙面人示人</div>
+              <div style="font-size:11px;color:var(--nw-text-tertiary);margin-top:2px;">来源: 第2章 核心约定</div>
+            </div>
+          </div>
+
+          <!-- Soft plans -->
+          <div style="font-size:11px;font-weight:600;color:var(--nw-text-tertiary);text-transform:uppercase;letter-spacing:0.06em;margin:16px 0 8px;">
+            软计划
+          </div>
+          <div class="soft-plan-item">
+            <div class="soft-plan-bar"></div>
+            <div style="flex:1;">
+              <div style="font-size:13px;line-height:1.5;">可在藏经楼安排一段与守阁长老的对话，暗示星脉残图的更多线索</div>
+            </div>
+            <span class="soft-plan-label">可偏离</span>
+          </div>
+          <div class="soft-plan-item">
+            <div class="soft-plan-bar"></div>
+            <div style="flex:1;">
+              <div style="font-size:13px;line-height:1.5;">第一道暗哨处可增加短暂对峙，提升紧张感</div>
+            </div>
+            <span class="soft-plan-label">可偏离</span>
+          </div>
+          <div class="soft-plan-item">
+            <div class="soft-plan-bar"></div>
+            <div style="flex:1;">
+              <div style="font-size:13px;line-height:1.5;">结尾处留悬念：林远舟发现古卷中夹着一张陌生的字条</div>
+            </div>
+            <span class="soft-plan-label">可偏离</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scene List Tab (hidden by default) -->
+      <div id="leftTab-scenelist" style="display:none;">
+        <div class="story-card-body" style="padding-top:16px;">
+          <div class="scene-item">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+              <span class="scene-num">S1</span>
+              <span style="font-size:13px;font-weight:500;color:var(--nw-text-primary);">抵达外围</span>
+              <span class="badge" style="background:rgba(46,160,67,0.12);color:var(--state-success);font-size:11px;">已完成</span>
+            </div>
+            <div style="font-size:12px;color:var(--nw-text-secondary);line-height:1.5;padding-left:30px;margin-bottom:4px;">林远舟到达天枢阁外围树林，观察地形与暗哨分布</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;padding-left:30px;">
+              <span style="font-size:10px;padding:1px 6px;background:var(--nw-bg-elevated);border-radius:var(--radius-sm);color:var(--nw-text-tertiary);">进入: 阁外树林</span>
+              <span style="font-size:10px;padding:1px 6px;background:var(--nw-bg-elevated);border-radius:var(--radius-sm);color:var(--nw-text-tertiary);">目的: 侦查地形与哨位</span>
+              <span style="font-size:10px;padding:1px 6px;background:var(--nw-bg-elevated);border-radius:var(--radius-sm);color:var(--nw-text-tertiary);">退出: 确认潜入路线</span>
+            </div>
+          </div>
+          <div class="scene-item">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+              <span class="scene-num">S2</span>
+              <span style="font-size:13px;font-weight:500;color:var(--nw-text-primary);">穿过第一道暗哨</span>
+              <span class="badge" style="background:rgba(46,160,67,0.12);color:var(--state-success);font-size:11px;">已完成</span>
+            </div>
+            <div style="font-size:12px;color:var(--nw-text-secondary);line-height:1.5;padding-left:30px;">利用令牌开启侧门，避开巡逻队进入内院</div>
+          </div>
+          <div class="scene-item scene-active">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+              <span class="scene-num">S3</span>
+              <span style="font-size:13px;font-weight:500;color:var(--nw-text-primary);">潜入藏经楼</span>
+              <span class="badge" style="background:rgba(88,166,255,0.12);color:var(--state-info);font-size:11px;">当前执行中</span>
+            </div>
+            <div style="font-size:12px;color:var(--nw-text-secondary);line-height:1.5;padding-left:30px;">在藏经楼中搜索星脉残图，遭遇意外状况</div>
+          </div>
+          <div class="scene-item">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+              <span class="scene-num">S4</span>
+              <span style="font-size:13px;font-weight:500;color:var(--nw-text-primary);">发现字条</span>
+              <span class="badge" style="background:var(--nw-bg-elevated);color:var(--nw-text-tertiary);font-size:11px;">待执行</span>
+            </div>
+            <div style="font-size:12px;color:var(--nw-text-secondary);line-height:1.5;padding-left:30px;">古卷中夹带的字条揭示新的线索方向</div>
+          </div>
+          <div class="scene-item">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+              <span class="scene-num">S5</span>
+              <span style="font-size:13px;font-weight:500;color:var(--nw-text-primary);">撤离与悬念</span>
+              <span class="badge" style="background:var(--nw-bg-elevated);color:var(--nw-text-tertiary);font-size:11px;">待执行</span>
+            </div>
+            <div style="font-size:12px;color:var(--nw-text-secondary);line-height:1.5;padding-left:30px;margin-bottom:4px;">林远舟在暗哨换岗间隙撤离，留下悬念结尾</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;padding-left:30px;">
+              <span style="font-size:10px;padding:1px 6px;background:var(--nw-bg-elevated);border-radius:var(--radius-sm);color:var(--nw-text-tertiary);">进入: 藏经楼内</span>
+              <span style="font-size:10px;padding:1px 6px;background:var(--nw-bg-elevated);border-radius:var(--radius-sm);color:var(--nw-text-tertiary);">目的: 安全撤离并制造悬念</span>
+              <span style="font-size:10px;padding:1px 6px;background:var(--nw-bg-elevated);border-radius:var(--radius-sm);color:var(--nw-text-tertiary);">退出: 天枢阁外围安全区</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== CENTER COLUMN (flex:1) ========== -->
+    <div class="col-center">
+
+      <!-- Editor Toolbar -->
+      <div class="editor-toolbar">
+        <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;">
+          <button class="mobile-toggle-left" onclick="document.getElementById('colLeft').classList.toggle('left-open')">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18"/><path d="M3 6h18"/><path d="M3 18h18"/></svg>
+          </button>
+          <input class="chapter-title-input" type="text" value="第7章 · 暗流" />
+        </div>
+        <div class="toolbar-actions">
+          <!-- 生成模式选择器 §4.9 -->
+          <div class="gen-mode-selector">
+            <button class="toolbar-btn gen-mode-btn" onclick="toggleGenModeMenu(event)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;">
+                <path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h10"/>
+              </svg>
+              <span id="gen-mode-label">整章生成</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;">
+                <path d="m6 9 6 6 6-6"/>
+              </svg>
+            </button>
+            <div class="gen-mode-menu" id="gen-mode-menu" style="display:none;">
+              <div class="gen-mode-option gen-mode-active" onclick="selectGenMode('整章生成', this)">整章生成<span class="gen-mode-desc">生成完整章节候选</span></div>
+              <div class="gen-mode-option" onclick="selectGenMode('单场景', this)">单场景<span class="gen-mode-desc">只生成当前选中场景</span></div>
+              <div class="gen-mode-option" onclick="selectGenMode('对话段落', this)">对话段落<span class="gen-mode-desc">只写对话或动作段落</span></div>
+              <div class="gen-mode-option" onclick="selectGenMode('续写', this)">续写<span class="gen-mode-desc">从已有正文末尾继续</span></div>
+              <div class="gen-mode-option" onclick="selectGenMode('局部改写', this)">局部改写<span class="gen-mode-desc">对选中范围重写</span></div>
+              <div class="gen-mode-option" onclick="selectGenMode('双候选', this)">双候选<span class="gen-mode-desc">生成两个差异明确的候选</span></div>
+            </div>
+          </div>
+          <button class="toolbar-btn" onclick="showOverlay('loading')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;">
+              <path d="M12 3v3"/><path d="M18.5 6.5l-2 2"/><path d="M21 12h-3"/><path d="M18.5 17.5l-2-2"/><path d="M12 21v-3"/><path d="M5.5 17.5l2-2"/><path d="M3 12h3"/><path d="M5.5 6.5l2 2"/>
+            </svg>
+            生成候选
+          </button>
+          <button class="toolbar-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;">
+              <path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8Z"/><path d="M15 3v4a2 2 0 0 0 2 2h4"/>
+            </svg>
+            对比差异
+          </button>
+          <div class="toolbar-divider"></div>
+          <!-- A/B 开篇对比模式 §4.5 -->
+          <button class="ab-toggle" id="ab-toggle" onclick="toggleABComparison()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;">
+              <path d="M3 3h7v7H3z"/><path d="M14 3h7v7h-7z"/><path d="M3 14h7v7H3z"/><path d="M14 14h7v7h-7z"/>
+            </svg>
+            A/B 对比
+          </button>
+          <!-- 章节导出 §4.15 -->
+          <button class="toolbar-btn" onclick="showModal('modal-export')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;">
+              <path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            </svg>
+            导出
+          </button>
+          <!-- 卡文处理 §4.13 -->
+          <button class="toolbar-btn" onclick="showModal('modal-stuck')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;">
+              <circle cx="12" cy="12" r="10"/><path d="M9 9h.01"/><path d="M15 9h.01"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+            </svg>
+            卡文处理
+          </button>
+          <!-- 收尾规划 §4.14 -->
+          <button class="toolbar-btn" onclick="showModal('modal-ending')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;">
+              <path d="M12 2v4"/><path d="m7 6 5-4 5 4"/><path d="M5 10h14"/><path d="M5 10v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V10"/><path d="M12 14v4"/>
+            </svg>
+            收尾规划
+          </button>
+          <div class="toolbar-divider"></div>
+          <span class="word-count">2,847字</span>
+          <button class="mobile-toggle-right" onclick="document.getElementById('colRight').classList.toggle('right-open')">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18"/><path d="M3 6h18"/><path d="M3 18h18"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Editor Area -->
+      <div class="editor-scroll" style="position:relative;">
+        <div class="editor-paper">
+
+          <!-- Normal paragraph 1 -->
+          <p class="editor-paragraph">
+            天枢阁的后院比林远舟想象中更为幽深。月光被层层叠叠的飞檐切割成碎银，洒在青石板铺就的小径上，像是某种古老的密文。他蹲伏在假山石的阴影里，呼吸放得极缓极轻，目光如鹰隼般扫过院落四角。两道暗哨的位置与师兄当年描述的丝毫不差——东南角那棵百年银杏下藏着一个，西北角的水榭回廊里卧着另一个。每隔半柱香的时间，他们便会交换一次路线，中间有三息的空档。
+          </p>
+
+          <!-- Normal paragraph 2 -->
+          <p class="editor-paragraph">
+            林远舟从怀中摸出那枚令牌。铜质温润，正面刻着"枢"字，背面是一朵云纹——这是师兄临行前交到他手中的唯一信物。他至今记得师兄将令牌递来时说那句话时的表情：目光沉沉，像是有千钧重的话压在舌底，最终却只化作一句"到了便知"。
+          </p>
+
+          <!-- Normal paragraph 3 -->
+          <p class="editor-paragraph">
+            侧门在围墙转角处，被一丛半人高的湘妃竹遮住了大半。林越无声地穿过竹丛，将令牌嵌入门框上的暗槽。机关发出极轻微的"咔"一声，门向内弹开一道缝。他侧身闪入，反手将门合上。门内是一段狭长的甬道，两侧墙壁上嵌着拳头大小的夜明珠，散发着幽幽冷光。甬道尽头通向后院第二进。
+          </p>
+
+          <!-- DIFF BLOCK: candidate diff with accept/reject -->
+          <div class="diff-block">
+            <div class="diff-actions">
+              <button class="diff-action-btn accept-btn">接受</button>
+              <button class="diff-action-btn reject-btn">拒绝</button>
+              <button class="diff-action-btn">接受并修改</button>
+            </div>
+            <div class="diff-block-label">候选差异块</div>
+            <div class="diff-line diff-line-removed">
+              林越穿过甬道，借着夜色快步走向藏经楼。二进的院中无人走动，只有风穿过回廊时发出低沉的呜咽声。藏经楼就在眼前——三层飞檐，朱漆大门紧闭，门前两盏灯笼在夜风中轻轻摇晃。
+            </div>
+            <div class="diff-line diff-line-added">
+              甬道尽头是一道月洞门，门楣上刻着"清心"二字。林越刚跨过门槛，一股淡薄的书卷气便扑面而来。二进院中比外院更静，连虫鸣都消失了，仿佛连空气都在这寂静中凝固。藏经楼矗立在院落正中，三层飞檐如展翅的鹤，檐角的铜铃在夜风中纹丝不动。楼门半掩着，门缝里透出一丝极淡的灯光——有人比他先到了。
+            </div>
+          </div>
+
+          <!-- Normal paragraph after diff -->
+          <p class="editor-paragraph">
+            林越的脚步骤然放缓。他贴着回廊的阴影移动，每一步都踩在木地板接缝处——那些位置不会发出声响，是多年行夜路练出的本能。藏经楼一层是经文阅览室，二层是典籍库房，三层才是存放古卷重宝的地方。师兄说过，星脉残图被收录在三楼东面靠窗的紫檀木匣中，匣上锁着一把需要三把钥匙同时开启的机关锁。
+          </p>
+
+        </div>
+
+        <!-- ===== A/B Comparison View §4.5 (hidden by default) ===== -->
+        <div class="ab-comparison-view" id="ab-comparison-view">
+          <div class="ab-candidate-col ab-selected" onclick="selectABCandidate(this)">
+            <div class="ab-candidate-label">
+              <span>候选 A: 悬疑切入</span>
+              <span class="badge" style="background:rgba(45,138,110,0.12);color:#3aa882;font-size:11px;">已选择</span>
+            </div>
+            <div class="ab-candidate-text">
+              夜色如墨，天枢阁的飞檐在月光下勾勒出冷峻的轮廓。林越伏在假山石后，目光穿过层层院落，锁定了藏经楼三层那扇半掩的窗。他深知，此刻一步踏错，便是万劫不复。但那张星脉残图——师兄用命换来的线索，就在三楼东面的紫檀木匣中。
+            </div>
+            <div class="ab-comparison-meta">
+              承诺落地: 强 · 主角行动: 果决 · 理解成本: 低
+            </div>
+          </div>
+          <div class="ab-candidate-col" onclick="selectABCandidate(this)">
+            <div class="ab-candidate-label">
+              <span>候选 B: 情感切入</span>
+              <span class="badge" style="background:transparent;border:1px solid var(--nw-border-default);color:var(--nw-text-tertiary);font-size:11px;">未选择</span>
+            </div>
+            <div class="ab-candidate-text">
+              师兄的令牌还带着体温。林越将它攥在掌心，指腹摩挲过那个"枢"字——最后一次见到师兄时，他也是这样握着这块铜牌，只不过那时师兄的手还在颤抖。"到了便知"，这句话像一根刺，扎在心里三年。今夜，他终于要走进那个答案。
+            </div>
+            <div class="ab-comparison-meta">
+              承诺落地: 中 · 主角行动: 内敛 · 理解成本: 中
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== Overlay: Loading state (hidden, shown via JS) ===== -->
+        <!-- 状态示例: 加载中 —— 点击"生成候选"按钮可触发此覆盖层 -->
+        <div class="editor-overlay" id="overlay-loading">
+          <div class="overlay-loading">
+            <div class="overlay-loading-icon"></div>
+            <div class="overlay-loading-text">AI 正在生成候选...</div>
+          </div>
+        </div>
+
+        <!-- ===== Overlay: Error state (hidden, shown via JS) ===== -->
+        <!-- 状态示例: 生成失败 —— 模拟错误状态 -->
+        <div class="editor-overlay" id="overlay-error">
+          <div class="overlay-error">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--state-error)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:32px;height:32px;">
+              <circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>
+            </svg>
+            <div class="overlay-error-text">生成失败: 模型返回空内容</div>
+            <div class="overlay-error-actions">
+              <button class="btn-primary btn-sm" onclick="showOverlay('loading')">重试</button>
+              <span style="font-size:11px;color:var(--state-error);">请前往设置页检查模型连接</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status Bar -->
+      <div class="editor-status">
+        <div class="status-segment">
+          <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--nw-primary);"></span>
+          编辑模式 · 故事卡 #12
+        </div>
+        <div class="status-segment center-segment">
+          上下文: 6个正式事实 · 3个人物状态 · 2条未兑现期待
+        </div>
+        <div class="status-segment">
+          最后保存: 14:32
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== RIGHT COLUMN (320px) ========== -->
+    <div class="col-right" id="colRight">
+      <!-- Tab switcher -->
+      <div class="tab-group">
+        <button class="tab-btn tab-active" onclick="switchRightTab('diagnosis', this)">证据诊断</button>
+        <button class="tab-btn" onclick="switchRightTab('impact', this)">影响范围</button>
+        <button class="tab-btn" onclick="switchRightTab('approval', this)">审批</button>
+        <button class="tab-btn" onclick="switchRightTab('writeback', this)">回写预览</button>
+      </div>
+
+      <!-- Diagnosis Tab -->
+      <div id="rightTab-diagnosis">
+        <!-- Diagnosis filters -->
+        <div class="diagnosis-filters">
+          <button class="diag-filter-btn diag-active">连续性</button>
+          <button class="diag-filter-btn">承诺</button>
+          <button class="diag-filter-btn">人物</button>
+          <button class="diag-filter-btn">场景</button>
+          <button class="diag-filter-btn">对话</button>
+          <button class="diag-filter-btn">认知负担</button>
+          <button class="diag-filter-btn">风格</button>
+        </div>
+        <!-- Diagnosis list -->
+        <div class="diagnosis-list">
+
+          <!-- Hard conflict 1 -->
+          <div class="diagnosis-item diag-hard">
+            <div class="diag-header">
+              <svg class="diag-icon" viewBox="0 0 24 24" fill="none" stroke="var(--state-error)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>
+              </svg>
+              <div>
+                <span class="diag-title">时间线冲突：到达时间与已确认事实矛盾</span>
+                <span class="diag-gate-badge">硬门禁</span>
+              </div>
+            </div>
+            <div class="diag-quote">
+              "林越在夜色浓重时到达天枢阁外围..."（候选第1段）
+            </div>
+            <div class="diag-reason">
+              第5章 正式事实已确认林越于酉时三刻（约18:45）到达。"夜色浓重"暗示更晚的时间点（约21:00后），与已有时间线冲突。若此处改为傍晚，则"夜色浓重"的描写不成立。
+            </div>
+            <span class="diag-scope">影响: 第5章 正式事实 · 林越时间线</span>
+          </div>
+
+          <!-- Soft diagnosis 2 -->
+          <div class="diagnosis-item diag-soft">
+            <div class="diag-header">
+              <svg class="diag-icon" viewBox="0 0 24 24" fill="none" stroke="var(--state-warning)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>
+              </svg>
+              <span class="diag-title">节奏偏快：连续三个场景无缓冲过渡</span>
+            </div>
+            <div class="diag-quote">
+              "他侧身闪入，反手将门合上。门内是一段狭长的甬道..."
+            </div>
+            <div class="diag-reason">
+              从S1外围观察直接跳转到S3藏经楼内部，中间缺少对S2穿越第一道暗哨过程的描写。读者可能感到节奏过快，且S2的紧张感没有得到充分展示。
+            </div>
+            <span class="diag-scope">影响: S2场景 · 节奏曲线</span>
+          </div>
+
+          <!-- Soft diagnosis 3 -->
+          <div class="diagnosis-item diag-soft">
+            <div class="diag-header">
+              <svg class="diag-icon" viewBox="0 0 24 24" fill="none" stroke="var(--state-warning)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>
+              </svg>
+              <span class="diag-title">认知负担：短期内引入过多空间细节</span>
+            </div>
+            <div class="diag-quote">
+              "东南角那棵百年银杏下...西北角的水榭回廊...侧门在围墙转角处..."
+            </div>
+            <div class="diag-reason">
+              仅第一段就描述了院落四个方位的细节、暗哨路线和时间间隔，加上后续的甬道和藏经楼结构，信息密度较高。建议将部分细节推迟到对应场景展开时再描写。
+            </div>
+            <span class="diag-scope">影响: 读者认知负荷 · 空间描写节奏</span>
+          </div>
+
+          <!-- Hard conflict 4 -->
+          <div class="diagnosis-item diag-hard">
+            <div class="diag-header">
+              <svg class="diag-icon" viewBox="0 0 24 24" fill="none" stroke="var(--state-error)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>
+              </svg>
+              <div>
+                <span class="diag-title">人物状态冲突：林越不应已知机关锁细节</span>
+                <span class="diag-gate-badge">硬门禁</span>
+              </div>
+            </div>
+            <div class="diag-quote">
+              "匣上锁着一把需要三把钥匙同时开启的机关锁"
+            </div>
+            <div class="diag-reason">
+              当前林越的人物状态为"仅从师兄处得知星脉残图的位置"，但此处描写显示他已知机关锁的具体构造（三把钥匙同时开启）。此信息尚未通过任何场景揭示给林越，属于信息泄露。
+            </div>
+            <span class="diag-scope">影响: 林越人物状态 · 第8章悬念铺垫</span>
+          </div>
+
+          <!-- Soft diagnosis 5 -->
+          <div class="diagnosis-item diag-soft">
+            <div class="diag-header">
+              <svg class="diag-icon" viewBox="0 0 24 24" fill="none" stroke="var(--state-warning)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>
+              </svg>
+              <span class="diag-title">承诺追踪：第3章"夜明珠照明"设定未兑现</span>
+            </div>
+            <div class="diag-quote">
+              "两侧墙壁上嵌着拳头大小的夜明珠，散发着幽幽冷光"
+            </div>
+            <div class="diag-reason">
+              第3章 worldbuilding 中明确提到天枢阁甬道使用"烛火照明"，此处改为夜明珠照明。虽然不影响核心剧情，但与已有设定不一致。建议统一为烛火或补充解释。
+            </div>
+            <span class="diag-scope">影响: 第3章 worldbuilding · 场景一致性</span>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Impact Scope Tab (hidden) -->
+      <div id="rightTab-impact" style="display:none;">
+        <div class="impact-tree">
+          <div class="impact-group">
+            <div class="impact-group-title">受影响的事实</div>
+            <div class="impact-item">
+              <div class="impact-dot canon"></div>
+              <div>
+                <div style="color:var(--nw-text-primary);">林越于酉时三刻到达天枢阁外围</div>
+                <div style="font-size:11px;color:var(--nw-text-tertiary);">正式 · 第5章 · 时间线可能需调整</div>
+              </div>
+            </div>
+            <div class="impact-item">
+              <div class="impact-dot canon"></div>
+              <div>
+                <div style="color:var(--nw-text-primary);">天枢阁甬道使用烛火照明</div>
+                <div style="font-size:11px;color:var(--nw-text-tertiary);">正式 · 第3章 · 与夜明珠描写冲突</div>
+              </div>
+            </div>
+            <div class="impact-item">
+              <div class="impact-dot commitment"></div>
+              <div>
+                <div style="color:var(--nw-text-primary);">林越仅知星脉残图位置，不知开启方式</div>
+                <div style="font-size:11px;color:var(--nw-text-tertiary);">承诺 · 第4章 · 机关锁细节泄露</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="impact-group">
+            <div class="impact-group-title">受影响的人物</div>
+            <div class="impact-item">
+              <div class="impact-dot commitment"></div>
+              <div>
+                <div style="color:var(--nw-text-primary);">林越 -- 知识边界需收紧</div>
+                <div style="font-size:11px;color:var(--nw-text-tertiary);">承诺 · 当前状态"潜行中，身份未暴露"</div>
+              </div>
+            </div>
+            <div class="impact-item">
+              <div class="impact-dot candidate"></div>
+              <div>
+                <div style="color:var(--nw-text-primary);">藏经楼守阁长老 -- 候选新增角色</div>
+                <div style="font-size:11px;color:var(--nw-text-tertiary);">候选 · 故事卡 #12 软计划中提及</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="impact-group">
+            <div class="impact-group-title">受影响的期待</div>
+            <div class="impact-item">
+              <div class="impact-dot commitment"></div>
+              <div>
+                <div style="color:var(--nw-text-primary);">读者期待: 林越如何在暗哨间穿行</div>
+                <div style="font-size:11px;color:var(--nw-text-tertiary);">承诺 · 第6章末尾设置 · 尚未充分兑现</div>
+              </div>
+            </div>
+            <div class="impact-item">
+              <div class="impact-dot hypothesis"></div>
+              <div>
+                <div style="color:var(--nw-text-primary);">读者猜测: 藏经楼中"有人先到"是敌是友</div>
+                <div style="font-size:11px;color:var(--nw-text-tertiary);">观察 · 新增悬念 · 待后续验证</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="impact-group">
+            <div class="impact-group-title">受影响的伏笔</div>
+            <div class="impact-item">
+              <div class="impact-dot canon"></div>
+              <div>
+                <div style="color:var(--nw-text-primary);">师兄令牌的真实用途</div>
+                <div style="font-size:11px;color:var(--nw-text-tertiary);">正式 · 第4章埋设 · 此章部分揭示</div>
+              </div>
+            </div>
+            <div class="impact-item">
+              <div class="impact-dot candidate"></div>
+              <div>
+                <div style="color:var(--nw-text-primary);">古卷中的陌生字条</div>
+                <div style="font-size:11px;color:var(--nw-text-tertiary);">候选 · 故事卡 #12 软计划 · 待执行场景</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Writeback Preview Tab §4.12 (hidden) -->
+      <div id="rightTab-writeback" style="display:none;">
+        <div style="padding:20px;">
+          <div style="font-size:12px;color:var(--nw-text-tertiary);margin-bottom:12px;line-height:1.6;">
+            正文确认后，AI 从正式文本提取以下内容作为 memory_proposal。作者确认后才进入故事库。候选稿、被拒绝内容和审稿假设不能污染正式记忆。
+          </div>
+
+          <div class="writeback-section">
+            <div class="writeback-section-title">
+              <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#d29922;"></span>
+              实际事件提取
+            </div>
+            <div class="writeback-item">
+              <div class="writeback-bar candidate"></div>
+              <div>
+                <div>林越于酉时三刻潜入天枢阁藏经楼</div>
+                <div style="font-size:11px;color:var(--nw-text-tertiary);">新事件 · 待确认</div>
+              </div>
+            </div>
+            <div class="writeback-item">
+              <div class="writeback-bar candidate"></div>
+              <div>
+                <div>发现藏经楼内有人先到，身份不明</div>
+                <div style="font-size:11px;color:var(--nw-text-tertiary);">新事件 · 待确认</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="writeback-section">
+            <div class="writeback-section-title">
+              <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#d29922;"></span>
+              人物状态变化
+            </div>
+            <div class="writeback-item">
+              <div class="writeback-bar candidate"></div>
+              <div>
+                <div>林越: 知识边界扩展（确认令牌可开侧门）</div>
+                <div style="font-size:11px;color:var(--nw-text-tertiary);">状态变化 · 待确认</div>
+              </div>
+            </div>
+            <div class="writeback-item">
+              <div class="writeback-bar candidate"></div>
+              <div>
+                <div>林越: 位置更新（藏经楼内）</div>
+                <div style="font-size:11px;color:var(--nw-text-tertiary);">状态变化 · 待确认</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="writeback-section">
+            <div class="writeback-section-title">
+              <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#d29922;"></span>
+              期待变化
+            </div>
+            <div class="writeback-item">
+              <div class="writeback-bar candidate"></div>
+              <div>
+                <div>期待#3 "林越如何在暗哨间穿行" → partially_paid</div>
+                <div style="font-size:11px;color:var(--nw-text-tertiary);">部分兑现 · 待确认</div>
+              </div>
+            </div>
+            <div class="writeback-item">
+              <div class="writeback-bar candidate"></div>
+              <div>
+                <div>新增期待: "藏经楼中先到之人是敌是友"</div>
+                <div style="font-size:11px;color:var(--nw-text-tertiary);">新期待 opened · 待确认</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="writeback-section">
+            <div class="writeback-section-title">
+              <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#d29922;"></span>
+              新增事实
+            </div>
+            <div class="writeback-item">
+              <div class="writeback-bar candidate"></div>
+              <div>
+                <div>天枢阁藏经楼三层存放紫檀木匣（星脉残图）</div>
+                <div style="font-size:11px;color:var(--nw-text-tertiary);">新事实 · 待确认</div>
+              </div>
+            </div>
+          </div>
+
+              <div style="margin-bottom:12px;">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                  <div style="width:3px;height:14px;background:var(--fact-commitment);border-radius:2px;"></div>
+                  <span style="font-size:12px;font-weight:500;color:var(--nw-text-primary);">新增或改变的关系</span>
+                </div>
+                <div style="padding:6px 8px 6px 16px;background:var(--fact-commitment-bg);border-radius:0 var(--radius-sm) var(--radius-sm) 0;font-size:12px;color:var(--nw-text-secondary);line-height:1.5;">
+                  林远舟 ↔ 藏经楼守卫：从无关系到被发现（候选）<br>
+                  林远舟 ↔ 苏婉清：策应关系确认（正式）
+                </div>
+              </div>
+
+          <div class="writeback-section">
+            <div class="writeback-section-title">
+              <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#d29922;"></span>
+              计划偏差
+            </div>
+            <div class="writeback-item">
+              <div class="writeback-bar candidate"></div>
+              <div>
+                <div>软计划"在藏经楼安排与守阁长老对话"未执行</div>
+                <div style="font-size:11px;color:var(--nw-text-tertiary);">偏差: 场景发展为先到者打断 · 需作者选择接受偏差或重规划</div>
+              </div>
+            </div>
+          </div>
+
+              <div style="margin-top:8px;padding:8px;background:var(--nw-bg-elevated);border-radius:var(--radius-md);">
+                <div style="font-size:11px;font-weight:600;color:var(--nw-text-tertiary);margin-bottom:6px;">偏差处理 (drift_decision)</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                  <button class="btn-sm" style="font-size:11px;padding:4px 10px;background:var(--nw-primary);color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;">接受偏差</button>
+                  <button class="btn-sm" style="font-size:11px;padding:4px 10px;background:var(--nw-bg-elevated);color:var(--nw-text-primary);border:1px solid var(--nw-border-default);border-radius:var(--radius-sm);cursor:pointer;">改回正文</button>
+                  <button class="btn-sm" style="font-size:11px;padding:4px 10px;background:var(--nw-bg-elevated);color:var(--nw-text-primary);border:1px solid var(--nw-border-default);border-radius:var(--radius-sm);cursor:pointer;">重规划后续</button>
+                </div>
+              </div>
+
+          <div style="margin-top:16px;padding:12px;background:rgba(210,153,34,0.08);border:1px solid rgba(210,153,34,0.2);border-radius:var(--radius-md);">
+            <div style="font-size:12px;color:var(--nw-amber);font-weight:500;margin-bottom:4px;">记忆提案状态</div>
+            <div style="font-size:12px;color:var(--nw-text-secondary);">
+              以上内容均为候选提取结果，作者确认后才进入故事库正式层级。
+            </div>
+          </div>
+
+          <button class="btn-primary approval-btn-main" style="margin-top:16px;">确认回写至故事库</button>
+          <button class="btn-secondary approval-btn-secondary">修正提取结果</button>
+        </div>
+      </div>
+
+      <!-- Approval Tab (hidden) -->
+      <div id="rightTab-approval" style="display:none;">
+        <div class="approval-panel">
+          <button class="btn-primary approval-btn-main">确认写入正式正文</button>
+          <button class="btn-secondary approval-btn-secondary">全部拒绝</button>
+          <button class="btn-secondary approval-btn-secondary">按差异块审批</button>
+          <button class="btn-secondary approval-btn-secondary">混合多个候选</button>
+          <button class="btn-secondary approval-btn-secondary">要求只重做指定范围</button>
+
+          <div class="checklist">
+            <div style="font-size:12px;font-weight:600;color:var(--nw-text-tertiary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">
+              审批前检查
+            </div>
+            <div class="checklist-item">
+              <div class="checklist-checkbox checked" onclick="this.classList.toggle('checked')">
+                <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <span>无硬冲突</span>
+            </div>
+            <div class="checklist-item">
+              <div class="checklist-checkbox checked" onclick="this.classList.toggle('checked')">
+                <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <span>关键人物选择已确认</span>
+            </div>
+            <div class="checklist-item">
+              <div class="checklist-checkbox" onclick="this.classList.toggle('checked')">
+                <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <span>期待兑现已验证</span>
+            </div>
+            <div class="checklist-item">
+              <div class="checklist-checkbox" onclick="this.classList.toggle('checked')">
+                <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <span>实际回写范围已预览</span>
+            </div>
+          </div>
+
+          <div style="margin-top:20px;padding:12px;background:var(--nw-bg-elevated);border-radius:var(--radius-md);border:1px solid var(--nw-border-default);">
+            <div style="font-size:12px;color:var(--nw-text-tertiary);margin-bottom:6px;">待处理差异块</div>
+            <div style="font-size:13px;color:var(--nw-text-primary);font-weight:500;">1 个差异块待审批</div>
+            <div style="font-size:12px;color:var(--nw-text-secondary);margin-top:4px;">
+              包含 1 处删除、1 处新增，涉及 S3 场景进入藏经楼的描写段落。
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- Modal: Chapter Export §4.15 -->
+  <div class="modal-overlay" id="modal-export">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div class="modal-title">章节导出与发布前检查</div>
+        <button class="modal-close" onclick="hideModal('modal-export')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div style="font-size:13px;color:var(--nw-text-secondary);margin-bottom:16px;">导出前系统将执行发布前检查，不自动代替作者向平台发布。</div>
+        <div style="font-size:12px;font-weight:600;color:var(--nw-text-tertiary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">导出格式</div>
+        <div style="display:flex;gap:8px;margin-bottom:20px;">
+          <button class="btn-secondary btn-sm" style="border-color:var(--nw-primary);color:var(--nw-primary-light);">TXT</button>
+          <button class="btn-secondary btn-sm">DOCX</button>
+          <button class="btn-secondary btn-sm">Markdown</button>
+        </div>
+        <div style="font-size:12px;font-weight:600;color:var(--nw-text-tertiary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">发布前检查清单</div>
+        <div class="checklist-item"><div class="checklist-checkbox checked"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><span>无硬冲突</span></div>
+        <div class="checklist-item"><div class="checklist-checkbox checked"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><span>所有关键决策已确认</span></div>
+        <div class="checklist-item"><div class="checklist-checkbox checked"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><span>实际回写已完成</span></div>
+        <div class="checklist-item"><div class="checklist-checkbox"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><span>平台合规检查</span></div>
+        <div class="checklist-item"><div class="checklist-checkbox"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><span>敏感词扫描</span></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary btn-sm" onclick="hideModal('modal-export')">取消</button>
+        <button class="btn-primary btn-sm" onclick="hideModal('modal-export')">执行导出</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Stuck Resolution §4.13 -->
+  <div class="modal-overlay" id="modal-stuck">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div class="modal-title">卡文处理</div>
+        <button class="modal-close" onclick="hideModal('modal-stuck')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div style="font-size:13px;color:var(--nw-text-secondary);margin-bottom:16px;">系统不提供脱离问题的随机灵感。需要改变正式事实、人物核心或读者契约时必须停止。</div>
+        <div class="stuck-step">
+          <div class="stuck-step-num">1</div>
+          <div class="stuck-step-content">
+            <div class="stuck-step-title">定位冲突约束</div>
+            <div class="stuck-step-desc">当前冲突：林越需要进入藏经楼三层，但机关锁需要三把钥匙（未知来源）。人物当前不具备此资源。</div>
+          </div>
+        </div>
+        <div class="stuck-step">
+          <div class="stuck-step-num">2</div>
+          <div class="stuck-step-content">
+            <div class="stuck-step-title">标注来源层级</div>
+            <div class="stuck-step-desc">
+              <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#2ea043;margin-right:4px;"></span> 正式: 师兄遗言"到了便知"
+              <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#58a6ff;margin-right:4px;margin-left:12px;"></span> 承诺: 星脉残图位于三层紫檀木匣
+            </div>
+          </div>
+        </div>
+        <div class="stuck-step">
+          <div class="stuck-step-num">3</div>
+          <div class="stuck-step-content">
+            <div class="stuck-step-title">计算影响范围</div>
+            <div class="stuck-step-desc">影响：当前故事卡#12 · 后续2个场景 · 3条期待 · 1条伏笔。不涉及正式事实、人物核心或读者契约变更。</div>
+          </div>
+        </div>
+        <div class="stuck-step">
+          <div class="stuck-step-num">4</div>
+          <div class="stuck-step-content">
+            <div class="stuck-step-title">互斥调整方案</div>
+            <div class="stuck-step-desc">
+              <div style="margin-top:8px;display:flex;flex-direction:column;gap:8px;">
+                <div style="padding:10px;border:1px solid var(--nw-border-default);border-radius:var(--radius-md);cursor:pointer;" onclick="this.style.borderColor='var(--nw-primary)'">
+                  <div style="font-size:13px;font-weight:500;color:var(--nw-text-primary);">方案A: 改为林越在二层找到线索</div>
+                  <div style="font-size:12px;color:var(--nw-text-secondary);margin-top:4px;">调整场景目标，三层改为后续章节。影响：重规划S3-S5。</div>
+                </div>
+                <div style="padding:10px;border:1px solid var(--nw-border-default);border-radius:var(--radius-md);cursor:pointer;" onclick="this.style.borderColor='var(--nw-primary)'">
+                  <div style="font-size:13px;font-weight:500;color:var(--nw-text-primary);">方案B: 增加盟友提供钥匙</div>
+                  <div style="font-size:12px;color:var(--nw-text-secondary);margin-top:4px;">引入候选角色周明轩（已存在于故事库候选区）。影响：新增人物关系，不影响正式事实。</div>
+                </div>
+                <div style="padding:10px;border:1px solid var(--nw-border-default);border-radius:var(--radius-md);cursor:pointer;" onclick="this.style.borderColor='var(--nw-primary)'">
+                  <div style="font-size:13px;font-weight:500;color:var(--nw-text-primary);">方案C: 令牌具有隐藏功能</div>
+                  <div style="font-size:12px;color:var(--nw-text-secondary);margin-top:4px;">师兄令牌本身即为钥匙之一（需升级为正式事实）。影响：需要作者确认升级正式事实。</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="stuck-step">
+          <div class="stuck-step-num">5</div>
+          <div class="stuck-step-content">
+            <div class="stuck-step-title">作者选择 → 只重规划受影响内容</div>
+            <div class="stuck-step-desc">选择方案后，系统只重规划受影响的场景和后续卡片，不改变已确认的正式事实。</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary btn-sm" onclick="hideModal('modal-stuck')">关闭</button>
+        <button class="btn-primary btn-sm" onclick="hideModal('modal-stuck')">选择方案并重规划</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Ending Planning §4.14 -->
+  <div class="modal-overlay" id="modal-ending">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div class="modal-title">收尾与完结规划</div>
+        <button class="modal-close" onclick="hideModal('modal-ending')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div style="font-size:13px;color:var(--nw-text-secondary);margin-bottom:16px;">完结不由固定字数触发，而由作者进入收尾里程碑或全书契约接近兑现触发。收尾阶段不自动开启同等级新主线。</div>
+
+        <div style="font-size:12px;font-weight:600;color:var(--nw-text-tertiary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">全书承诺兑现矩阵</div>
+        <table class="ending-matrix">
+          <thead>
+            <tr><th>承诺内容</th><th>来源</th><th>状态</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>主角找到星脉残图</td><td>第1章 reader_contract</td><td class="status-pending">进行中</td></tr>
+            <tr><td>师兄之死的真相</td><td>第2章 承诺</td><td class="status-pending">待回收</td></tr>
+            <tr><td>天枢阁内部权力格局</td><td>第5章 foreshadowing</td><td class="status-pending">待回收</td></tr>
+            <tr><td>林越身世之谜</td><td>第1章 protagonist_promise</td><td class="status-unrecycled">未回收</td></tr>
+            <tr><td>令牌的真正用途</td><td>第4章 foreshadowing</td><td class="status-pending">待回收</td></tr>
+          </tbody>
+        </table>
+
+        <div style="font-size:12px;font-weight:600;color:var(--nw-text-tertiary);text-transform:uppercase;letter-spacing:0.06em;margin:16px 0 8px;">未回收伏笔</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <div style="padding:8px 12px;background:var(--nw-bg-elevated);border-radius:var(--radius-sm);border-left:3px solid #f85149;font-size:13px;">
+            <div style="color:var(--nw-text-primary);">第2章: 师兄临终遗言"星脉不止一图"</div>
+            <div style="font-size:11px;color:var(--nw-text-tertiary);">已超过20章未回收 · 建议在收尾前处理</div>
+          </div>
+          <div style="padding:8px 12px;background:var(--nw-bg-elevated);border-radius:var(--radius-sm);border-left:3px solid #d29922;font-size:13px;">
+            <div style="color:var(--nw-text-primary);">第5章: 暗卫组织内部分裂迹象</div>
+            <div style="font-size:11px;color:var(--nw-text-tertiary);">可在高潮场景中回收</div>
+          </div>
+        </div>
+
+        <div style="font-size:12px;font-weight:600;color:var(--nw-text-tertiary);text-transform:uppercase;letter-spacing:0.06em;margin:16px 0 8px;">可明确留白的内容</div>
+        <div style="font-size:13px;color:var(--nw-text-secondary);line-height:1.6;">
+          天枢阁之外的世界格局 · 林越后代的未来 · 部分配角的独立去向
+        </div>
+
+        <div style="font-size:12px;font-weight:600;color:var(--nw-text-tertiary);text-transform:uppercase;letter-spacing:0.06em;margin:16px 0 8px;">多条长期线共享高潮候选</div>
+        <div style="padding:10px 12px;background:var(--nw-bg-elevated);border-radius:var(--radius-sm);font-size:13px;color:var(--nw-text-primary);margin-bottom:6px;">
+          候选1: 星脉残图揭晓 + 师兄真相 + 身世之谜 三线交汇
+        </div>
+        <div style="padding:10px 12px;background:var(--nw-bg-elevated);border-radius:var(--radius-sm);font-size:13px;color:var(--nw-text-primary);">
+          候选2: 天枢阁决战 + 组织内部分裂 + 令牌觉醒 三线交汇
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary btn-sm" onclick="hideModal('modal-ending')">关闭</button>
+        <button class="btn-primary btn-sm" onclick="hideModal('modal-ending')">进入收尾里程碑</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SCRIPTS ==================== -->
+  <script>
+    // Left column tab switching
+    function switchLeftTab(tabId, btn) {
+      document.getElementById('leftTab-storycard').style.display = tabId === 'storycard' ? '' : 'none';
+      document.getElementById('leftTab-scenelist').style.display = tabId === 'scenelist' ? '' : 'none';
+      btn.parentElement.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('tab-active'); });
+      btn.classList.add('tab-active');
+    }
+
+    // Right column tab switching
+    function switchRightTab(tabId, btn) {
+      document.getElementById('rightTab-diagnosis').style.display = tabId === 'diagnosis' ? '' : 'none';
+      document.getElementById('rightTab-impact').style.display = tabId === 'impact' ? '' : 'none';
+      document.getElementById('rightTab-approval').style.display = tabId === 'approval' ? '' : 'none';
+      document.getElementById('rightTab-writeback').style.display = tabId === 'writeback' ? '' : 'none';
+      btn.parentElement.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('tab-active'); });
+      btn.classList.add('tab-active');
+    }
+
+    // Generation mode selector §4.9
+    function toggleGenModeMenu(e) {
+      e.stopPropagation();
+      var menu = document.getElementById('gen-mode-menu');
+      menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    }
+    function selectGenMode(label, el) {
+      document.getElementById('gen-mode-label').textContent = label;
+      document.querySelectorAll('.gen-mode-option').forEach(function(o) { o.classList.remove('gen-mode-active'); });
+      el.classList.add('gen-mode-active');
+      document.getElementById('gen-mode-menu').style.display = 'none';
+    }
+    document.addEventListener('click', function() {
+      var menu = document.getElementById('gen-mode-menu');
+      if (menu) menu.style.display = 'none';
+    });
+
+    // A/B comparison toggle §4.5
+    function toggleABComparison() {
+      var toggle = document.getElementById('ab-toggle');
+      var view = document.getElementById('ab-comparison-view');
+      var editor = document.querySelector('.editor-paper');
+      toggle.classList.toggle('ab-active');
+      view.classList.toggle('visible');
+      if (editor) editor.style.display = toggle.classList.contains('ab-active') ? 'none' : '';
+    }
+    function selectABCandidate(el) {
+      document.querySelectorAll('.ab-candidate-col').forEach(function(c) {
+        c.classList.remove('ab-selected');
+        var badge = c.querySelector('.badge');
+        if (badge) {
+          badge.style.background = 'transparent';
+          badge.style.border = '1px solid var(--nw-border-default)';
+          badge.style.color = 'var(--nw-text-tertiary)';
+          badge.textContent = '未选择';
+        }
+      });
+      el.classList.add('ab-selected');
+      var badge = el.querySelector('.badge');
+      if (badge) {
+        badge.style.background = 'rgba(45,138,110,0.12)';
+        badge.style.border = 'none';
+        badge.style.color = '#3aa882';
+        badge.textContent = '已选择';
+      }
+    }
+
+    // Modal management §4.13/4.14/4.15
+    function showModal(id) {
+      document.getElementById(id).classList.add('visible');
+    }
+    function hideModal(id) {
+      document.getElementById(id).classList.remove('visible');
+    }
+    document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
+      overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) overlay.classList.remove('visible');
+      });
+    });
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-overlay.visible').forEach(function(m) { m.classList.remove('visible'); });
+      }
+    });
+
+    // Diagnosis filter button switching
+    document.querySelectorAll('.diag-filter-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        this.parentElement.querySelectorAll('.diag-filter-btn').forEach(function(b) { b.classList.remove('diag-active'); });
+        this.classList.add('diag-active');
+      });
+    });
+
+    // Overlay state management
+    function showOverlay(type) {
+      document.getElementById('overlay-loading').classList.remove('visible');
+      document.getElementById('overlay-error').classList.remove('visible');
+      if (type === 'loading') {
+        document.getElementById('overlay-loading').classList.add('visible');
+        // Simulate: after 3s show error for demo purposes
+        setTimeout(function() {
+          document.getElementById('overlay-loading').classList.remove('visible');
+          document.getElementById('overlay-error').classList.add('visible');
+        }, 3000);
+      } else if (type === 'error') {
+        document.getElementById('overlay-error').classList.add('visible');
+      }
+    }
+
+    function hideOverlays() {
+      document.getElementById('overlay-loading').classList.remove('visible');
+      document.getElementById('overlay-error').classList.remove('visible');
+    }
+
+    // Close overlays on click outside (on the overlay background)
+    document.querySelectorAll('.editor-overlay').forEach(function(overlay) {
+      overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) hideOverlays();
+      });
+    });
+  </script>
+
+</body>
+</html>

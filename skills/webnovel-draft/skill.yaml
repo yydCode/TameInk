@@ -1,0 +1,47 @@
+name: webnovel-draft
+agent: DraftWriter
+candidate_kinds:
+  - chapter_draft
+purpose: 在已确认范围内生成整章、场景、对话或局部改写候选。
+
+# ── 生成约束（来自宝剑侍从教材）──────────────────────────
+generation_constraints:
+  # 番茄平台字数规范
+  word_range: [2000, 3500]
+  # 单段描写上限（超过读者跳读）
+  max_paragraph_words: 100
+  # 单场景字数区间
+  scene_word_range: [300, 500]
+  # 每千字至少一个情绪起伏点
+  emotion_beats_per_1000: 1
+  # 爽点前至少3次"递望远镜"信息暴露
+  telescope_exposures: 3
+
+# ── 主角行为规则 ──────────────────────────────────────────
+protagonist_rules:
+  # 情绪下行时主角必须有主动行为（哪怕是主动撤退）
+  must_act_in_setback: true
+  # 情绪下行的起因只能是外部敌人，不能是主角失误
+  setback_cause: external_only
+  # 下行情节中的绝对禁止行为
+  forbidden:
+    - protagonist_causes_team_failure     # 主角失误导致队伍陷入危机
+    - protagonist_passive_throughout      # 主角茫然无措、无有效反应
+    - gain_less_than_cost                 # 主角主动行为得不偿失
+    - protagonist_only_flees_no_counterattack  # 被打压后只逃跑不反击
+
+# ── 钩子管理规则 ──────────────────────────────────────────
+hook_rules:
+  # 近期待：开启后最多5章内必须有进展，否则触发警告
+  near_expectation_max_chapters: 5
+  # 远期待：每隔一段必须在行文中撩拨一次，防止读者遗忘
+  remote_expectation_resurface: true
+  # 同类型钩子连续使用上限（超过触发审美疲劳警告）
+  same_type_hook_consecutive_limit: 3
+
+# ── 场景有效性规则 ────────────────────────────────────────
+scene_validity:
+  # 每个场景必须是抛钩或收钩，两者都不是则标记为废段
+  require_hook_or_payoff: true
+  # 情绪描写必须绑定期待状态（下行→开钩；上行→收钩）
+  emotion_must_bind_expectation: true

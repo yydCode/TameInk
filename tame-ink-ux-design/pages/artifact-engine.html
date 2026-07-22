@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>故事引擎 - 驯墨</title>
+    <style id="theme-vars">
+/* ============================================================
+   驯墨 Tame Ink — 品牌设计令牌 · 夜墨主题 v2
+   ============================================================
+   核心理念：作者只做三件事——说想法、看结果、做取舍
+   暗色沉浸主题，单栏聚焦布局
+   ============================================================ */
+
+:root {
+  /* === 品牌主色 — 墨绿 === */
+  --brand: #6aae8d;
+  --brand-hover: #5d9a7d;
+  --brand-active: #4c8a6a;
+  --brand-muted: rgba(106, 174, 141, 0.12);
+  --brand-muted-hover: rgba(106, 174, 141, 0.2);
+  --brand-subtle: rgba(106, 174, 141, 0.06);
+  --brand-foreground: #ffffff;
+
+  /* === 表面色阶 === */
+  --surface-0: #0d1117;
+  --surface-1: #151c25;
+  --surface-2: #1a2332;
+  --surface-3: #222f40;
+  --surface-4: #2d3d52;
+
+  /* === 文本色阶 === */
+  --text-primary: #e6edf3;
+  --text-secondary: #a3b8cc;
+  --text-tertiary: #7a92ab;
+  --text-muted: #546a84;
+  --text-on-brand: #ffffff;
+
+  /* === 边框 === */
+  --border-default: rgba(148, 163, 184, 0.12);
+  --border-strong: rgba(148, 163, 184, 0.22);
+  --border-brand: rgba(106, 174, 141, 0.35);
+
+  /* === 状态色 === */
+  --state-success: #4ade80;
+  --state-success-bg: rgba(74, 222, 128, 0.1);
+  --state-warning: #fbbf24;
+  --state-warning-bg: rgba(251, 191, 36, 0.1);
+  --state-error: #f87171;
+  --state-error-bg: rgba(248, 113, 113, 0.1);
+  --state-info: #60a5fa;
+  --state-info-bg: rgba(96, 165, 250, 0.1);
+
+  /* === 语义别名 === */
+  --background: var(--surface-0);
+  --foreground: var(--text-primary);
+  --color-background: var(--surface-0);
+  --color-foreground: var(--text-primary);
+  --color-card: var(--surface-2);
+  --color-card-foreground: var(--text-primary);
+  --color-popover: var(--surface-3);
+  --color-popover-foreground: var(--text-primary);
+  --color-primary: var(--brand);
+  --color-primary-foreground: var(--brand-foreground);
+  --color-muted: var(--surface-3);
+  --color-muted-foreground: var(--text-secondary);
+  --color-border: var(--border-default);
+  --color-input: var(--border-default);
+  --color-ring: var(--brand);
+
+  /* === 圆角 === */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* === 字体 === */
+  --font-sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-serif: "Noto Serif SC", "Songti SC", "SimSun", Georgia, serif;
+  --font-mono: "SFMono-Regular", "JetBrains Mono", "Fira Code", Consolas, monospace;
+
+  /* === 字号 === */
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 18px;
+  --text-2xl: 22px;
+  --text-3xl: 28px;
+  --text-4xl: 36px;
+
+  /* === 间距 === */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* === 布局 === */
+  --sidebar-width: 200px;
+  --topbar-height: 48px;
+  --content-max-width: 760px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  min-height: 100vh;
+  color: var(--text-primary);
+  background: var(--surface-0);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 { font-family: var(--font-serif); font-weight: 700; line-height: 1.25; }
+a { color: var(--brand); text-decoration: none; transition: color 0.15s; }
+a:hover { color: var(--brand-hover); }
+button { color: inherit; font: inherit; cursor: pointer; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface-4); border-radius: 9999px; }
+::selection { background: var(--brand-muted); color: var(--brand-foreground); }
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--color-card);
+    --color-card-foreground: var(--color-card-foreground);
+    --color-popover: var(--color-popover);
+    --color-popover-foreground: var(--color-popover-foreground);
+    --color-primary: var(--color-primary);
+    --color-primary-foreground: var(--color-primary-foreground);
+    --color-muted: var(--color-muted);
+    --color-muted-foreground: var(--color-muted-foreground);
+    --color-border: var(--color-border);
+    --color-input: var(--color-input);
+    --color-ring: var(--color-ring);
+    --radius-sm: var(--radius-sm);
+    --radius-md: var(--radius-md);
+    --radius-lg: var(--radius-lg);
+    --radius-xl: var(--radius-xl);
+  }
+  @layer base {
+    body { background: var(--color-background); color: var(--color-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style id="semantic-token-fallback">
+      .bg-background { background-color: var(--background); }
+      .text-background { color: var(--background); }
+      .border-background { border-color: var(--background); }
+      .ring-background { --tw-ring-color: var(--background); }
+      .bg-foreground { background-color: var(--foreground); }
+      .text-foreground { color: var(--foreground); }
+      .border-foreground { border-color: var(--foreground); }
+      .ring-foreground { --tw-ring-color: var(--foreground); }
+      .bg-card { background-color: var(--color-card); }
+      .text-card { color: var(--color-card); }
+      .border-card { border-color: var(--color-card); }
+      .ring-card { --tw-ring-color: var(--color-card); }
+      .bg-card-foreground { background-color: var(--color-card-foreground); }
+      .text-card-foreground { color: var(--color-card-foreground); }
+      .border-card-foreground { border-color: var(--color-card-foreground); }
+      .ring-card-foreground { --tw-ring-color: var(--color-card-foreground); }
+      .bg-popover { background-color: var(--color-popover); }
+      .text-popover { color: var(--color-popover); }
+      .border-popover { border-color: var(--color-popover); }
+      .ring-popover { --tw-ring-color: var(--color-popover); }
+      .bg-popover-foreground { background-color: var(--color-popover-foreground); }
+      .text-popover-foreground { color: var(--color-popover-foreground); }
+      .border-popover-foreground { border-color: var(--color-popover-foreground); }
+      .ring-popover-foreground { --tw-ring-color: var(--color-popover-foreground); }
+      .bg-primary { background-color: var(--color-primary); }
+      .text-primary { color: var(--color-primary); }
+      .border-primary { border-color: var(--color-primary); }
+      .ring-primary { --tw-ring-color: var(--color-primary); }
+      .bg-primary-foreground { background-color: var(--color-primary-foreground); }
+      .text-primary-foreground { color: var(--color-primary-foreground); }
+      .border-primary-foreground { border-color: var(--color-primary-foreground); }
+      .ring-primary-foreground { --tw-ring-color: var(--color-primary-foreground); }
+      .bg-muted { background-color: var(--color-muted); }
+      .text-muted { color: var(--color-muted); }
+      .border-muted { border-color: var(--color-muted); }
+      .ring-muted { --tw-ring-color: var(--color-muted); }
+      .bg-muted-foreground { background-color: var(--color-muted-foreground); }
+      .text-muted-foreground { color: var(--color-muted-foreground); }
+      .border-muted-foreground { border-color: var(--color-muted-foreground); }
+      .ring-muted-foreground { --tw-ring-color: var(--color-muted-foreground); }
+      .bg-border { background-color: var(--color-border); }
+      .text-border { color: var(--color-border); }
+      .border-border { border-color: var(--color-border); }
+      .ring-border { --tw-ring-color: var(--color-border); }
+      .bg-input { background-color: var(--color-input); }
+      .text-input { color: var(--color-input); }
+      .border-input { border-color: var(--color-input); }
+      .ring-input { --tw-ring-color: var(--color-input); }
+      .bg-ring { background-color: var(--color-ring); }
+      .text-ring { color: var(--color-ring); }
+      .border-ring { border-color: var(--color-ring); }
+      .ring-ring { --tw-ring-color: var(--color-ring); }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+
+    <!-- ============================================================
+         共享项目外壳 CSS（来自 partials/project-shell.html）
+         ============================================================ -->
+    <style>
+      /* === 应用外壳整体布局 === */
+      .app-shell {
+        display: grid;
+        grid-template-rows: var(--topbar-height) 1fr;
+        grid-template-columns: var(--sidebar-width) 1fr;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      /* === 顶栏 === */
+      .topbar {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: var(--topbar-height);
+        padding: 0 var(--space-5);
+        background: var(--surface-1);
+        border-bottom: 1px solid var(--border-default);
+      }
+
+      /* 品牌标识区 */
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+      }
+      .brand-mark {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        background: var(--brand);
+        color: var(--brand-foreground);
+        border-radius: var(--radius-sm);
+        font-family: var(--font-serif);
+        font-size: var(--text-sm);
+        font-weight: 700;
+        line-height: 1;
+      }
+      .brand-name {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.1;
+      }
+      .brand-name .name-main {
+        font-family: var(--font-serif);
+        font-size: var(--text-base);
+        font-weight: 700;
+        color: var(--text-primary);
+      }
+      .brand-name .name-sub {
+        font-size: var(--text-xs);
+        color: var(--text-muted);
+        letter-spacing: 0.5px;
+      }
+
+      /* 顶栏右侧 */
+      .topbar-right {
+        display: flex;
+        align-items: center;
+        gap: var(--space-4);
+      }
+      .connection-status {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        font-size: var(--text-sm);
+        color: var(--text-secondary);
+      }
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--state-success);
+        box-shadow: 0 0 0 3px var(--state-success-bg);
+      }
+      .icon-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        background: transparent;
+        border: none;
+        border-radius: var(--radius-sm);
+        color: var(--text-tertiary);
+        transition: background 0.15s, color 0.15s;
+      }
+      .icon-btn:hover {
+        background: var(--surface-2);
+        color: var(--text-secondary);
+      }
+      .icon-btn i { width: 16px; height: 16px; }
+
+      /* === 侧边栏 === */
+      .sidebar {
+        background: var(--surface-1);
+        border-right: 1px solid var(--border-default);
+        padding: var(--space-4) var(--space-3);
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+        overflow-y: auto;
+      }
+
+      /* 新建故事按钮 */
+      .new-story-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-2);
+        width: 100%;
+        height: 36px;
+        background: var(--brand-muted);
+        color: var(--brand);
+        border: 1px solid var(--border-brand);
+        border-radius: var(--radius-sm);
+        font-size: var(--text-sm);
+        font-weight: 600;
+        transition: background 0.15s, color 0.15s;
+      }
+      .new-story-btn:hover {
+        background: var(--brand-muted-hover);
+        color: var(--brand-hover);
+      }
+      .new-story-btn i { width: 16px; height: 16px; }
+
+      /* 侧边栏导航分隔 */
+      .sidebar-divider {
+        height: 1px;
+        background: var(--border-default);
+        margin: var(--space-1) 0;
+      }
+
+      /* 导航项 */
+      .nav-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .nav-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        height: 36px;
+        padding: 0 var(--space-3);
+        background: transparent;
+        border: none;
+        border-left: 3px solid transparent;
+        border-radius: var(--radius-sm);
+        color: var(--text-tertiary);
+        font-size: var(--text-sm);
+        text-align: left;
+        transition: background 0.15s, color 0.15s;
+      }
+      .nav-item i { width: 16px; height: 16px; flex-shrink: 0; }
+      .nav-item:hover {
+        color: var(--text-secondary);
+        background: var(--surface-2);
+      }
+      /* 激活态 */
+      .nav-item[data-active="true"] {
+        color: var(--brand);
+        background: var(--brand-subtle);
+        border-left: 3px solid var(--brand);
+        font-weight: 600;
+      }
+
+      /* === 主内容区 === */
+      .main-content {
+        height: 100%;
+        overflow-y: auto;
+        background: var(--surface-0);
+      }
+
+      /* === 单栏聚焦容器 === */
+      .focus-container {
+        max-width: var(--content-max-width);
+        margin: 0 auto;
+        padding: var(--space-8) var(--space-6);
+      }
+    </style>
+
+    <!-- ============================================================
+         页面专属 CSS — 故事引擎 artifact 卡片
+         ============================================================ -->
+    <style>
+      /* === 卡片容器（与读者契约卡片一致） === */
+      .artifact-card {
+        background: var(--surface-1);
+        border: 1px solid var(--border-default);
+        border-radius: var(--radius-xl);
+        overflow: hidden;
+      }
+
+      /* 标题条 */
+      .artifact-card-header {
+        display: flex;
+        align-items: baseline;
+        gap: var(--space-2);
+        padding: var(--space-4) var(--space-5);
+        border-bottom: 1px solid var(--border-default);
+      }
+      .artifact-card-title {
+        font-family: var(--font-serif);
+        font-size: var(--text-lg);
+        font-weight: 700;
+        color: var(--text-primary);
+      }
+      .artifact-card-subtitle {
+        font-size: var(--text-sm);
+        color: var(--text-tertiary);
+      }
+
+      /* 内容区 */
+      .artifact-card-body {
+        padding: var(--space-5);
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
+      }
+
+      /* === 字段定义列表 === */
+      .field-list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3);
+      }
+      .field-item {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--space-3);
+      }
+      .field-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        width: 20px;
+        height: 20px;
+        margin-top: 1px;
+      }
+      .field-icon i { width: 16px; height: 16px; }
+      .field-icon--brand { color: var(--brand); }
+      .field-icon--warning { color: var(--state-warning); }
+      .field-icon--tertiary { color: var(--text-tertiary); }
+
+      .field-content {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+        flex: 1;
+      }
+      .field-label {
+        font-size: var(--text-sm);
+        color: var(--text-tertiary);
+        font-weight: 500;
+      }
+      .field-value {
+        font-size: var(--text-base);
+        color: var(--text-secondary);
+        line-height: 1.6;
+      }
+      /* ">" 符号高亮（品牌色） */
+      .field-value .gt {
+        color: var(--brand);
+        font-weight: 600;
+        margin: 0 2px;
+      }
+
+      /* === 行动机制 — 流程标签链 === */
+      .flow-chain {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .flow-tag {
+        display: inline-flex;
+        align-items: center;
+        background: var(--surface-2);
+        border: 1px solid var(--border-default);
+        padding: 4px 10px;
+        border-radius: var(--radius-full);
+        font-size: var(--text-xs);
+        color: var(--text-secondary);
+        white-space: nowrap;
+      }
+      .flow-arrow {
+        color: var(--text-tertiary);
+        margin: 0 4px;
+        font-size: var(--text-xs);
+      }
+
+      /* === 变奏轴 === */
+      .variation-axis {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        flex-wrap: wrap;
+      }
+      .axis-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-2);
+        font-size: var(--text-base);
+        color: var(--text-secondary);
+      }
+      .axis-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+      .axis-dot--brand { background: var(--brand); }
+      .axis-dot--info { background: var(--state-info); }
+      .axis-separator {
+        color: var(--text-muted);
+        font-size: var(--text-base);
+      }
+
+      /* === 长期线 — 编号列表 === */
+      .longterm-list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+      }
+      .longterm-item {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--space-3);
+      }
+      .longterm-num {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: var(--brand-muted);
+        color: var(--brand);
+        font-size: var(--text-xs);
+        font-weight: 700;
+        border: 1px solid var(--border-brand);
+        line-height: 1;
+      }
+      .longterm-text {
+        font-size: var(--text-base);
+        color: var(--text-secondary);
+        line-height: 1.6;
+        padding-top: 1px;
+      }
+
+      /* === 底部按钮区 === */
+      .action-bar {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        padding: var(--space-4) var(--space-5);
+        border-top: 1px solid var(--border-default);
+      }
+      .action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-2);
+        height: 34px;
+        padding: 0 var(--space-4);
+        border-radius: var(--radius-md);
+        font-size: var(--text-sm);
+        font-weight: 500;
+        transition: background 0.15s, border-color 0.15s, color 0.15s;
+      }
+      .action-btn i { width: 15px; height: 15px; }
+      .action-btn--primary {
+        background: var(--brand);
+        color: var(--brand-foreground);
+        border: 1px solid var(--brand);
+      }
+      .action-btn--primary:hover {
+        background: var(--brand-hover);
+        border-color: var(--brand-hover);
+      }
+      .action-btn--secondary {
+        background: transparent;
+        color: var(--text-secondary);
+        border: 1px solid var(--border-strong);
+      }
+      .action-btn--secondary:hover {
+        background: var(--surface-2);
+        color: var(--text-primary);
+      }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+
+  <div class="app-shell">
+
+    <!-- ===== 顶栏 ===== -->
+    <header class="topbar">
+      <!-- 左侧：品牌标识 -->
+      <div class="brand">
+        <div class="brand-mark">墨</div>
+        <div class="brand-name">
+          <span class="name-main">驯墨</span>
+          <span class="name-sub">Tame Ink</span>
+        </div>
+      </div>
+
+      <!-- 右侧：连接状态 + 历史 -->
+      <div class="topbar-right">
+        <div class="connection-status">
+          <span class="status-dot"></span>
+          <span>已连接</span>
+        </div>
+        <button class="icon-btn" type="button" aria-label="历史记录">
+          <i data-lucide="history"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- ===== 侧边栏 ===== -->
+    <aside class="sidebar">
+      <!-- 新建故事按钮 -->
+      <button class="new-story-btn" type="button">
+        <i data-lucide="plus"></i>
+        <span>新建故事</span>
+      </button>
+
+      <div class="sidebar-divider"></div>
+
+      <!-- 导航项（仅 3 项：工作台 / 故事库 / 设置） -->
+      <nav class="nav-list">
+        <button class="nav-item" type="button" data-nav-key="workspace" data-active="true">
+          <i data-lucide="layout-dashboard"></i>
+          <span>工作台</span>
+        </button>
+        <button class="nav-item" type="button" data-nav-key="library">
+          <i data-lucide="book-open"></i>
+          <span>故事库</span>
+        </button>
+        <button class="nav-item" type="button" data-nav-key="settings">
+          <i data-lucide="settings"></i>
+          <span>设置</span>
+        </button>
+      </nav>
+    </aside>
+
+    <!-- ===== 主内容区 ===== -->
+    <main class="main-content">
+      <div class="focus-container">
+
+        <!-- ===== 故事引擎 artifact 卡片 ===== -->
+        <article class="artifact-card">
+
+          <!-- 标题条 -->
+          <div class="artifact-card-header">
+            <span class="artifact-card-title">故事引擎</span>
+            <span class="artifact-card-subtitle">· AI 提议</span>
+          </div>
+
+          <!-- 内容区 -->
+          <div class="artifact-card-body">
+            <div class="field-list">
+
+              <!-- 主角欲望 -->
+              <div class="field-item">
+                <span class="field-icon field-icon--brand">
+                  <i data-lucide="zap"></i>
+                </span>
+                <div class="field-content">
+                  <span class="field-label">主角欲望</span>
+                  <span class="field-value">用专业能力证明自己不是当初那个废物</span>
+                </div>
+              </div>
+
+              <!-- 主角恐惧 -->
+              <div class="field-item">
+                <span class="field-icon field-icon--warning">
+                  <i data-lucide="alert-circle"></i>
+                </span>
+                <div class="field-content">
+                  <span class="field-label">主角恐惧</span>
+                  <span class="field-value">一旦露出破绽，所有人的嘲笑都会卷土重来</span>
+                </div>
+              </div>
+
+              <!-- 价值取向 -->
+              <div class="field-item">
+                <span class="field-icon field-icon--tertiary">
+                  <i data-lucide="scale"></i>
+                </span>
+                <div class="field-content">
+                  <span class="field-label">价值取向</span>
+                  <span class="field-value">
+                    专业<span class="gt">&gt;</span>关系；长期声誉<span class="gt">&gt;</span>短期利益
+                  </span>
+                </div>
+              </div>
+
+              <!-- 行动机制 — 流程标签链 -->
+              <div class="field-item">
+                <span class="field-icon field-icon--brand">
+                  <i data-lucide="workflow"></i>
+                </span>
+                <div class="field-content">
+                  <span class="field-label">行动机制</span>
+                  <div class="flow-chain">
+                    <span class="flow-tag">获得信息差</span>
+                    <span class="flow-arrow">→</span>
+                    <span class="flow-tag">超预期交付</span>
+                    <span class="flow-arrow">→</span>
+                    <span class="flow-tag">被迫公开</span>
+                    <span class="flow-arrow">→</span>
+                    <span class="flow-tag">震惊反应</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 变奏轴 -->
+              <div class="field-item">
+                <span class="field-icon field-icon--tertiary">
+                  <i data-lucide="sliders-horizontal"></i>
+                </span>
+                <div class="field-content">
+                  <span class="field-label">变奏轴</span>
+                  <div class="variation-axis">
+                    <span class="axis-tag">
+                      <span class="axis-dot axis-dot--brand"></span>
+                      竞争对手的强度
+                    </span>
+                    <span class="axis-separator">/</span>
+                    <span class="axis-tag">
+                      <span class="axis-dot axis-dot--info"></span>
+                      信任关系的深度
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 长期线 — 编号列表 -->
+              <div class="field-item">
+                <span class="field-icon field-icon--brand">
+                  <i data-lucide="route"></i>
+                </span>
+                <div class="field-content">
+                  <span class="field-label">长期线</span>
+                  <div class="longterm-list">
+                    <div class="longterm-item">
+                      <span class="longterm-num">1</span>
+                      <span class="longterm-text">主角真实身份被逐渐揭开</span>
+                    </div>
+                    <div class="longterm-item">
+                      <span class="longterm-num">2</span>
+                      <span class="longterm-text">与初恋的关系变化</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- 底部按钮区 -->
+          <div class="action-bar">
+            <button class="action-btn action-btn--primary" type="button">
+              <i data-lucide="check"></i>
+              <span>采用</span>
+            </button>
+            <button class="action-btn action-btn--secondary" type="button">
+              <i data-lucide="pencil"></i>
+              <span>修改</span>
+            </button>
+            <button class="action-btn action-btn--secondary" type="button">
+              <i data-lucide="rotate-ccw"></i>
+              <span>重新生成</span>
+            </button>
+          </div>
+
+        </article>
+
+      </div>
+    </main>
+
+  </div>
+
+    <script>lucide.createIcons();</script>
+</body>
+</html>

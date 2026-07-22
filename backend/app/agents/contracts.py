@@ -13,8 +13,11 @@ from app.agents.schemas import (
     ContinuityReport,
     DraftWriterResult,
     ReferencedOutput,
+    SkillExecutionContract,
+    SourceReference,
     StyleReport,
 )
+from app.agents.skills import P0Skill, is_candidate_kind_allowed
 
 
 class OutputContractError(RuntimeError):
@@ -29,9 +32,16 @@ def validate_agent_output(
     output: ReferencedOutput,
     manifest: ContextManifest,
 ) -> ReferencedOutput:
+    _validate_references(output.references, manifest)
+    return output
+
+
+def _validate_references(
+    references: list[SourceReference], manifest: ContextManifest
+) -> None:
     known_sources = {source.path for source in manifest.sources}
     known_sources.update(snippet.path for snippet in manifest.retrieved)
-    if any(reference.path not in known_sources for reference in output.references):
+    if any(reference.path not in known_sources for reference in references):
         raise OutputContractError("REFERENCE_SOURCE_UNKNOWN")
     known_evidence: dict[tuple[str, str], list[str]] = {}
     for source in manifest.sources:
@@ -45,10 +55,9 @@ def validate_agent_output(
                 (reference.path, reference.location), []
             )
         )
-        for reference in output.references
+        for reference in references
     ):
         raise OutputContractError("REFERENCE_EVIDENCE_UNKNOWN")
-    return output
 
 
 def validate_agent_output_tree(
@@ -63,6 +72,24 @@ def validate_agent_output_tree(
         children.extend(output.revisions)
     for child in children:
         validate_agent_output(child, manifest)
+    if isinstance(output, SkillExecutionContract):
+        for finding in output.evidence:
+            _validate_references([finding.reference], manifest)
+    return output
+
+
+def validate_skill_execution(
+    output: SkillExecutionContract,
+    manifest: ContextManifest,
+    expected_skill: P0Skill,
+) -> SkillExecutionContract:
+    validate_agent_output_tree(output, manifest)
+    if output.skill != expected_skill:
+        raise OutputContractError("SKILL_OUTPUT_MISMATCH")
+    if output.candidate is not None and not is_candidate_kind_allowed(
+        expected_skill, output.candidate.artifact_kind
+    ):
+        raise OutputContractError("SKILL_CANDIDATE_KIND_INVALID")
     return output
 
 

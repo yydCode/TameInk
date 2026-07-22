@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>复盘 - 驯墨</title>
+    <style id="theme-vars">
+/* ============================================================
+   驯墨 Tame Ink — 品牌设计令牌 · 夜墨主题
+   ============================================================
+   面向番茄网文作者的 AI 创作引擎
+   暗色主题：降低视觉疲劳，沉浸式创作体验
+   ============================================================ */
+
+/* --- 品牌前缀变量 --- */
+:root {
+  /* === 基础色系 === */
+  --ink-deep: #0d1117;
+  --ink-900: #131a24;
+  --ink-800: #1a2332;
+  --ink-700: #222f40;
+  --ink-600: #2d3d52;
+  --ink-500: #3d5068;
+  --ink-400: #546a84;
+  --ink-300: #7a92ab;
+  --ink-200: #a3b8cc;
+  --ink-100: #c8d6e5;
+  --ink-50: #e2eaf3;
+
+  /* === 品牌主色 — 墨绿 === */
+  --brand: #6aae8d;
+  --brand-hover: #5d9a7d;
+  --brand-muted: rgba(106, 174, 141, 0.12);
+  --brand-muted-hover: rgba(106, 174, 141, 0.2);
+  --brand-subtle: rgba(106, 174, 141, 0.06);
+  --brand-foreground: #ffffff;
+
+  /* === 表面色阶 === */
+  --surface-0: #0d1117;
+  --surface-1: #151c25;
+  --surface-2: #1a2332;
+  --surface-3: #222f40;
+  --surface-4: #2d3d52;
+
+  /* === 文本色阶 === */
+  --text-primary: #e6edf3;
+  --text-secondary: #a3b8cc;
+  --text-tertiary: #7a92ab;
+  --text-muted: #546a84;
+  --text-on-brand: #ffffff;
+
+  /* === 边框 === */
+  --border-default: rgba(148, 163, 184, 0.12);
+  --border-strong: rgba(148, 163, 184, 0.22);
+  --border-brand: rgba(106, 174, 141, 0.35);
+
+  /* === 状态色 === */
+  --state-success: #4ade80;
+  --state-success-bg: rgba(74, 222, 128, 0.1);
+  --state-warning: #fbbf24;
+  --state-warning-bg: rgba(251, 191, 36, 0.1);
+  --state-error: #f87171;
+  --state-error-bg: rgba(248, 113, 113, 0.1);
+  --state-info: #60a5fa;
+  --state-info-bg: rgba(96, 165, 250, 0.1);
+
+  /* === 语义别名 (fill-html-head.mjs 兼容) === */
+  --background: var(--surface-0);
+  --foreground: var(--text-primary);
+  --color-background: var(--surface-0);
+  --color-foreground: var(--text-primary);
+  --color-card: var(--surface-2);
+  --color-card-foreground: var(--text-primary);
+  --color-popover: var(--surface-3);
+  --color-popover-foreground: var(--text-primary);
+  --color-primary: var(--brand);
+  --color-primary-foreground: var(--brand-foreground);
+  --color-muted: var(--surface-3);
+  --color-muted-foreground: var(--text-secondary);
+  --color-border: var(--border-default);
+  --color-input: var(--border-default);
+  --color-ring: var(--brand);
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+  /* === 圆角 === */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+  /* === 阴影 === */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.04);
+  --shadow-float: 0 8px 24px rgba(0, 0, 0, 0.05);
+
+  /* === 字体 === */
+  --font-sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  --font-serif: "Noto Serif SC", "Songti SC", "SimSun", Georgia, serif;
+  --font-mono: "SFMono-Regular", "JetBrains Mono", "Fira Code", Consolas, monospace;
+
+  /* === 字号 === */
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 18px;
+  --text-2xl: 22px;
+  --text-3xl: 28px;
+  --text-4xl: 36px;
+
+  /* === 字重 === */
+  --font-regular: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  /* === 行高 === */
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+  --leading-loose: 2;
+
+  /* === 间距 === */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* === 布局 === */
+  --sidebar-width: 220px;
+  --topbar-height: 52px;
+  --content-max-width: 1200px;
+}
+
+/* === 基础重置 === */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #root {
+  min-height: 100vh;
+  color: var(--text-primary);
+  background: var(--surface-0);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* === 标题字体 === */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-serif);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  line-height: var(--leading-tight);
+}
+
+/* === 链接和按钮 === */
+a { color: var(--brand); text-decoration: none; transition: color 0.15s; }
+a:hover { color: var(--brand-hover); }
+button { color: inherit; font: inherit; cursor: pointer; }
+
+/* === 滚动条 === */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface-4); border-radius: var(--radius-full); }
+::-webkit-scrollbar-thumb:hover { background: var(--ink-400); }
+
+/* === 选择 === */
+::selection { background: var(--brand-muted); color: var(--brand-foreground); }
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--color-card);
+    --color-card-foreground: var(--color-card-foreground);
+    --color-popover: var(--color-popover);
+    --color-popover-foreground: var(--color-popover-foreground);
+    --color-primary: var(--color-primary);
+    --color-primary-foreground: var(--color-primary-foreground);
+    --color-muted: var(--color-muted);
+    --color-muted-foreground: var(--color-muted-foreground);
+    --color-border: var(--color-border);
+    --color-input: var(--color-input);
+    --color-ring: var(--color-ring);
+    --radius-sm: var(--radius-sm);
+    --radius-md: var(--radius-md);
+    --radius-lg: var(--radius-lg);
+  }
+  @layer base {
+    body { background: var(--color-background); color: var(--color-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style id="semantic-token-fallback">
+      .bg-background { background-color: var(--background); }
+      .text-background { color: var(--background); }
+      .border-background { border-color: var(--background); }
+      .ring-background { --tw-ring-color: var(--background); }
+      .bg-foreground { background-color: var(--foreground); }
+      .text-foreground { color: var(--foreground); }
+      .border-foreground { border-color: var(--foreground); }
+      .ring-foreground { --tw-ring-color: var(--foreground); }
+      .bg-card { background-color: var(--color-card); }
+      .text-card { color: var(--color-card); }
+      .border-card { border-color: var(--color-card); }
+      .ring-card { --tw-ring-color: var(--color-card); }
+      .bg-card-foreground { background-color: var(--color-card-foreground); }
+      .text-card-foreground { color: var(--color-card-foreground); }
+      .border-card-foreground { border-color: var(--color-card-foreground); }
+      .ring-card-foreground { --tw-ring-color: var(--color-card-foreground); }
+      .bg-popover { background-color: var(--color-popover); }
+      .text-popover { color: var(--color-popover); }
+      .border-popover { border-color: var(--color-popover); }
+      .ring-popover { --tw-ring-color: var(--color-popover); }
+      .bg-popover-foreground { background-color: var(--color-popover-foreground); }
+      .text-popover-foreground { color: var(--color-popover-foreground); }
+      .border-popover-foreground { border-color: var(--color-popover-foreground); }
+      .ring-popover-foreground { --tw-ring-color: var(--color-popover-foreground); }
+      .bg-primary { background-color: var(--color-primary); }
+      .text-primary { color: var(--color-primary); }
+      .border-primary { border-color: var(--color-primary); }
+      .ring-primary { --tw-ring-color: var(--color-primary); }
+      .bg-primary-foreground { background-color: var(--color-primary-foreground); }
+      .text-primary-foreground { color: var(--color-primary-foreground); }
+      .border-primary-foreground { border-color: var(--color-primary-foreground); }
+      .ring-primary-foreground { --tw-ring-color: var(--color-primary-foreground); }
+      .bg-muted { background-color: var(--color-muted); }
+      .text-muted { color: var(--color-muted); }
+      .border-muted { border-color: var(--color-muted); }
+      .ring-muted { --tw-ring-color: var(--color-muted); }
+      .bg-muted-foreground { background-color: var(--color-muted-foreground); }
+      .text-muted-foreground { color: var(--color-muted-foreground); }
+      .border-muted-foreground { border-color: var(--color-muted-foreground); }
+      .ring-muted-foreground { --tw-ring-color: var(--color-muted-foreground); }
+      .bg-border { background-color: var(--color-border); }
+      .text-border { color: var(--color-border); }
+      .border-border { border-color: var(--color-border); }
+      .ring-border { --tw-ring-color: var(--color-border); }
+      .bg-input { background-color: var(--color-input); }
+      .text-input { color: var(--color-input); }
+      .border-input { border-color: var(--color-input); }
+      .ring-input { --tw-ring-color: var(--color-input); }
+      .bg-ring { background-color: var(--color-ring); }
+      .text-ring { color: var(--color-ring); }
+      .border-ring { border-color: var(--color-ring); }
+      .ring-ring { --tw-ring-color: var(--color-ring); }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+    <div class="app-shell">
+      <!-- ==================== 顶栏 ==================== -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="brand">
+            <div class="brand-icon">墨</div>
+            <div class="brand-text">
+              <span class="brand-name">驯墨</span>
+              <span class="brand-subtitle">Tame Ink</span>
+            </div>
+          </div>
+          <div class="project-selector">
+            <button class="project-selector-btn">
+              <i data-lucide="folder-open"></i>
+              <span class="project-name">星际征途</span>
+              <i data-lucide="chevron-down" style="width:14px;height:14px;color:var(--text-muted)"></i>
+            </button>
+          </div>
+        </div>
+        <div class="topbar-right">
+          <div class="connection-status">
+            <span class="status-dot"></span>
+            <span>已连接</span>
+          </div>
+          <button class="topbar-icon-btn" data-dom-id="cta-settings" title="设置">
+            <i data-lucide="settings"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- ==================== 侧边栏 ==================== -->
+      <nav class="sidebar">
+        <button class="btn-new-story">
+          <i data-lucide="plus"></i>
+          新建故事
+        </button>
+        <div class="nav-divider"></div>
+        <ul class="nav-list">
+          <li>
+            <button class="nav-item" data-nav-key="workspace" data-active="false" data-dom-id="nav-workspace-back2">
+              <i data-lucide="layout-dashboard"></i>
+              <span>工作台</span>
+            </button>
+          </li>
+          <li>
+            <button class="nav-item" data-nav-key="editor" data-active="false">
+              <i data-lucide="pen-line"></i>
+              <span>创作</span>
+            </button>
+          </li>
+          <li>
+            <button class="nav-item" data-nav-key="stories" data-active="false" data-dom-id="shortcut-stories-back">
+              <i data-lucide="book-open"></i>
+              <span>故事库</span>
+            </button>
+          </li>
+          <li>
+            <button class="nav-item" data-nav-key="review" data-active="true">
+              <i data-lucide="bar-chart-3"></i>
+              <span>复盘</span>
+            </button>
+          </li>
+          <li>
+            <button class="nav-item" data-nav-key="settings" data-active="false">
+              <i data-lucide="settings"></i>
+              <span>设置</span>
+            </button>
+          </li>
+        </ul>
+      </nav>
+
+      <!-- ==================== 主内容区 ==================== -->
+      <main class="main-content">
+
+        <!-- ========== 页面头部 ========== -->
+        <div class="review-page-header">
+          <div>
+            <h1>复盘</h1>
+            <p>创作数据与分析</p>
+          </div>
+          <!-- 时间范围选择器 -->
+          <div class="time-range-selector">
+            <button class="time-range-btn" data-active="true">本周</button>
+            <button class="time-range-btn" data-active="false">本月</button>
+            <button class="time-range-btn" data-active="false">全部</button>
+          </div>
+        </div>
+
+        <!-- ========== 核心指标 (4 列) ========== -->
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-label">累计字数</div>
+            <div class="metric-value">156,847<span class="metric-unit">字</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">日均字数</div>
+            <div class="metric-value">1,847<span class="metric-unit">字</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">总创作天数</div>
+            <div class="metric-value">85<span class="metric-unit">天</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">AI 协作次数</div>
+            <div class="metric-value">324<span class="metric-unit">次</span></div>
+          </div>
+        </div>
+
+        <!-- ========== 写作趋势图表 ========== -->
+        <div class="panel">
+          <div class="panel-title">写作趋势</div>
+          <div class="chart-wrapper">
+            <canvas id="trendChart"></canvas>
+          </div>
+        </div>
+
+        <!-- ========== 创作效率分析 (2 列) ========== -->
+        <div class="efficiency-grid">
+          <!-- 左列 — 每日时段分布 (纯 CSS 柱状图) -->
+          <div class="panel">
+            <div class="panel-title">每日时段分布</div>
+            <div class="bar-chart">
+              <!-- 上午：少量 ~25% -->
+              <div class="bar-column">
+                <div class="bar-value">4,200</div>
+                <div class="bar-fill" style="height: 25%;"></div>
+                <div class="bar-label">上午</div>
+              </div>
+              <!-- 下午：中量 ~50% -->
+              <div class="bar-column">
+                <div class="bar-value">8,500</div>
+                <div class="bar-fill" style="height: 50%;"></div>
+                <div class="bar-label">下午</div>
+              </div>
+              <!-- 晚间：大量 ~85% -->
+              <div class="bar-column">
+                <div class="bar-value">14,600</div>
+                <div class="bar-fill" style="height: 85%;"></div>
+                <div class="bar-label">晚间</div>
+              </div>
+              <!-- 深夜：中量 ~45% -->
+              <div class="bar-column">
+                <div class="bar-value">7,800</div>
+                <div class="bar-fill" style="height: 45%;"></div>
+                <div class="bar-label">深夜</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 右列 — AI 使用统计 -->
+          <div class="panel">
+            <div class="panel-title">AI 使用统计</div>
+            <!-- AI 续写 186/324 = 57.4% -->
+            <div class="ai-stat-item">
+              <div class="ai-stat-header">
+                <span class="ai-stat-label">AI 续写</span>
+                <span class="ai-stat-value">186 次</span>
+              </div>
+              <div class="ai-progress-track">
+                <div class="ai-progress-fill" style="width: 57.4%;"></div>
+              </div>
+            </div>
+            <!-- AI 对话优化 72/324 = 22.2% -->
+            <div class="ai-stat-item">
+              <div class="ai-stat-header">
+                <span class="ai-stat-label">AI 对话优化</span>
+                <span class="ai-stat-value">72 次</span>
+              </div>
+              <div class="ai-progress-track">
+                <div class="ai-progress-fill" style="width: 22.2%;"></div>
+              </div>
+            </div>
+            <!-- AI 情节分析 45/324 = 13.9% -->
+            <div class="ai-stat-item">
+              <div class="ai-stat-header">
+                <span class="ai-stat-label">AI 情节分析</span>
+                <span class="ai-stat-value">45 次</span>
+              </div>
+              <div class="ai-progress-track">
+                <div class="ai-progress-fill" style="width: 13.9%;"></div>
+              </div>
+            </div>
+            <!-- AI 风格检查 21/324 = 6.5% -->
+            <div class="ai-stat-item">
+              <div class="ai-stat-header">
+                <span class="ai-stat-label">AI 风格检查</span>
+                <span class="ai-stat-value">21 次</span>
+              </div>
+              <div class="ai-progress-track">
+                <div class="ai-progress-fill" style="width: 6.5%;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========== 章节完成情况 ========== -->
+        <div class="panel">
+          <div class="panel-title">章节完成情况</div>
+          <div style="margin-bottom: var(--space-2); font-size: var(--text-sm); color: var(--text-secondary);">
+            已完成 <strong style="color: var(--text-primary);">22</strong> / 45 章 (49%)
+          </div>
+          <!-- 分段进度条：已完成(绿色49%) + 进行中(品牌色~7%) + 计划中(灰色) -->
+          <div class="segmented-progress">
+            <div class="segment-done" style="width: 49%;"></div>
+            <div class="segment-active" style="width: 7%;"></div>
+            <div class="segment-planned"></div>
+          </div>
+          <div class="progress-legend">
+            <div class="legend-item">
+              <span class="legend-dot legend-dot--done"></span>
+              <span>已完成 22 章</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-dot legend-dot--active"></span>
+              <span>进行中</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-dot legend-dot--planned"></span>
+              <span>计划中 23 章</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========== 近期创作日志 ========== -->
+        <div class="panel">
+          <div class="panel-title">近期创作日志</div>
+          <ul class="timeline">
+            <li class="timeline-item">
+              <span class="timeline-date">07/21</span>
+              <span class="timeline-desc">完成 <strong>第 22 章</strong>，2,847 字</span>
+            </li>
+            <li class="timeline-item">
+              <span class="timeline-date">07/20</span>
+              <span class="timeline-desc">修改 <strong>第 21 章</strong>，+540 字</span>
+            </li>
+            <li class="timeline-item">
+              <span class="timeline-date">07/19</span>
+              <span class="timeline-desc">完成 <strong>第 21 章</strong>，3,200 字</span>
+            </li>
+            <li class="timeline-item">
+              <span class="timeline-date">07/18</span>
+              <span class="timeline-desc">AI 辅助创作 <strong>第 21 章</strong>对话</span>
+            </li>
+          </ul>
+        </div>
+
+      </main>
+    </div>
+
+    <script>
+    /* 初始化 Lucide 图标 */
+    lucide.createIcons();
+
+    /* === 时间范围选择器交互 === */
+    document.querySelectorAll('.time-range-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.time-range-btn').forEach(function(b) {
+          b.setAttribute('data-active', 'false');
+        });
+        btn.setAttribute('data-active', 'true');
+      });
+    });
+
+    /* === Chart.js 写作趋势折线图 === */
+    (function() {
+      var ctx = document.getElementById('trendChart');
+      if (!ctx) return;
+
+      /* 生成 30 天模拟数据：波动上升趋势，日均在 1500-2500 之间 */
+      var labels = [];
+      var data = [];
+      var base = 1600;
+      for (var i = 29; i >= 0; i--) {
+        var d = new Date();
+        d.setDate(d.getDate() - i);
+        labels.push((d.getMonth() + 1) + '/' + d.getDate());
+        /* 添加波动和上升趋势 */
+        var trend = (29 - i) * 18;
+        var noise = (Math.sin(i * 1.3) * 300) + (Math.cos(i * 0.7) * 200);
+        var val = Math.round(base + trend + noise);
+        data.push(val);
+      }
+
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: '每日字数',
+            data: data,
+            borderColor: '#6aae8d',
+            backgroundColor: 'rgba(106, 174, 141, 0.10)',
+            fill: true,
+            tension: 0.35,
+            borderWidth: 2,
+            pointRadius: 0,
+            pointHoverRadius: 5,
+            pointHoverBackgroundColor: '#6aae8d',
+            pointHoverBorderColor: '#ffffff',
+            pointHoverBorderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            intersect: false,
+            mode: 'index'
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(26, 35, 50, 0.95)',
+              titleColor: '#a3b8cc',
+              bodyColor: '#e6edf3',
+              borderColor: 'rgba(148, 163, 184, 0.22)',
+              borderWidth: 1,
+              padding: 10,
+              cornerRadius: 8,
+              bodyFont: { family: 'SFMono-Regular, JetBrains Mono, monospace' },
+              callbacks: {
+                label: function(context) {
+                  return '  ' + context.parsed.y.toLocaleString() + ' 字';
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: {
+                color: 'rgba(148, 163, 184, 0.12)',
+                drawBorder: false
+              },
+              ticks: {
+                color: '#7a92ab',
+                font: { size: 11 },
+                maxTicksLimit: 10
+              }
+            },
+            y: {
+              beginAtZero: false,
+              grid: {
+                color: 'rgba(148, 163, 184, 0.12)',
+                drawBorder: false
+              },
+              ticks: {
+                color: '#7a92ab',
+                font: { size: 11 },
+                maxTicksLimit: 6,
+                callback: function(value) {
+                  return value.toLocaleString();
+                }
+              }
+            }
+          }
+        }
+      });
+    })();
+    </script>
+
+    <style>
+/* === 项目外壳布局 === */
+.app-shell {
+  display: grid;
+  grid-template-rows: 52px 1fr;
+  grid-template-columns: 220px 1fr;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* === 顶栏 === */
+.topbar {
+  grid-column: 1 / -1;
+  height: 52px;
+  background: var(--ink-900);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--border-default);
+  z-index: 100;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.brand-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: var(--brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--brand-foreground);
+  font-size: 14px;
+  font-weight: var(--font-bold);
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.brand-name {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.brand-subtitle {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-weight: var(--font-regular);
+}
+
+.project-selector {
+  position: relative;
+}
+
+.project-selector-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: background 0.15s;
+  height: 32px;
+}
+
+.project-selector-btn:hover {
+  background: var(--surface-4);
+}
+
+.project-selector-btn .project-name {
+  font-weight: var(--font-medium);
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--state-success);
+  box-shadow: 0 0 6px rgba(74, 222, 128, 0.4);
+}
+
+.topbar-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.topbar-icon-btn:hover {
+  background: var(--surface-3);
+  color: var(--text-secondary);
+}
+
+.topbar-icon-btn i {
+  width: 18px;
+  height: 18px;
+}
+
+/* === 侧边栏 === */
+.sidebar {
+  width: 220px;
+  background: var(--surface-1);
+  border-right: 1px solid var(--border-default);
+  overflow: hidden;
+  padding: var(--space-4) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.btn-new-story {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--brand-muted);
+  border: 1px solid transparent;
+  color: var(--brand);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: background 0.15s;
+  height: 36px;
+}
+
+.btn-new-story:hover {
+  background: var(--brand-muted-hover);
+}
+
+.btn-new-story i {
+  width: 16px;
+  height: 16px;
+}
+
+.nav-divider {
+  height: 1px;
+  background: var(--border-default);
+  margin: var(--space-2) 0;
+}
+
+.nav-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0;
+  margin: 0;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 40px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  border: none;
+  border-left: 3px solid transparent;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-regular);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  text-align: left;
+}
+
+.nav-item i {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.nav-item:not([data-active="true"]):hover {
+  background: var(--surface-2);
+  color: var(--text-secondary);
+}
+
+.nav-item[data-active="true"] {
+  background: var(--brand-subtle);
+  border-left-color: var(--brand);
+  color: var(--brand);
+  font-weight: 600;
+}
+
+/* === 主内容区域 === */
+.main-content {
+  padding: 24px;
+  height: 100%;
+  overflow-y: auto;
+  background: var(--surface-0);
+}
+    </style>
+    <style>
+/* --- 页面头部 --- */
+.review-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--space-8);
+}
+
+.review-page-header h1 {
+  font-size: var(--text-3xl);
+  margin-bottom: var(--space-1);
+}
+
+.review-page-header p {
+  color: var(--text-secondary);
+  font-size: var(--text-base);
+}
+
+/* 时间范围选择器 */
+.time-range-selector {
+  display: flex;
+  gap: var(--space-1);
+  background: var(--surface-2);
+  padding: 3px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+}
+
+.time-range-btn {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.time-range-btn:hover {
+  color: var(--text-secondary);
+}
+
+.time-range-btn[data-active="true"] {
+  background: var(--surface-3);
+  color: var(--text-primary);
+}
+
+/* --- 核心指标卡片 --- */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-8);
+}
+
+.metric-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+}
+
+.metric-label {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-2);
+}
+
+.metric-value {
+  font-family: var(--font-mono);
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.metric-unit {
+  font-size: var(--text-sm);
+  font-weight: var(--font-regular);
+  color: var(--text-tertiary);
+  margin-left: var(--space-1);
+}
+
+/* --- 面板容器 --- */
+.panel {
+  background: var(--surface-2);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  margin-bottom: var(--space-6);
+}
+
+.panel-title {
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  margin-bottom: var(--space-5);
+}
+
+/* --- 图表容器 --- */
+.chart-wrapper {
+  position: relative;
+  height: 280px;
+}
+
+/* --- 效率分析两列 --- */
+.efficiency-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+  margin-bottom: var(--space-6);
+}
+
+/* CSS 柱状图 — 时段分布 */
+.bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-4);
+  height: 180px;
+  padding-top: var(--space-4);
+}
+
+.bar-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.bar-fill {
+  width: 100%;
+  max-width: 48px;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: var(--brand);
+  transition: height 0.3s ease;
+  min-height: 8px;
+}
+
+.bar-label {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+.bar-value {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+/* AI 使用统计 */
+.ai-stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.ai-stat-item:last-child {
+  margin-bottom: 0;
+}
+
+.ai-stat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ai-stat-label {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.ai-stat-value {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+}
+
+.ai-progress-track {
+  width: 100%;
+  height: 6px;
+  background: var(--surface-4);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.ai-progress-fill {
+  height: 100%;
+  background: var(--brand);
+  border-radius: var(--radius-full);
+  transition: width 0.3s ease;
+}
+
+/* --- 章节进度条（分段） --- */
+.segmented-progress {
+  width: 100%;
+  height: 8px;
+  background: var(--surface-4);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  display: flex;
+  margin-bottom: var(--space-3);
+}
+
+.segmented-progress .segment-done {
+  background: var(--state-success);
+  height: 100%;
+}
+
+.segmented-progress .segment-active {
+  background: var(--brand);
+  height: 100%;
+}
+
+.segmented-progress .segment-planned {
+  flex: 1;
+  height: 100%;
+}
+
+.progress-legend {
+  display: flex;
+  gap: var(--space-6);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+}
+
+.legend-dot--done { background: var(--state-success); }
+.legend-dot--active { background: var(--brand); }
+.legend-dot--planned { background: var(--surface-4); }
+
+/* --- 近期创作日志时间线 --- */
+.timeline {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.timeline-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  position: relative;
+}
+
+.timeline-item:not(:last-child) {
+  border-bottom: 1px solid var(--border-default);
+}
+
+.timeline-date {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+  min-width: 40px;
+  padding-top: 1px;
+}
+
+.timeline-desc {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-normal);
+}
+
+.timeline-desc strong {
+  color: var(--text-primary);
+  font-weight: var(--font-medium);
+}
+    </style>
+</body>
+</html>

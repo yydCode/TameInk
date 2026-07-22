@@ -1,0 +1,5 @@
+name: webnovel-design-reader-contract
+agent: StoryEditor
+candidate_kinds:
+  - reader_contract
+purpose: 把作者方向转化为待确认的读者契约。

@@ -1,0 +1,254 @@
+<!-- ============================================================
+     驯墨 Tame Ink — 共享项目外壳
+     --------------------------------------------------------------
+     说明：HTML 片段（非完整文档），由各页面复用。
+     依赖：colors_and_type.css 中定义的 CSS 变量 + lucide 图标库
+     布局：grid 顶栏(48px) + 侧边栏(200px) + 主内容区
+     注入点：<!-- SLOT: pageContent -->
+     ============================================================ -->
+
+<style>
+  /* === 应用外壳整体布局 === */
+  .app-shell {
+    display: grid;
+    grid-template-rows: var(--topbar-height) 1fr;
+    grid-template-columns: var(--sidebar-width) 1fr;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* === 顶栏 === */
+  .topbar {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: var(--topbar-height);
+    padding: 0 var(--space-5);
+    background: var(--surface-1);
+    border-bottom: 1px solid var(--border-default);
+  }
+
+  /* 品牌标识区 */
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .brand-mark {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: var(--brand);
+    color: var(--brand-foreground);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-serif);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    line-height: 1;
+  }
+  .brand-name {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.1;
+  }
+  .brand-name .name-main {
+    font-family: var(--font-serif);
+    font-size: var(--text-base);
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+  .brand-name .name-sub {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+  }
+
+  /* 顶栏右侧 */
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+  .connection-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+  }
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--state-success);
+    box-shadow: 0 0 0 3px var(--state-success-bg);
+  }
+  .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-tertiary);
+    transition: background 0.15s, color 0.15s;
+  }
+  .icon-btn:hover {
+    background: var(--surface-2);
+    color: var(--text-secondary);
+  }
+  .icon-btn i { width: 16px; height: 16px; }
+
+  /* === 侧边栏 === */
+  .sidebar {
+    background: var(--surface-1);
+    border-right: 1px solid var(--border-default);
+    padding: var(--space-4) var(--space-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    overflow-y: auto;
+  }
+
+  /* 新建故事按钮 */
+  .new-story-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    width: 100%;
+    height: 36px;
+    background: var(--brand-muted);
+    color: var(--brand);
+    border: 1px solid var(--border-brand);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    transition: background 0.15s, color 0.15s;
+  }
+  .new-story-btn:hover {
+    background: var(--brand-muted-hover);
+    color: var(--brand-hover);
+  }
+  .new-story-btn i { width: 16px; height: 16px; }
+
+  /* 侧边栏导航分隔 */
+  .sidebar-divider {
+    height: 1px;
+    background: var(--border-default);
+    margin: var(--space-1) 0;
+  }
+
+  /* 导航项 */
+  .nav-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    height: 36px;
+    padding: 0 var(--space-3);
+    background: transparent;
+    border: none;
+    border-left: 3px solid transparent;
+    border-radius: var(--radius-sm);
+    color: var(--text-tertiary);
+    font-size: var(--text-sm);
+    text-align: left;
+    transition: background 0.15s, color 0.15s;
+  }
+  .nav-item i { width: 16px; height: 16px; flex-shrink: 0; }
+  .nav-item:hover {
+    color: var(--text-secondary);
+    background: var(--surface-2);
+  }
+  /* 激活态 */
+  .nav-item[data-active="true"] {
+    color: var(--brand);
+    background: var(--brand-subtle);
+    border-left: 3px solid var(--brand);
+    font-weight: 600;
+  }
+
+  /* === 主内容区 === */
+  .main-content {
+    height: 100%;
+    overflow-y: auto;
+    background: var(--surface-0);
+  }
+
+  /* === 单栏聚焦容器 === */
+  .focus-container {
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    padding: var(--space-8) var(--space-6);
+  }
+</style>
+
+<div class="app-shell">
+
+  <!-- ===== 顶栏 ===== -->
+  <header class="topbar">
+    <!-- 左侧：品牌标识 -->
+    <div class="brand">
+      <div class="brand-mark">墨</div>
+      <div class="brand-name">
+        <span class="name-main">驯墨</span>
+        <span class="name-sub">Tame Ink</span>
+      </div>
+    </div>
+
+    <!-- 右侧：连接状态 + 历史 -->
+    <div class="topbar-right">
+      <div class="connection-status">
+        <span class="status-dot"></span>
+        <span>已连接</span>
+      </div>
+      <button class="icon-btn" data-dom-id="open-history" aria-label="历史记录">
+        <i data-lucide="history"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- ===== 侧边栏 ===== -->
+  <aside class="sidebar">
+    <!-- 新建故事按钮 -->
+    <button class="new-story-btn" type="button">
+      <i data-lucide="plus"></i>
+      <span>新建故事</span>
+    </button>
+
+    <div class="sidebar-divider"></div>
+
+    <!-- 导航项（仅 3 项：工作台 / 故事库 / 设置） -->
+    <nav class="nav-list">
+      <button class="nav-item" type="button" data-nav-key="workspace" data-active="true">
+        <i data-lucide="layout-dashboard"></i>
+        <span>工作台</span>
+      </button>
+      <button class="nav-item" type="button" data-nav-key="library">
+        <i data-lucide="book-open"></i>
+        <span>故事库</span>
+      </button>
+      <button class="nav-item" type="button" data-nav-key="settings">
+        <i data-lucide="settings"></i>
+        <span>设置</span>
+      </button>
+    </nav>
+  </aside>
+
+  <!-- ===== 主内容区 ===== -->
+  <main class="main-content">
+    <!-- SLOT: pageContent -->
+  </main>
+
+</div>

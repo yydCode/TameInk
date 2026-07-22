@@ -1,0 +1,10 @@
+name: webnovel-plan-chapter
+agent: ChapterPlanner
+candidate_kinds:
+  - chapter_plan
+purpose: 将已确认故事卡拆成当前章节的场景执行单元。
+
+# 场景规格（宝剑侍从教材）
+scene_constraints:
+  scene_word_range: [300, 500]   # 单场景字数
+  require_hook_or_payoff: true   # 每个场景必须有抛钩或收钩

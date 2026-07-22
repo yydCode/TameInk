@@ -1,0 +1,4 @@
+interface:
+  display_name: "章节场景规划"
+  short_description: "将当前故事卡拆成章节目标、场景行动反应链和状态变化"
+  default_prompt: "Use $webnovel-plan-chapter to plan chapter scenes."

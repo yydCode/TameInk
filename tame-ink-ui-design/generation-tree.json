@@ -1,0 +1,69 @@
+{
+  "root": {
+    "nodeId": "gen-project-shell",
+    "kind": "project-shell",
+    "pageIds": ["page-workspace", "page-editor", "page-stories", "page-review", "page-settings"],
+    "output": "partials/project-shell.html",
+    "sharedRegions": ["topbar", "sidebar", "root-frame", "brand-css", "typography", "scrollbar"],
+    "privateRegions": [],
+    "mutableSlots": ["activeNavItem", "pageTitle", "pageSubtitle", "mainContent"],
+    "status": "planned",
+    "children": [
+      {
+        "nodeId": "gen-page-workspace",
+        "kind": "page-leaf",
+        "pageIds": ["page-workspace"],
+        "output": "pages/workspace.html",
+        "sharedRegions": ["topbar", "sidebar"],
+        "privateRegions": ["overview-ledger", "task-board", "recent-activity"],
+        "mutableSlots": ["activeNavItem=workspace"],
+        "status": "planned",
+        "children": []
+      },
+      {
+        "nodeId": "gen-page-editor",
+        "kind": "page-leaf",
+        "pageIds": ["page-editor"],
+        "output": "pages/editor.html",
+        "sharedRegions": ["topbar", "sidebar"],
+        "privateRegions": ["editor-panel", "ai-sidebar", "chapter-outline"],
+        "mutableSlots": ["activeNavItem=editor"],
+        "status": "planned",
+        "children": []
+      },
+      {
+        "nodeId": "gen-page-stories",
+        "kind": "page-leaf",
+        "pageIds": ["page-stories"],
+        "output": "pages/stories.html",
+        "sharedRegions": ["topbar", "sidebar"],
+        "privateRegions": ["story-grid", "search-filters"],
+        "mutableSlots": ["activeNavItem=stories"],
+        "status": "planned",
+        "children": []
+      },
+      {
+        "nodeId": "gen-page-review",
+        "kind": "page-leaf",
+        "pageIds": ["page-review"],
+        "output": "pages/review.html",
+        "sharedRegions": ["topbar", "sidebar"],
+        "privateRegions": ["stats-dashboard", "chart-area", "trend-list"],
+        "mutableSlots": ["activeNavItem=review"],
+        "status": "planned",
+        "children": []
+      },
+      {
+        "nodeId": "gen-page-settings",
+        "kind": "page-leaf",
+        "pageIds": ["page-settings"],
+        "output": "pages/settings.html",
+        "sharedRegions": ["topbar", "sidebar"],
+        "privateRegions": ["settings-form", "preference-panels"],
+        "mutableSlots": ["activeNavItem=settings"],
+        "status": "planned",
+        "children": []
+      }
+    ]
+  }
+}

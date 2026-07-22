@@ -1,0 +1,31 @@
+name: webnovel-plan-rolling-story
+agent: StoryEditor
+candidate_kinds:
+  - story_card
+  - expectation
+purpose: 规划当前和少量后续的滚动故事卡与读者期待。
+
+# 七步构思法骨架（宝剑侍从）
+story_card_template:
+  steps:
+    - id: opening_anchor
+      label: 开局定位
+      required: [protagonist_advantage, tier_status]
+    - id: antagonist_entry
+      label: 反派出场
+      required: [credibility_signal, information_gap_rationale]
+    - id: first_friction
+      label: 初次摩擦
+      constraint: protagonist_must_not_lose
+    - id: build_anticipation
+      label: 拉期待
+      required: [telescope_exposures_min_3, relationship_network_doubts]
+    - id: conflict_peak
+      label: 冲突爆发
+      required: [antagonist_overconfidence]
+    - id: shock_harvest
+      label: 震惊收获
+      required: [reaction_wave_low_to_high, complete_reward_list]
+    - id: next_cycle_seed
+      label: 接续下一循环
+      required: [superior_reaction, next_unit_hook]

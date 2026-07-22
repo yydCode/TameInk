@@ -1,28 +1,17 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  BookOpen,
-  Bookmark,
-  CalendarRange,
-  ChartNoAxesCombined,
-  ChevronDown,
   CirclePlus,
-  ClipboardCheck,
-  FileText,
-  GitBranch,
-  Library,
+  History,
+  LayoutDashboard,
+  LibraryBig,
+  PenLine,
   Settings,
-  Sliders,
-  Sparkles,
-  Target,
-  TrendingUp,
-  Upload,
-  Zap,
 } from "lucide-react";
 import { NavLink, Outlet, useNavigate, useParams } from "react-router";
 import type { LucideIcon } from "lucide-react";
 
-import { createProject, listProjects } from "../../api/client";
+import { listProjects, startCreativeProject } from "../../api/client";
 import { queryKeys } from "../../app/queryKeys";
 import { useHealth } from "../../hooks/useHealth";
 import {
@@ -36,68 +25,18 @@ interface NavItem {
   label: string;
   icon: LucideIcon;
 }
-interface NavGroup {
-  id: string;
-  label: string;
-  icon: LucideIcon;
-  items: NavItem[];
-}
-
-// 按创作阶段分组的导航结构
-const navGroups: NavGroup[] = [
-  {
-    id: "today",
-    label: "今日工作台",
-    icon: Zap,
-    items: [
-      { path: "today", label: "今日工作台", icon: Zap },
-    ],
-  },
-  {
-    id: "planning",
-    label: "新书策划",
-    icon: Sparkles,
-    items: [
-      { path: "story", label: "故事设计", icon: Sparkles },
-      { path: "market", label: "市场调研", icon: TrendingUp },
-      { path: "opening", label: "黄金三章", icon: Sparkles },
-      { path: "commercial", label: "商业定位", icon: ChartNoAxesCombined },
-      { path: "bestseller", label: "爆款拆解", icon: TrendingUp },
-      { path: "patterns", label: "套路模板", icon: Sparkles },
-    ],
-  },
-  {
-    id: "creation",
-    label: "章节创作",
-    icon: FileText,
-    items: [
-      { path: "chapters", label: "章节工作台", icon: FileText },
-    ],
-  },
-  {
-    id: "maintenance",
-    label: "长篇维护",
-    icon: Library,
-    items: [
-      { path: "memory", label: "记忆中心", icon: Library },
-      { path: "batch-plan", label: "批量规划", icon: CalendarRange },
-      { path: "materials", label: "素材库", icon: Bookmark },
-      { path: "completion", label: "完本规划", icon: Target },
-      { path: "imports", label: "作品导入", icon: Upload },
-    ],
-  },
-  {
-    id: "system",
-    label: "系统",
-    icon: GitBranch,
-    items: [
-      { path: "overview", label: "作品概览", icon: BookOpen },
-      { path: "rules", label: "规则设置", icon: Sliders },
-      { path: "decisions", label: "决策队列", icon: ClipboardCheck },
-      { path: "runs", label: "运行记录", icon: GitBranch },
-    ],
-  },
+const navItems: NavItem[] = [
+  { path: "workspace", label: "工作台", icon: LayoutDashboard },
+  { path: "create", label: "创作", icon: PenLine },
+  { path: "library", label: "故事库", icon: LibraryBig },
+  { path: "review", label: "复盘", icon: History },
 ];
+
+// 把多行文本拆成非空条目；作者留空时用默认值兜底，满足后端非空约束
+function toLines(text: string, fallback: string): string[] {
+  const lines = text.split("\n").map((item) => item.trim()).filter(Boolean);
+  return lines.length > 0 ? lines : [fallback];
+}
 
 export function AppShell() {
   const { projectId } = useParams();
@@ -109,8 +48,6 @@ export function AppShell() {
     queryFn: listProjects,
   });
   const [showCreate, setShowCreate] = useState(false);
-  // 默认展开"今日工作台"组
-  const [expandedGroup, setExpandedGroup] = useState<string>("today");
 
   useEffect(() => {
     const open = () => setShowCreate(true);
@@ -119,12 +56,25 @@ export function AppShell() {
   }, []);
 
   const create = useMutation({
-    mutationFn: (input: CreateProjectInput) => createProject(input),
+    mutationFn: (input: CreateProjectInput) =>
+      startCreativeProject(input.project_id, {
+        title: input.title,
+        platform: input.platform,
+        // 可选字段留空时补默认值，满足后端非空约束、减少作者输入
+        genre_scope: input.genre_scope.trim() || "未定题材，待题材调研后确认",
+        initial_intent:
+          input.initial_intent.trim() || "写一个让读者持续追问后续的长篇故事。",
+        first_story_goal: input.first_story_goal,
+        constraints: toLines(input.constraints, "第三人称限知"),
+        material_boundaries: toLines(
+          input.material_boundaries,
+          "仅使用已获授权素材；不模仿具体作者文风",
+        ),
+      }),
     onSuccess: ({ project }) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.projects });
       setShowCreate(false);
-      // 新建作品后进入今日工作台
-      navigate(`/projects/${project.id}/today`);
+      navigate(`/projects/${project.id}/workspace`);
     },
   });
 
@@ -136,31 +86,21 @@ export function AppShell() {
 
   return (
     <div className="app-shell">
-      <header className="topbar">
-        <button className="brand" type="button" onClick={() => navigate("/")}>
+      <div className="app-body">
+        <aside className="sidebar">
+          <button className="brand" type="button" onClick={() => navigate("/")}>
           <span className="brand-mark">T</span>
           <span>
             <strong>Tame Ink</strong>
-            <small>长篇创作工作台</small>
+            <small>人机协作写作系统</small>
           </span>
         </button>
-        <div
-          className={`backend-state backend-state--${health.isSuccess ? "online" : health.isPending ? "checking" : "offline"}`}
-        >
-          <span />
-          {backendLabel}
-        </div>
-        <NavLink
-          className="icon-button"
-          to="/settings"
-          aria-label="模型设置"
-          title="模型设置"
-        >
-          <Settings size={18} />
-        </NavLink>
-      </header>
-      <div className="app-body">
-        <aside className="sidebar">
+          <div
+            className={`backend-state backend-state--${health.isSuccess ? "online" : health.isPending ? "checking" : "offline"}`}
+          >
+            <span />
+            {backendLabel}
+          </div>
           <button
             className="button new-project-button"
             type="button"
@@ -175,7 +115,7 @@ export function AppShell() {
               value={projectId ?? ""}
               onChange={(event) =>
                 event.target.value &&
-                navigate(`/projects/${event.target.value}/today`)
+                navigate(`/projects/${event.target.value}/workspace`)
               }
             >
               <option value="">未选择</option>
@@ -186,49 +126,31 @@ export function AppShell() {
               ))}
             </select>
           </label>
-          <nav aria-label="项目导航" className="nav-groups">
-            {navGroups.map((group) => (
-              <div key={group.id} className="nav-group">
-                <button
-                  type="button"
-                  className={`nav-group-header${expandedGroup === group.id ? " is-expanded" : ""}`}
-                  onClick={() => setExpandedGroup(expandedGroup === group.id ? "" : group.id)}
-                  aria-expanded={expandedGroup === group.id}
+          <nav aria-label="项目导航">
+            {navItems.map((item) =>
+              projectId ? (
+                <NavLink
+                  key={item.path}
+                  to={`/projects/${projectId}/${item.path}`}
+                  className={({ isActive }) =>
+                    `nav-item${isActive ? " is-active" : ""}`
+                  }
                 >
-                  <group.icon size={14} />
-                  <span>{group.label}</span>
-                  <ChevronDown size={13} className="nav-chevron" />
+                  <item.icon size={16} />
+                  <span>{item.label}</span>
+                </NavLink>
+              ) : (
+                <button
+                  key={item.path}
+                  className="nav-item"
+                  type="button"
+                  onClick={() => navigate("/")}
+                >
+                  <item.icon size={16} />
+                  <span>{item.label}</span>
                 </button>
-                {expandedGroup === group.id && (
-                  <div className="nav-group-items">
-                    {group.items.map((item) =>
-                      projectId ? (
-                        <NavLink
-                          key={item.path}
-                          to={`/projects/${projectId}/${item.path}`}
-                          className={({ isActive }) =>
-                            `nav-item${isActive ? " is-active" : ""}`
-                          }
-                        >
-                          <item.icon size={15} />
-                          <span>{item.label}</span>
-                        </NavLink>
-                      ) : (
-                        <button
-                          key={item.path}
-                          className="nav-item"
-                          type="button"
-                          onClick={() => navigate(`/${item.path}`)}
-                        >
-                          <item.icon size={15} />
-                          <span>{item.label}</span>
-                        </button>
-                      ),
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
+              ),
+            )}
           </nav>
           <NavLink
             className={({ isActive }) =>
@@ -237,7 +159,7 @@ export function AppShell() {
             to="/settings"
           >
             <Settings size={16} />
-            <span>模型设置</span>
+            <span>模型与设置</span>
           </NavLink>
         </aside>
         <main className="main-content">

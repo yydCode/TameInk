@@ -7,22 +7,29 @@ from app.domain.errors import InvalidProjectIdError, WorkspacePathViolationError
 
 PROJECT_ID_PATTERN = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$")
 LEAF_DIRECTORIES = {
-    ("canon", "volumes"): ".md",
-    ("canon", "characters"): ".md",
-    ("canon", "world"): ".md",
-    ("canon", "chapters"): ".md",
-    ("memory", "summaries", "volumes"): ".md",
-    ("memory", "summaries", "chapters"): ".md",
-    ("memory", "facts"): ".yaml",
-    ("memory", "events"): ".yaml",
-    ("memory", "relationships"): ".yaml",
-    ("memory", "foreshadowing"): ".yaml",
+    ("canon", "volumes"): frozenset({".md"}),
+    ("canon", "characters"): frozenset({".md", ".yaml"}),
+    ("canon", "world"): frozenset({".md"}),
+    ("canon", "chapters"): frozenset({".md"}),
+    ("canon", "actual-events"): frozenset({".yaml"}),
+    ("commitments", "story-cards"): frozenset({".yaml"}),
+    ("commitments", "expectations"): frozenset({".yaml"}),
+    ("memory", "summaries", "volumes"): frozenset({".md"}),
+    ("memory", "summaries", "chapters"): frozenset({".md"}),
+    ("memory", "facts"): frozenset({".yaml"}),
+    ("memory", "events"): frozenset({".yaml"}),
+    ("memory", "relationships"): frozenset({".yaml"}),
+    ("memory", "foreshadowing"): frozenset({".yaml"}),
 }
 EXACT_FILES = {
     ("project.yaml",),
     ("canon", "commercial.yaml"),
     ("canon", "premise.md"),
     ("canon", "outline.md"),
+    ("commitments", "creative-brief.yaml"),
+    ("commitments", "reader-contract.yaml"),
+    ("commitments", "story-engine.yaml"),
+    ("commitments", "ending-plan.yaml"),
     ("memory", "summaries", "book.md"),
 }
 
@@ -43,7 +50,7 @@ def validate_formal_path(value: str) -> PurePosixPath:
         return pure
     parent = parts[:-1]
     suffix = PurePosixPath(parts[-1]).suffix
-    if parent not in LEAF_DIRECTORIES or LEAF_DIRECTORIES[parent] != suffix:
+    if parent not in LEAF_DIRECTORIES or suffix not in LEAF_DIRECTORIES[parent]:
         raise WorkspacePathViolationError(value)
     if len(parts[-1]) <= len(suffix):
         raise WorkspacePathViolationError(value)
@@ -79,18 +86,19 @@ def iter_formal_files(project: Path) -> Iterator[Path]:
         path = resolve_formal_path(project, relative)
         if path.is_file():
             yield path
-    for parent, suffix in sorted(LEAF_DIRECTORIES.items()):
+    for parent, suffixes in sorted(LEAF_DIRECTORIES.items()):
         display = "/".join(parent)
         directory = _resolve_within_project(project, parent, display)
         if directory.is_dir():
-            for path in sorted(directory.glob(f"*{suffix}")):
-                if path.is_file():
-                    relative = path.relative_to(project).as_posix()
-                    yield resolve_formal_path(project, relative)
+            for suffix in sorted(suffixes):
+                for path in sorted(directory.glob(f"*{suffix}")):
+                    if path.is_file():
+                        relative = path.relative_to(project).as_posix()
+                        yield resolve_formal_path(project, relative)
 
 
 def _reject_formal_tree_symlinks(project: Path) -> None:
-    for root_name in ("canon", "memory"):
+    for root_name in ("canon", "commitments", "memory"):
         root = project / root_name
         if root.is_symlink():
             raise WorkspacePathViolationError(root_name)

@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>需要决定 - 驯墨</title>
+    <style id="theme-vars">
+/* ============================================================
+   驯墨 Tame Ink — 品牌设计令牌 · 夜墨主题 v2
+   ============================================================
+   核心理念：作者只做三件事——说想法、看结果、做取舍
+   暗色沉浸主题，单栏聚焦布局
+   ============================================================ */
+
+:root {
+  /* === 品牌主色 — 墨绿 === */
+  --brand: #6aae8d;
+  --brand-hover: #5d9a7d;
+  --brand-active: #4c8a6a;
+  --brand-muted: rgba(106, 174, 141, 0.12);
+  --brand-muted-hover: rgba(106, 174, 141, 0.2);
+  --brand-subtle: rgba(106, 174, 141, 0.06);
+  --brand-foreground: #ffffff;
+
+  /* === 表面色阶 === */
+  --surface-0: #0d1117;
+  --surface-1: #151c25;
+  --surface-2: #1a2332;
+  --surface-3: #222f40;
+  --surface-4: #2d3d52;
+
+  /* === 文本色阶 === */
+  --text-primary: #e6edf3;
+  --text-secondary: #a3b8cc;
+  --text-tertiary: #7a92ab;
+  --text-muted: #546a84;
+  --text-on-brand: #ffffff;
+
+  /* === 边框 === */
+  --border-default: rgba(148, 163, 184, 0.12);
+  --border-strong: rgba(148, 163, 184, 0.22);
+  --border-brand: rgba(106, 174, 141, 0.35);
+
+  /* === 状态色 === */
+  --state-success: #4ade80;
+  --state-success-bg: rgba(74, 222, 128, 0.1);
+  --state-warning: #fbbf24;
+  --state-warning-bg: rgba(251, 191, 36, 0.1);
+  --state-error: #f87171;
+  --state-error-bg: rgba(248, 113, 113, 0.1);
+  --state-info: #60a5fa;
+  --state-info-bg: rgba(96, 165, 250, 0.1);
+
+  /* === 语义别名 === */
+  --background: var(--surface-0);
+  --foreground: var(--text-primary);
+  --color-background: var(--surface-0);
+  --color-foreground: var(--text-primary);
+  --color-card: var(--surface-2);
+  --color-card-foreground: var(--text-primary);
+  --color-popover: var(--surface-3);
+  --color-popover-foreground: var(--text-primary);
+  --color-primary: var(--brand);
+  --color-primary-foreground: var(--brand-foreground);
+  --color-muted: var(--surface-3);
+  --color-muted-foreground: var(--text-secondary);
+  --color-border: var(--border-default);
+  --color-input: var(--border-default);
+  --color-ring: var(--brand);
+
+  /* === 圆角 === */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* === 字体 === */
+  --font-sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-serif: "Noto Serif SC", "Songti SC", "SimSun", Georgia, serif;
+  --font-mono: "SFMono-Regular", "JetBrains Mono", "Fira Code", Consolas, monospace;
+
+  /* === 字号 === */
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 18px;
+  --text-2xl: 22px;
+  --text-3xl: 28px;
+  --text-4xl: 36px;
+
+  /* === 间距 === */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* === 布局 === */
+  --sidebar-width: 200px;
+  --topbar-height: 48px;
+  --content-max-width: 760px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  min-height: 100vh;
+  color: var(--text-primary);
+  background: var(--surface-0);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 { font-family: var(--font-serif); font-weight: 700; line-height: 1.25; }
+a { color: var(--brand); text-decoration: none; transition: color 0.15s; }
+a:hover { color: var(--brand-hover); }
+button { color: inherit; font: inherit; cursor: pointer; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface-4); border-radius: 9999px; }
+::selection { background: var(--brand-muted); color: var(--brand-foreground); }
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--color-card);
+    --color-card-foreground: var(--color-card-foreground);
+    --color-popover: var(--color-popover);
+    --color-popover-foreground: var(--color-popover-foreground);
+    --color-primary: var(--color-primary);
+    --color-primary-foreground: var(--color-primary-foreground);
+    --color-muted: var(--color-muted);
+    --color-muted-foreground: var(--color-muted-foreground);
+    --color-border: var(--color-border);
+    --color-input: var(--color-input);
+    --color-ring: var(--color-ring);
+    --radius-sm: var(--radius-sm);
+    --radius-md: var(--radius-md);
+    --radius-lg: var(--radius-lg);
+    --radius-xl: var(--radius-xl);
+  }
+  @layer base {
+    body { background: var(--color-background); color: var(--color-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style id="semantic-token-fallback">
+      .bg-background { background-color: var(--background); }
+      .text-background { color: var(--background); }
+      .border-background { border-color: var(--background); }
+      .ring-background { --tw-ring-color: var(--background); }
+      .bg-foreground { background-color: var(--foreground); }
+      .text-foreground { color: var(--foreground); }
+      .border-foreground { border-color: var(--foreground); }
+      .ring-foreground { --tw-ring-color: var(--foreground); }
+      .bg-card { background-color: var(--color-card); }
+      .text-card { color: var(--color-card); }
+      .border-card { border-color: var(--color-card); }
+      .ring-card { --tw-ring-color: var(--color-card); }
+      .bg-card-foreground { background-color: var(--color-card-foreground); }
+      .text-card-foreground { color: var(--color-card-foreground); }
+      .border-card-foreground { border-color: var(--color-card-foreground); }
+      .ring-card-foreground { --tw-ring-color: var(--color-card-foreground); }
+      .bg-popover { background-color: var(--color-popover); }
+      .text-popover { color: var(--color-popover); }
+      .border-popover { border-color: var(--color-popover); }
+      .ring-popover { --tw-ring-color: var(--color-popover); }
+      .bg-popover-foreground { background-color: var(--color-popover-foreground); }
+      .text-popover-foreground { color: var(--color-popover-foreground); }
+      .border-popover-foreground { border-color: var(--color-popover-foreground); }
+      .ring-popover-foreground { --tw-ring-color: var(--color-popover-foreground); }
+      .bg-primary { background-color: var(--color-primary); }
+      .text-primary { color: var(--color-primary); }
+      .border-primary { border-color: var(--color-primary); }
+      .ring-primary { --tw-ring-color: var(--color-primary); }
+      .bg-primary-foreground { background-color: var(--color-primary-foreground); }
+      .text-primary-foreground { color: var(--color-primary-foreground); }
+      .border-primary-foreground { border-color: var(--color-primary-foreground); }
+      .ring-primary-foreground { --tw-ring-color: var(--color-primary-foreground); }
+      .bg-muted { background-color: var(--color-muted); }
+      .text-muted { color: var(--color-muted); }
+      .border-muted { border-color: var(--color-muted); }
+      .ring-muted { --tw-ring-color: var(--color-muted); }
+      .bg-muted-foreground { background-color: var(--color-muted-foreground); }
+      .text-muted-foreground { color: var(--color-muted-foreground); }
+      .border-muted-foreground { border-color: var(--color-muted-foreground); }
+      .ring-muted-foreground { --tw-ring-color: var(--color-muted-foreground); }
+      .bg-border { background-color: var(--color-border); }
+      .text-border { color: var(--color-border); }
+      .border-border { border-color: var(--color-border); }
+      .ring-border { --tw-ring-color: var(--color-border); }
+      .bg-input { background-color: var(--color-input); }
+      .text-input { color: var(--color-input); }
+      .border-input { border-color: var(--color-input); }
+      .ring-input { --tw-ring-color: var(--color-input); }
+      .bg-ring { background-color: var(--color-ring); }
+      .text-ring { color: var(--color-ring); }
+      .border-ring { border-color: var(--color-ring); }
+      .ring-ring { --tw-ring-color: var(--color-ring); }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+
+    <!-- ============================================================
+         共享项目外壳样式（来自 partials/project-shell.html）
+         ============================================================ -->
+    <style>
+      /* === 应用外壳整体布局 === */
+      .app-shell {
+        display: grid;
+        grid-template-rows: var(--topbar-height) 1fr;
+        grid-template-columns: var(--sidebar-width) 1fr;
+        height: 100vh;
+        overflow: hidden;
+      }
+      /* === 顶栏 === */
+      .topbar {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: var(--topbar-height);
+        padding: 0 var(--space-5);
+        background: var(--surface-1);
+        border-bottom: 1px solid var(--border-default);
+      }
+      .brand { display: flex; align-items: center; gap: var(--space-2); }
+      .brand-mark {
+        display: flex; align-items: center; justify-content: center;
+        width: 24px; height: 24px;
+        background: var(--brand); color: var(--brand-foreground);
+        border-radius: var(--radius-sm);
+        font-family: var(--font-serif); font-size: var(--text-sm);
+        font-weight: 700; line-height: 1;
+      }
+      .brand-name { display: flex; flex-direction: column; line-height: 1.1; }
+      .brand-name .name-main {
+        font-family: var(--font-serif); font-size: var(--text-base);
+        font-weight: 700; color: var(--text-primary);
+      }
+      .brand-name .name-sub {
+        font-size: var(--text-xs); color: var(--text-muted);
+        letter-spacing: 0.5px;
+      }
+      .topbar-right { display: flex; align-items: center; gap: var(--space-4); }
+      .connection-status {
+        display: flex; align-items: center; gap: var(--space-2);
+        font-size: var(--text-sm); color: var(--text-secondary);
+      }
+      .status-dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: var(--state-success);
+        box-shadow: 0 0 0 3px var(--state-success-bg);
+      }
+      .icon-btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 32px; height: 32px;
+        background: transparent; border: none;
+        border-radius: var(--radius-sm);
+        color: var(--text-tertiary);
+        transition: background 0.15s, color 0.15s;
+      }
+      .icon-btn:hover { background: var(--surface-2); color: var(--text-secondary); }
+      .icon-btn i { width: 16px; height: 16px; }
+      /* === 侧边栏 === */
+      .sidebar {
+        background: var(--surface-1);
+        border-right: 1px solid var(--border-default);
+        padding: var(--space-4) var(--space-3);
+        display: flex; flex-direction: column; gap: var(--space-2);
+        overflow-y: auto;
+      }
+      .new-story-btn {
+        display: flex; align-items: center; justify-content: center;
+        gap: var(--space-2); width: 100%; height: 36px;
+        background: var(--brand-muted); color: var(--brand);
+        border: 1px solid var(--border-brand);
+        border-radius: var(--radius-sm);
+        font-size: var(--text-sm); font-weight: 600;
+        transition: background 0.15s, color 0.15s;
+      }
+      .new-story-btn:hover { background: var(--brand-muted-hover); color: var(--brand-hover); }
+      .new-story-btn i { width: 16px; height: 16px; }
+      .sidebar-divider { height: 1px; background: var(--border-default); margin: var(--space-1) 0; }
+      .nav-list { display: flex; flex-direction: column; gap: 8px; }
+      .nav-item {
+        display: flex; align-items: center; gap: 8px;
+        width: 100%; height: 36px; padding: 0 var(--space-3);
+        background: transparent; border: none;
+        border-left: 3px solid transparent;
+        border-radius: var(--radius-sm);
+        color: var(--text-tertiary); font-size: var(--text-sm);
+        text-align: left; transition: background 0.15s, color 0.15s;
+      }
+      .nav-item i { width: 16px; height: 16px; flex-shrink: 0; }
+      .nav-item:hover { color: var(--text-secondary); background: var(--surface-2); }
+      .nav-item[data-active="true"] {
+        color: var(--brand); background: var(--brand-subtle);
+        border-left: 3px solid var(--brand); font-weight: 600;
+      }
+      /* === 主内容区 === */
+      .main-content { height: 100%; overflow-y: auto; background: var(--surface-0); }
+      /* === 单栏聚焦容器 === */
+      .focus-container {
+        max-width: var(--content-max-width);
+        margin: 0 auto;
+        padding: var(--space-8) var(--space-6);
+      }
+    </style>
+
+    <!-- ============================================================
+         决策请求页面专属样式
+         ============================================================ -->
+    <style>
+      /* === 决策请求卡片（同工作台卡片规范） === */
+      .decision-card {
+        background: var(--surface-2);
+        border: 1px solid var(--border-default);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+      }
+
+      /* --- 标题条 --- */
+      .decision-header {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        padding: var(--space-3) var(--space-5);
+        border-bottom: 1px solid var(--border-default);
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+        color: var(--text-tertiary);
+      }
+      .decision-header i {
+        width: 14px;
+        height: 14px;
+        color: var(--state-warning);
+      }
+
+      /* --- 问题文字 --- */
+      .decision-question {
+        font-family: var(--font-serif);
+        font-size: var(--text-lg);
+        color: var(--text-primary);
+        padding: var(--space-4) var(--space-8);
+        line-height: 1.6;
+      }
+
+      /* --- 选项列表 --- */
+      .decision-options {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3);
+        padding: 0 var(--space-8) var(--space-5);
+      }
+
+      /* --- 单个可点击选项 --- */
+      .decision-option {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--space-3);
+        padding: var(--space-4) var(--space-5);
+        background: var(--surface-2);
+        border: 1px solid var(--border-default);
+        border-radius: var(--radius-lg);
+        cursor: pointer;
+        transition: border-color 0.15s, background 0.15s;
+      }
+      .decision-option:hover {
+        border-color: var(--border-brand);
+      }
+      /* 选中态：加粗边框 + 品牌底色 */
+      .decision-option[data-selected="true"] {
+        border: 2px solid var(--brand);
+        background: var(--brand-subtle);
+      }
+
+      /* 左侧 radio 圆点 */
+      .option-radio {
+        flex-shrink: 0;
+        width: 16px;
+        height: 16px;
+        margin-top: 2px;
+        border: 2px solid var(--text-muted);
+        border-radius: 50%;
+        position: relative;
+        transition: border-color 0.15s;
+      }
+      .decision-option[data-selected="true"] .option-radio {
+        border-color: var(--brand);
+      }
+      .decision-option[data-selected="true"] .option-radio::after {
+        content: "";
+        position: absolute;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        width: 8px; height: 8px;
+        border-radius: 50%;
+        background: var(--brand);
+      }
+
+      /* 选项文字区 */
+      .option-body {
+        flex: 1;
+        display: flex;
+        align-items: baseline;
+        flex-wrap: wrap;
+        gap: var(--space-2);
+      }
+      .option-text {
+        font-size: var(--text-base);
+        color: var(--text-primary);
+      }
+      .option-desc {
+        font-size: var(--text-sm);
+        color: var(--text-tertiary);
+      }
+
+      /* --- 底部按钮区 --- */
+      .decision-footer {
+        display: flex;
+        justify-content: flex-end;
+        padding: 0 var(--space-8) var(--space-6);
+      }
+      .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-2);
+        padding: var(--space-3) var(--space-5);
+        background: var(--brand);
+        color: var(--brand-foreground);
+        border: none;
+        border-radius: var(--radius-md);
+        font-size: var(--text-base);
+        font-weight: 600;
+        transition: background 0.15s;
+      }
+      .btn-primary:hover { background: var(--brand-hover); }
+      .btn-primary i { width: 16px; height: 16px; }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+
+<div class="app-shell">
+
+  <!-- ===== 顶栏 ===== -->
+  <header class="topbar">
+    <!-- 左侧：品牌标识 -->
+    <div class="brand">
+      <div class="brand-mark">墨</div>
+      <div class="brand-name">
+        <span class="name-main">驯墨</span>
+        <span class="name-sub">Tame Ink</span>
+      </div>
+    </div>
+    <!-- 右侧：连接状态 + 历史 -->
+    <div class="topbar-right">
+      <div class="connection-status">
+        <span class="status-dot"></span>
+        <span>已连接</span>
+      </div>
+      <button class="icon-btn" data-dom-id="open-history" aria-label="历史记录">
+        <i data-lucide="history"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- ===== 侧边栏 ===== -->
+  <aside class="sidebar">
+    <!-- 新建故事按钮 -->
+    <button class="new-story-btn" type="button">
+      <i data-lucide="plus"></i>
+      <span>新建故事</span>
+    </button>
+    <div class="sidebar-divider"></div>
+    <!-- 导航项 -->
+    <nav class="nav-list">
+      <button class="nav-item" type="button" data-nav-key="workspace" data-active="true">
+        <i data-lucide="layout-dashboard"></i>
+        <span>工作台</span>
+      </button>
+      <button class="nav-item" type="button" data-nav-key="library">
+        <i data-lucide="book-open"></i>
+        <span>故事库</span>
+      </button>
+      <button class="nav-item" type="button" data-nav-key="settings">
+        <i data-lucide="settings"></i>
+        <span>设置</span>
+      </button>
+    </nav>
+  </aside>
+
+  <!-- ===== 主内容区 ===== -->
+  <main class="main-content">
+    <div class="focus-container">
+
+      <!-- 决策请求卡片 -->
+      <section class="decision-card">
+
+        <!-- 标题条 -->
+        <div class="decision-header">
+          <i data-lucide="alert-circle"></i>
+          <span>需要你来决定</span>
+        </div>
+
+        <!-- 问题文字 -->
+        <p class="decision-question">主角在第一次职场冲突中应该怎么处理？</p>
+
+        <!-- 选项列表（可点击，非拼接字符串） -->
+        <div class="decision-options">
+          <label class="decision-option">
+            <span class="option-radio"></span>
+            <span class="option-body">
+              <span class="option-text">主动反击，直接指出对方的错误</span>
+              <span class="option-desc">（高风险高回报）</span>
+            </span>
+          </label>
+
+          <label class="decision-option" data-selected="true">
+            <span class="option-radio"></span>
+            <span class="option-body">
+              <span class="option-text">用数据说话，让结果自己打脸</span>
+              <span class="option-desc">（稳健，符合主角人设）</span>
+            </span>
+          </label>
+
+          <label class="decision-option">
+            <span class="option-radio"></span>
+            <span class="option-body">
+              <span class="option-text">暂时退让，私下铺垫后续的翻转</span>
+              <span class="option-desc">（慢热型爽感）</span>
+            </span>
+          </label>
+        </div>
+
+        <!-- 底部按钮 -->
+        <div class="decision-footer">
+          <button class="btn-primary" type="button">
+            <span>就按这个走</span>
+            <i data-lucide="arrow-right"></i>
+          </button>
+        </div>
+
+      </section>
+
+    </div>
+  </main>
+
+</div>
+
+<script>
+  // 渲染 lucide 图标
+  lucide.createIcons();
+
+  // 决策选项点击切换：单选语义，点击即选中并取消其他
+  document.querySelectorAll('.decision-option').forEach(function (opt) {
+    opt.addEventListener('click', function () {
+      document.querySelectorAll('.decision-option').forEach(function (o) {
+        o.removeAttribute('data-selected');
+      });
+      opt.setAttribute('data-selected', 'true');
+    });
+  });
+</script>
+</body>
+</html>

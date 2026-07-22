@@ -22,12 +22,14 @@ from app.agents.contracts import (
     TaskInputContractMiddleware,
     ValidatedOrchestrator,
     validate_agent_output,
+    validate_skill_execution,
 )
 from app.agents.runtime import DeepAgentRunner
-from app.agents.schemas import StorySetting
+from app.agents.schemas import SkillExecutionContract, StorySetting
 from app.agents.subagents import (
     StoryArchitectInput,
     StoryArchitectPayload,
+    build_p0_skill_definitions,
     build_subagent_definitions,
 )
 from app.domain.project import ConfirmedContent
@@ -77,6 +79,36 @@ def test_output_parses_without_context_then_validates_known_sources() -> None:
         validate_agent_output(output("canon/premise.md", quote="FABRICATED"), manifest())
     with pytest.raises(OutputContractError, match="REFERENCE_EVIDENCE_UNKNOWN"):
         validate_agent_output(output("canon/premise.md", location="wrong location"), manifest())
+
+
+def test_skill_execution_rejects_mismatched_skill_or_candidate_kind() -> None:
+    payload = {
+        "id": "execution-1",
+        "skill": "webnovel-draft",
+        "status": "ready",
+        "references": [
+            {"path": "canon/premise.md", "location": "paragraph 1", "quote": "confirmed quote"}
+        ],
+        "evidence": [],
+        "candidate": {
+            "artifact_kind": "chapter_draft",
+            "summary": "正文候选",
+            "payload": {"markdown": "正文"},
+        },
+        "decision_requests": [],
+        "effects": [],
+    }
+    parsed = SkillExecutionContract.model_validate(payload)
+
+    assert validate_skill_execution(parsed, manifest(), "webnovel-draft") is parsed
+    with pytest.raises(OutputContractError, match="SKILL_OUTPUT_MISMATCH"):
+        validate_skill_execution(parsed, manifest(), "webnovel-plan-chapter")
+    assert parsed.candidate is not None
+    invalid_kind = parsed.model_copy(
+        update={"candidate": parsed.candidate.model_copy(update={"artifact_kind": "story_card"})}
+    )
+    with pytest.raises(OutputContractError, match="SKILL_CANDIDATE_KIND_INVALID"):
+        validate_skill_execution(invalid_kind, manifest(), "webnovel-draft")
 
 
 def test_model_schema_omits_system_assigned_references(tmp_path: Path) -> None:
@@ -192,6 +224,85 @@ def test_stage_runner_requires_skill_read_and_returns_scoped_structured_output(
     assert result.references[0].path == "canon/premise.md"
     assert runner.run_traces()[0]["skill"] == "webnovel-architecture"
     assert runner.run_traces()[0]["source_paths"] == ["canon/premise.md"]
+
+
+def test_p0_stage_runner_requires_its_task_skill_and_returns_candidate_contract(
+    tmp_path: Path,
+) -> None:
+    backend, canon, drafts, task_id = make_backend(tmp_path)
+    canon.write_markdown("story-01", "canon/premise.md", ConfirmedContent(markdown="confirmed"))
+    skill_root = tmp_path / "skills"
+    skill_file = skill_root / "webnovel-draft" / "SKILL.md"
+    skill_file.parent.mkdir(parents=True)
+    skill_file.write_text("---\nname: webnovel-draft\ndescription: draft\n---\nWrite candidates.")
+    scoped_backend = type(backend)(
+        canon,
+        drafts,
+        "story-01",
+        task_id,
+        skill_root=skill_root,
+        read_allowlist=frozenset({"canon/premise.md"}),
+    )
+    runner = object.__new__(DeepAgentRunner)
+    runner.skill_root = skill_root
+    runner._run_traces = []
+    runner.model = ScriptedTameInkModel(
+        api_key="test",
+        model="scripted",
+        responses=[
+            AIMessage(
+                content="",
+                tool_calls=[
+                    {
+                        "name": "read_file",
+                        "args": {
+                            "file_path": "/skills/webnovel-draft/SKILL.md",
+                            "offset": 0,
+                            "limit": 1000,
+                        },
+                        "id": "read-skill",
+                    }
+                ],
+            ),
+            AIMessage(
+                content="",
+                tool_calls=[
+                    {
+                        "name": "SkillExecutionContract",
+                        "args": {
+                            "id": "draft-1",
+                            "skill": "webnovel-draft",
+                            "status": "ready",
+                            "evidence": [],
+                            "candidate": {
+                                "artifact_kind": "chapter_draft",
+                                "summary": "本章正文",
+                                "payload": {"markdown": "正文候选"},
+                            },
+                            "decision_requests": [],
+                            "effects": [],
+                            "context_reference_paths": ["canon/premise.md"],
+                        },
+                        "id": "structured-response",
+                    }
+                ],
+            ),
+        ],
+    )
+    runner.usage_recorder = None
+    runner.manifest = manifest()
+    definition = next(
+        item for item in build_p0_skill_definitions(scoped_backend) if item.name == "DraftWriter"
+    )
+
+    result = runner._invoke_stage(
+        definition, {"instruction": "write"}, scoped_backend, skill="webnovel-draft"
+    )
+
+    assert isinstance(result, SkillExecutionContract)
+    assert result.candidate is not None
+    assert result.candidate.artifact_kind == "chapter_draft"
+    assert runner.run_traces()[0]["skill"] == "webnovel-draft"
 
 
 def test_skill_load_requires_a_successful_matching_tool_result() -> None:

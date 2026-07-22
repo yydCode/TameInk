@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>故事卡 - 驯墨</title>
+    <style id="theme-vars">
+/* ============================================================
+   驯墨 Tame Ink — 品牌设计令牌 · 夜墨主题 v2
+   ============================================================
+   核心理念：作者只做三件事——说想法、看结果、做取舍
+   暗色沉浸主题，单栏聚焦布局
+   ============================================================ */
+
+:root {
+  /* === 品牌主色 — 墨绿 === */
+  --brand: #6aae8d;
+  --brand-hover: #5d9a7d;
+  --brand-active: #4c8a6a;
+  --brand-muted: rgba(106, 174, 141, 0.12);
+  --brand-muted-hover: rgba(106, 174, 141, 0.2);
+  --brand-subtle: rgba(106, 174, 141, 0.06);
+  --brand-foreground: #ffffff;
+
+  /* === 表面色阶 === */
+  --surface-0: #0d1117;
+  --surface-1: #151c25;
+  --surface-2: #1a2332;
+  --surface-3: #222f40;
+  --surface-4: #2d3d52;
+
+  /* === 文本色阶 === */
+  --text-primary: #e6edf3;
+  --text-secondary: #a3b8cc;
+  --text-tertiary: #7a92ab;
+  --text-muted: #546a84;
+  --text-on-brand: #ffffff;
+
+  /* === 边框 === */
+  --border-default: rgba(148, 163, 184, 0.12);
+  --border-strong: rgba(148, 163, 184, 0.22);
+  --border-brand: rgba(106, 174, 141, 0.35);
+
+  /* === 状态色 === */
+  --state-success: #4ade80;
+  --state-success-bg: rgba(74, 222, 128, 0.1);
+  --state-warning: #fbbf24;
+  --state-warning-bg: rgba(251, 191, 36, 0.1);
+  --state-error: #f87171;
+  --state-error-bg: rgba(248, 113, 113, 0.1);
+  --state-info: #60a5fa;
+  --state-info-bg: rgba(96, 165, 250, 0.1);
+
+  /* === 语义别名 === */
+  --background: var(--surface-0);
+  --foreground: var(--text-primary);
+  --color-background: var(--surface-0);
+  --color-foreground: var(--text-primary);
+  --color-card: var(--surface-2);
+  --color-card-foreground: var(--text-primary);
+  --color-popover: var(--surface-3);
+  --color-popover-foreground: var(--text-primary);
+  --color-primary: var(--brand);
+  --color-primary-foreground: var(--brand-foreground);
+  --color-muted: var(--surface-3);
+  --color-muted-foreground: var(--text-secondary);
+  --color-border: var(--border-default);
+  --color-input: var(--border-default);
+  --color-ring: var(--brand);
+
+  /* === 圆角 === */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* === 字体 === */
+  --font-sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-serif: "Noto Serif SC", "Songti SC", "SimSun", Georgia, serif;
+  --font-mono: "SFMono-Regular", "JetBrains Mono", "Fira Code", Consolas, monospace;
+
+  /* === 字号 === */
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 18px;
+  --text-2xl: 22px;
+  --text-3xl: 28px;
+  --text-4xl: 36px;
+
+  /* === 间距 === */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* === 布局 === */
+  --sidebar-width: 200px;
+  --topbar-height: 48px;
+  --content-max-width: 760px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  min-height: 100vh;
+  color: var(--text-primary);
+  background: var(--surface-0);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 { font-family: var(--font-serif); font-weight: 700; line-height: 1.25; }
+a { color: var(--brand); text-decoration: none; transition: color 0.15s; }
+a:hover { color: var(--brand-hover); }
+button { color: inherit; font: inherit; cursor: pointer; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface-4); border-radius: 9999px; }
+::selection { background: var(--brand-muted); color: var(--brand-foreground); }
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--color-card);
+    --color-card-foreground: var(--color-card-foreground);
+    --color-popover: var(--color-popover);
+    --color-popover-foreground: var(--color-popover-foreground);
+    --color-primary: var(--color-primary);
+    --color-primary-foreground: var(--color-primary-foreground);
+    --color-muted: var(--color-muted);
+    --color-muted-foreground: var(--color-muted-foreground);
+    --color-border: var(--color-border);
+    --color-input: var(--color-input);
+    --color-ring: var(--color-ring);
+    --radius-sm: var(--radius-sm);
+    --radius-md: var(--radius-md);
+    --radius-lg: var(--radius-lg);
+    --radius-xl: var(--radius-xl);
+  }
+  @layer base {
+    body { background: var(--color-background); color: var(--color-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style id="semantic-token-fallback">
+      .bg-background { background-color: var(--background); }
+      .text-background { color: var(--background); }
+      .border-background { border-color: var(--background); }
+      .ring-background { --tw-ring-color: var(--background); }
+      .bg-foreground { background-color: var(--foreground); }
+      .text-foreground { color: var(--foreground); }
+      .border-foreground { border-color: var(--foreground); }
+      .ring-foreground { --tw-ring-color: var(--foreground); }
+      .bg-card { background-color: var(--color-card); }
+      .text-card { color: var(--color-card); }
+      .border-card { border-color: var(--color-card); }
+      .ring-card { --tw-ring-color: var(--color-card); }
+      .bg-card-foreground { background-color: var(--color-card-foreground); }
+      .text-card-foreground { color: var(--color-card-foreground); }
+      .border-card-foreground { border-color: var(--color-card-foreground); }
+      .ring-card-foreground { --tw-ring-color: var(--color-card-foreground); }
+      .bg-popover { background-color: var(--color-popover); }
+      .text-popover { color: var(--color-popover); }
+      .border-popover { border-color: var(--color-popover); }
+      .ring-popover { --tw-ring-color: var(--color-popover); }
+      .bg-popover-foreground { background-color: var(--color-popover-foreground); }
+      .text-popover-foreground { color: var(--color-popover-foreground); }
+      .border-popover-foreground { border-color: var(--color-popover-foreground); }
+      .ring-popover-foreground { --tw-ring-color: var(--color-popover-foreground); }
+      .bg-primary { background-color: var(--color-primary); }
+      .text-primary { color: var(--color-primary); }
+      .border-primary { border-color: var(--color-primary); }
+      .ring-primary { --tw-ring-color: var(--color-primary); }
+      .bg-primary-foreground { background-color: var(--color-primary-foreground); }
+      .text-primary-foreground { color: var(--color-primary-foreground); }
+      .border-primary-foreground { border-color: var(--color-primary-foreground); }
+      .ring-primary-foreground { --tw-ring-color: var(--color-primary-foreground); }
+      .bg-muted { background-color: var(--color-muted); }
+      .text-muted { color: var(--color-muted); }
+      .border-muted { border-color: var(--color-muted); }
+      .ring-muted { --tw-ring-color: var(--color-muted); }
+      .bg-muted-foreground { background-color: var(--color-muted-foreground); }
+      .text-muted-foreground { color: var(--color-muted-foreground); }
+      .border-muted-foreground { border-color: var(--color-muted-foreground); }
+      .ring-muted-foreground { --tw-ring-color: var(--color-muted-foreground); }
+      .bg-border { background-color: var(--color-border); }
+      .text-border { color: var(--color-border); }
+      .border-border { border-color: var(--color-border); }
+      .ring-border { --tw-ring-color: var(--color-border); }
+      .bg-input { background-color: var(--color-input); }
+      .text-input { color: var(--color-input); }
+      .border-input { border-color: var(--color-input); }
+      .ring-input { --tw-ring-color: var(--color-input); }
+      .bg-ring { background-color: var(--color-ring); }
+      .text-ring { color: var(--color-ring); }
+      .border-ring { border-color: var(--color-ring); }
+      .ring-ring { --tw-ring-color: var(--color-ring); }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+
+    <!-- ============================================================
+         项目外壳样式（来自 partials/project-shell.html）
+         ============================================================ -->
+    <style id="project-shell">
+  /* === 应用外壳整体布局 === */
+  .app-shell {
+    display: grid;
+    grid-template-rows: var(--topbar-height) 1fr;
+    grid-template-columns: var(--sidebar-width) 1fr;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* === 顶栏 === */
+  .topbar {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: var(--topbar-height);
+    padding: 0 var(--space-5);
+    background: var(--surface-1);
+    border-bottom: 1px solid var(--border-default);
+  }
+
+  /* 品牌标识区 */
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .brand-mark {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: var(--brand);
+    color: var(--brand-foreground);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-serif);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    line-height: 1;
+  }
+  .brand-name {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.1;
+  }
+  .brand-name .name-main {
+    font-family: var(--font-serif);
+    font-size: var(--text-base);
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+  .brand-name .name-sub {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+  }
+
+  /* 顶栏右侧 */
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+  .connection-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+  }
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--state-success);
+    box-shadow: 0 0 0 3px var(--state-success-bg);
+  }
+  .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-tertiary);
+    transition: background 0.15s, color 0.15s;
+  }
+  .icon-btn:hover {
+    background: var(--surface-2);
+    color: var(--text-secondary);
+  }
+  .icon-btn i { width: 16px; height: 16px; }
+
+  /* === 侧边栏 === */
+  .sidebar {
+    background: var(--surface-1);
+    border-right: 1px solid var(--border-default);
+    padding: var(--space-4) var(--space-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    overflow-y: auto;
+  }
+
+  /* 新建故事按钮 */
+  .new-story-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    width: 100%;
+    height: 36px;
+    background: var(--brand-muted);
+    color: var(--brand);
+    border: 1px solid var(--border-brand);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    transition: background 0.15s, color 0.15s;
+  }
+  .new-story-btn:hover {
+    background: var(--brand-muted-hover);
+    color: var(--brand-hover);
+  }
+  .new-story-btn i { width: 16px; height: 16px; }
+
+  /* 侧边栏导航分隔 */
+  .sidebar-divider {
+    height: 1px;
+    background: var(--border-default);
+    margin: var(--space-1) 0;
+  }
+
+  /* 导航项 */
+  .nav-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    height: 36px;
+    padding: 0 var(--space-3);
+    background: transparent;
+    border: none;
+    border-left: 3px solid transparent;
+    border-radius: var(--radius-sm);
+    color: var(--text-tertiary);
+    font-size: var(--text-sm);
+    text-align: left;
+    transition: background 0.15s, color 0.15s;
+  }
+  .nav-item i { width: 16px; height: 16px; flex-shrink: 0; }
+  .nav-item:hover {
+    color: var(--text-secondary);
+    background: var(--surface-2);
+  }
+  /* 激活态 */
+  .nav-item[data-active="true"] {
+    color: var(--brand);
+    background: var(--brand-subtle);
+    border-left: 3px solid var(--brand);
+    font-weight: 600;
+  }
+
+  /* === 主内容区 === */
+  .main-content {
+    height: 100%;
+    overflow-y: auto;
+    background: var(--surface-0);
+  }
+
+  /* === 单栏聚焦容器 === */
+  .focus-container {
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    padding: var(--space-8) var(--space-6);
+  }
+    </style>
+
+    <!-- ============================================================
+         故事卡 artifact 卡片专属样式
+         --------------------------------------------------------------
+         遵循 continuityAnchors：
+         - surfaceModel: surface-1 卡片 + border-default
+         - buttonSystem: 主按钮=品牌色填充，次按钮=surface-3 边框，文字按钮=品牌色
+         ============================================================ -->
+    <style id="artifact-storycard">
+  /* === artifact 卡片容器 === */
+  .artifact-card {
+    background: var(--surface-1);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+  }
+
+  /* === 标题条 === */
+  .artifact-header {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    padding: var(--space-4) var(--space-5);
+    border-bottom: 1px solid var(--border-default);
+  }
+  .artifact-header .title {
+    font-family: var(--font-serif);
+    font-size: var(--text-lg);
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.25;
+  }
+  .artifact-header .subtitle {
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+  }
+
+  /* === 字段定义列表 === */
+  .artifact-body {
+    padding: var(--space-5);
+  }
+  .field-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+  }
+  .field-item {
+    display: grid;
+    grid-template-columns: 112px 1fr;
+    gap: var(--space-4);
+    align-items: start;
+  }
+  .field-label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+    padding-top: 1px;
+  }
+  .field-label i { width: 14px; height: 14px; flex-shrink: 0; }
+  /* 图标着色：按字段语义 */
+  .field-label.icon-brand i { color: var(--brand); }
+  .field-label.icon-warning i { color: var(--state-warning); }
+  .field-label.icon-success i { color: var(--state-success); }
+
+  .field-value {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+
+  /* === 七步进展：编号圆圈 + 文字 + 箭头，自动换行 === */
+  .step-flow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    row-gap: var(--space-2);
+  }
+  /* step-unit = 一个步骤 + 其后的箭头，整体不可分割，避免行末出现孤立箭头 */
+  .step-unit {
+    display: inline-flex;
+    align-items: center;
+  }
+  .step-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--brand-muted);
+    color: var(--brand);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .step-text {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+  .step-arrow {
+    color: var(--text-muted);
+    margin: 0 6px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .step-arrow i { width: 12px; height: 12px; }
+
+  /* === 期待：打开 / 推进 两类色标子项 === */
+  .expectation-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .expectation-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+  .expectation-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px var(--space-2);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    flex-shrink: 0;
+    margin-top: 2px;
+    line-height: 1.4;
+  }
+  /* 打开 = info 蓝 */
+  .expectation-tag.tag-open {
+    background: var(--state-info-bg);
+    color: var(--state-info);
+  }
+  /* 推进 = 品牌绿 */
+  .expectation-tag.tag-push {
+    background: var(--brand-muted);
+    color: var(--brand);
+  }
+
+  /* === 底部按钮区 === */
+  .artifact-footer {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-5);
+    border-top: 1px solid var(--border-default);
+    background: var(--surface-2);
+  }
+
+  /* 主按钮：品牌色填充 */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 8px var(--space-4);
+    background: var(--brand);
+    color: var(--brand-foreground);
+    border: 1px solid var(--brand);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .btn-primary:hover {
+    background: var(--brand-hover);
+    border-color: var(--brand-hover);
+  }
+  .btn-primary i { width: 14px; height: 14px; }
+  .btn-primary .btn-arrow { margin-left: var(--space-1); }
+
+  /* 次按钮：surface-3 边框 */
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 8px var(--space-4);
+    background: var(--surface-3);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    transition: background 0.15s, color 0.15s;
+  }
+  .btn-secondary:hover {
+    background: var(--surface-4);
+    color: var(--text-primary);
+  }
+  .btn-secondary i { width: 14px; height: 14px; }
+
+  /* 文字按钮：品牌色文字，无背景 */
+  .btn-text {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 8px var(--space-3);
+    background: transparent;
+    color: var(--brand);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    transition: background 0.15s;
+  }
+  .btn-text:hover {
+    background: var(--brand-subtle);
+  }
+  .btn-text i { width: 14px; height: 14px; }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+
+  <!-- ============================================================
+       应用外壳（顶栏 + 侧边栏 + 主内容区）
+       ============================================================ -->
+  <div class="app-shell">
+
+    <!-- ===== 顶栏 ===== -->
+    <header class="topbar">
+      <!-- 左侧：品牌标识 -->
+      <div class="brand">
+        <div class="brand-mark">墨</div>
+        <div class="brand-name">
+          <span class="name-main">驯墨</span>
+          <span class="name-sub">Tame Ink</span>
+        </div>
+      </div>
+
+      <!-- 右侧：连接状态 + 历史 -->
+      <div class="topbar-right">
+        <div class="connection-status">
+          <span class="status-dot"></span>
+          <span>已连接</span>
+        </div>
+        <button class="icon-btn" data-dom-id="open-history" aria-label="历史记录">
+          <i data-lucide="history"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- ===== 侧边栏 ===== -->
+    <aside class="sidebar">
+      <!-- 新建故事按钮 -->
+      <button class="new-story-btn" type="button">
+        <i data-lucide="plus"></i>
+        <span>新建故事</span>
+      </button>
+
+      <div class="sidebar-divider"></div>
+
+      <!-- 导航项（工作台 / 故事库 / 设置） -->
+      <nav class="nav-list">
+        <button class="nav-item" type="button" data-nav-key="workspace" data-active="true">
+          <i data-lucide="layout-dashboard"></i>
+          <span>工作台</span>
+        </button>
+        <button class="nav-item" type="button" data-nav-key="library">
+          <i data-lucide="book-open"></i>
+          <span>故事库</span>
+        </button>
+        <button class="nav-item" type="button" data-nav-key="settings">
+          <i data-lucide="settings"></i>
+          <span>设置</span>
+        </button>
+      </nav>
+    </aside>
+
+    <!-- ===== 主内容区 ===== -->
+    <main class="main-content">
+      <div class="focus-container">
+
+        <!-- ===== 故事卡 artifact 卡片 ===== -->
+        <article class="artifact-card" data-artifact-type="storycard">
+
+          <!-- 标题条：故事卡 2 · AI 提议 -->
+          <header class="artifact-header">
+            <span class="title">故事卡 2</span>
+            <span class="subtitle">· AI 提议</span>
+          </header>
+
+          <!-- 字段定义列表 -->
+          <div class="artifact-body">
+            <div class="field-list">
+
+              <!-- 目标：target 图标，品牌色 -->
+              <div class="field-item">
+                <div class="field-label icon-brand">
+                  <i data-lucide="target"></i>
+                  <span>目标</span>
+                </div>
+                <div class="field-value">主角独立承接核心项目，信息差开始发挥作用</div>
+              </div>
+
+              <!-- 动机：flame 图标，state-warning 色 -->
+              <div class="field-item">
+                <div class="field-label icon-warning">
+                  <i data-lucide="flame"></i>
+                  <span>动机</span>
+                </div>
+                <div class="field-value">证明当初被退回的方案是正确的</div>
+              </div>
+
+              <!-- 七步进展：编号圆圈 + 文字 + 箭头 -->
+              <div class="field-item">
+                <div class="field-label icon-brand">
+                  <i data-lucide="git-commit-horizontal"></i>
+                  <span>七步进展</span>
+                </div>
+                <div class="field-value">
+                  <div class="step-flow">
+                    <span class="step-unit">
+                      <span class="step-chip">
+                        <span class="step-num">1</span>
+                        <span class="step-text">开局定位</span>
+                      </span>
+                      <span class="step-arrow"><i data-lucide="chevron-right"></i></span>
+                    </span>
+                    <span class="step-unit">
+                      <span class="step-chip">
+                        <span class="step-num">2</span>
+                        <span class="step-text">反派出场</span>
+                      </span>
+                      <span class="step-arrow"><i data-lucide="chevron-right"></i></span>
+                    </span>
+                    <span class="step-unit">
+                      <span class="step-chip">
+                        <span class="step-num">3</span>
+                        <span class="step-text">初次摩擦</span>
+                      </span>
+                      <span class="step-arrow"><i data-lucide="chevron-right"></i></span>
+                    </span>
+                    <span class="step-unit">
+                      <span class="step-chip">
+                        <span class="step-num">4</span>
+                        <span class="step-text">拉期待</span>
+                      </span>
+                      <span class="step-arrow"><i data-lucide="chevron-right"></i></span>
+                    </span>
+                    <span class="step-unit">
+                      <span class="step-chip">
+                        <span class="step-num">5</span>
+                        <span class="step-text">冲突爆发</span>
+                      </span>
+                      <span class="step-arrow"><i data-lucide="chevron-right"></i></span>
+                    </span>
+                    <span class="step-unit">
+                      <span class="step-chip">
+                        <span class="step-num">6</span>
+                        <span class="step-text">震惊收获</span>
+                      </span>
+                      <span class="step-arrow"><i data-lucide="chevron-right"></i></span>
+                    </span>
+                    <span class="step-chip">
+                      <span class="step-num">7</span>
+                      <span class="step-text">接续下一循环</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 期待：打开（info 蓝）/ 推进（品牌绿） -->
+              <div class="field-item">
+                <div class="field-label icon-brand">
+                  <i data-lucide="eye"></i>
+                  <span>期待</span>
+                </div>
+                <div class="field-value">
+                  <div class="expectation-list">
+                    <div class="expectation-item">
+                      <span class="expectation-tag tag-open">打开</span>
+                      <span>客户会选择谁？</span>
+                    </div>
+                    <div class="expectation-item">
+                      <span class="expectation-tag tag-push">推进</span>
+                      <span>主角的真实能力上限是什么？</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 完成标志：flag 图标，state-success 色 -->
+              <div class="field-item">
+                <div class="field-label icon-success">
+                  <i data-lucide="flag"></i>
+                  <span>完成标志</span>
+                </div>
+                <div class="field-value">主角拿下项目签约，关系网对其认知升级</div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- 底部按钮区：开始写 / 修改 / 换个方向 -->
+          <footer class="artifact-footer">
+            <button class="btn-primary" type="button" data-action="accept">
+              <i data-lucide="check"></i>
+              <span>开始写这个单元</span>
+              <i data-lucide="arrow-right" class="btn-arrow"></i>
+            </button>
+            <button class="btn-secondary" type="button" data-action="edit">
+              <i data-lucide="pencil"></i>
+              <span>修改</span>
+            </button>
+            <button class="btn-text" type="button" data-action="regenerate">
+              <i data-lucide="x"></i>
+              <span>换个方向</span>
+            </button>
+          </footer>
+
+        </article>
+
+      </div>
+    </main>
+
+  </div>
+
+    <script>lucide.createIcons();</script>
+</body>
+</html>

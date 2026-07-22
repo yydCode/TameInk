@@ -1,0 +1,299 @@
+{
+  "data": [
+    {
+      "id": "page-workspace-input",
+      "title": "工作台-步骤卡片",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1753200000000,
+      "canvasData": {
+        "x": 0,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/workspace-input.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-workspace-wait",
+      "title": "工作台-生成中",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1753200001000,
+      "canvasData": {
+        "x": 620,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/workspace-wait.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-workspace-recover",
+      "title": "工作台-中断恢复",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1753200002000,
+      "canvasData": {
+        "x": 1240,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/workspace-recover.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-artifact-contract",
+      "title": "读者契约卡片",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1753200003000,
+      "canvasData": {
+        "x": 1860,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/artifact-contract.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-artifact-engine",
+      "title": "故事引擎卡片",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1753200004000,
+      "canvasData": {
+        "x": 2480,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/artifact-engine.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-artifact-storycard",
+      "title": "故事卡卡片",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1753200005000,
+      "canvasData": {
+        "x": 3100,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/artifact-storycard.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-artifact-expectation",
+      "title": "期待卡片",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1753200006000,
+      "canvasData": {
+        "x": 3720,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/artifact-expectation.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-storycard-picker",
+      "title": "故事卡选择",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1753200007000,
+      "canvasData": {
+        "x": 4340,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/storycard-picker.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-decision-request",
+      "title": "决策请求",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1753200008000,
+      "canvasData": {
+        "x": 4960,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/decision-request.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-chapter-intent",
+      "title": "章节意图",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1753200009000,
+      "canvasData": {
+        "x": 5580,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/chapter-intent.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-opening-audit",
+      "title": "开篇检查",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1753200010000,
+      "canvasData": {
+        "x": 6200,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/opening-audit.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-vocab-check",
+      "title": "词汇检测",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1753200011000,
+      "canvasData": {
+        "x": 6820,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/vocab-check.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-new-project-1",
+      "title": "新建项目-输入",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1753200012000,
+      "canvasData": {
+        "x": 7440,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/new-project-1.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-new-project-2",
+      "title": "新建项目-确认",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1753200013000,
+      "canvasData": {
+        "x": 8060,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/new-project-2.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-library",
+      "title": "故事库",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1753200014000,
+      "canvasData": {
+        "x": 8680,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/library.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-settings",
+      "title": "设置",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1753200015000,
+      "canvasData": {
+        "x": 9300,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/settings.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-history-drawer",
+      "title": "历史抽屉",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1753200016000,
+      "canvasData": {
+        "x": 9920,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/history-drawer.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-chapter-draft-review",
+      "title": "章节草稿审批",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1753200017000,
+      "canvasData": {
+        "x": 10540,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/chapter-draft-review.html",
+        "interactions": []
+      }
+    }
+  ],
+  "config": {
+    "autoLayout": true,
+    "deviceType": "desktop",
+    "projectName": "驯墨交互设计",
+    "designLibrary": null,
+    "updatedAt": 1753200040000
+  }
+}

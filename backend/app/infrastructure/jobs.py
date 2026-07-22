@@ -1,7 +1,7 @@
 import json
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 from huey import Huey  # type: ignore[import-untyped]
 from huey.contrib.sql_huey import SqlHuey  # type: ignore[import-untyped]
@@ -21,6 +21,7 @@ from app.repositories.tasks import TasksRepository
 from app.repositories.workspace import WorkspaceRepository
 from app.workflows.chapter import ChapterService
 from app.workflows.commercial import CommercialService
+from app.workflows.creative import CreativeService
 from app.workflows.task_service import TaskService
 
 
@@ -31,6 +32,7 @@ class AgentJobKind(StrEnum):
     CHAPTER = "chapter"
     COMMERCIAL = "commercial"
     COMMERCIAL_AUDIT = "commercial_audit"
+    CREATIVE_SKILL = "creative_skill"
 
 
 class JobQueue(Protocol):
@@ -259,6 +261,17 @@ def _run_job(
     task_id: str,
     runner: DeepAgentRunner,
 ) -> Task:
+    if kind is AgentJobKind.CREATIVE_SKILL:
+        skill = _text(payload, "skill")
+        skill_payload = payload.get("payload")
+        if not isinstance(skill_payload, dict):
+            raise WorkflowGateError("creative skill payload is invalid")
+        return CreativeService(workspace, runner=runner).execute_skill_task(
+            project_id,
+            task_id,
+            cast(Any, skill),
+            skill_payload,
+        )
     if kind is AgentJobKind.SETTING:
         output = runner.invoke("StoryArchitect", {"instruction": _text(payload, "instruction")})
         if not isinstance(output, StorySetting):

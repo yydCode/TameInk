@@ -82,6 +82,12 @@ def get_project(project_id: str, request: Request) -> Project:
     return CanonRepository(workspace).read_project(project_id)
 
 
+@router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_project(project_id: str, request: Request) -> None:
+    workspace: WorkspaceRepository = request.app.state.workspace
+    workspace.delete_project(project_id)
+
+
 @router.get("/{project_id}/snapshot", response_model=ProjectSnapshot)
 def get_project_snapshot(project_id: str, request: Request) -> ProjectSnapshot:
     workspace: WorkspaceRepository = request.app.state.workspace

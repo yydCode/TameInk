@@ -9,7 +9,11 @@ from pydantic import SecretStr
 from app.agents.context import ContextManifest
 from app.agents.contracts import OutputContractError
 from app.agents.orchestrator import create_orchestrator
-from app.agents.subagents import build_subagent_definitions
+from app.agents.subagents import (
+    build_p0_skill_definitions,
+    build_subagent_definitions,
+    select_p0_skill_agent,
+)
 from tests.agents.fake_model import ScriptedOpenAIModel, ScriptedTameInkModel
 from tests.agents.test_backend import make_backend
 
@@ -171,3 +175,40 @@ def test_orchestrator_main_permissions_deny_all_writes(tmp_path: Path) -> None:
     assert read_only.permissions == [
         FilesystemPermission(operations=["write"], paths=["/**"], mode="deny")
     ]
+
+
+def test_p0_skill_agents_have_no_draft_write_or_implicit_audit_role(tmp_path: Path) -> None:
+    backend, _, _, _ = make_backend(tmp_path)
+    definitions = build_p0_skill_definitions(backend)
+
+    assert {definition.name for definition in definitions} == {
+        "Researcher",
+        "StoryEditor",
+        "ChapterPlanner",
+        "DraftWriter",
+        "ContinuityAuditor",
+        "PromiseAuditor",
+        "SceneAuditor",
+        "CognitiveLoadAuditor",
+        "OpeningAuditor",
+        "PoisonCheckAuditor",
+        "MemoryCurator",
+    }
+    assert all(
+        "save_draft" not in {tool.name for tool in definition.tools} for definition in definitions
+    )
+    assert all(
+        definition.permissions
+        == [FilesystemPermission(operations=["write"], paths=["/**"], mode="deny")]
+        for definition in definitions
+    )
+    audit = select_p0_skill_agent(
+        "webnovel-audit", {"audit_kind": "promise"}, definitions
+    )
+    assert audit.name == "PromiseAuditor"
+    opening = select_p0_skill_agent("webnovel-opening-audit", {}, definitions)
+    assert opening.name == "OpeningAuditor"
+    with pytest.raises(ValueError, match="AUDIT_KIND_INVALID"):
+        select_p0_skill_agent("webnovel-audit", {}, definitions)
+    with pytest.raises(ValueError, match="SKILL_EXECUTION_UNSUPPORTED"):
+        select_p0_skill_agent("webnovel-studio", {}, definitions)

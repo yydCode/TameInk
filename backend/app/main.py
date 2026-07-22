@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from app.api.bestseller import router as bestseller_router
 from app.api.commercial import router as commercial_router
 from app.api.creation import router as creation_router
+from app.api.creative import router as creative_router
 from app.api.diagnostics import router as diagnostics_router
 from app.api.events import router as events_router
 from app.api.health import router as health_router
@@ -22,6 +23,7 @@ from app.domain.errors import (
     ActiveTaskConflictError,
     ImportEncodingAmbiguousError,
     InvalidTaskTransitionError,
+    ProjectNotFoundError,
     TameInkError,
     TaskNotFoundError,
 )
@@ -61,6 +63,7 @@ def create_app(workspace_root: Path, *, queue_immediate: bool = True) -> FastAPI
     application.include_router(resources_router, prefix="/api")
     application.include_router(imports_router, prefix="/api")
     application.include_router(creation_router, prefix="/api")
+    application.include_router(creative_router, prefix="/api")
     application.include_router(memory_router, prefix="/api")
     application.include_router(commercial_router, prefix="/api")
     application.include_router(diagnostics_router, prefix="/api")
@@ -70,6 +73,8 @@ def create_app(workspace_root: Path, *, queue_immediate: bool = True) -> FastAPI
     async def tame_ink_error(_: Request, error: TameInkError) -> JSONResponse:
         if isinstance(error, TaskNotFoundError):
             status_code, message = 404, "task not found"
+        elif isinstance(error, ProjectNotFoundError):
+            status_code, message = 404, "project not found"
         elif isinstance(error, ActiveTaskConflictError):
             status_code, message = 409, "active write task exists"
         elif isinstance(error, InvalidTaskTransitionError):

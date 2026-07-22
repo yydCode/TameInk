@@ -1,0 +1,6 @@
+name: webnovel-design-story-engine
+agent: StoryEditor
+candidate_kinds:
+  - story_engine
+  - character_state
+purpose: 设计可长期运行的故事引擎与人物行动约束。
