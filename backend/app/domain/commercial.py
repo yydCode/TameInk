@@ -16,6 +16,42 @@ class CommercialTargets(CommercialModel):
     revenue_per_thousand_opens_yuan: float | None = Field(default=None, ge=0)
 
 
+class PlatformPacing(CommercialModel):
+    """平台商业节奏配置——番茄/起点等平台的开篇钩子和章节节奏铁律。"""
+
+    chapter_word_count: int = Field(default=2500, ge=1000, le=5000)
+    opening_hook_lines: int = Field(default=7, ge=3, le=20)
+    scenes_per_chapter: int = Field(default=1, ge=1, le=3)
+    small_climax_every: int = Field(default=3, ge=1, le=10)
+    big_climax_every: int = Field(default=10, ge=5, le=30)
+    opening_hook_style: Literal["conflict", "scene", "dialogue"] = "conflict"
+    chapter_end_cliffhanger: bool = True
+
+    @classmethod
+    def for_platform(cls, platform: str) -> "PlatformPacing":
+        if platform == "fanqie":
+            return cls(
+                chapter_word_count=2500,
+                opening_hook_lines=7,
+                scenes_per_chapter=1,
+                small_climax_every=3,
+                big_climax_every=10,
+                opening_hook_style="conflict",
+                chapter_end_cliffhanger=True,
+            )
+        if platform == "qidian":
+            return cls(
+                chapter_word_count=3000,
+                opening_hook_lines=15,
+                scenes_per_chapter=2,
+                small_climax_every=5,
+                big_climax_every=15,
+                opening_hook_style="scene",
+                chapter_end_cliffhanger=True,
+            )
+        return cls()
+
+
 class CommercialProfile(CommercialModel):
     schema_version: Literal[1] = 1
     platform: Literal["fanqie", "qidian", "jinjiang", "custom"]
@@ -33,6 +69,13 @@ class CommercialProfile(CommercialModel):
     comparable_titles: list[str] = Field(default_factory=list, max_length=5)
     minimum_commercial_score: int = Field(default=70, ge=0, le=100)
     targets: CommercialTargets = Field(default_factory=CommercialTargets)
+    platform_pacing: PlatformPacing | None = None
+
+    @model_validator(mode="after")
+    def ensure_platform_pacing(self) -> Self:
+        if self.platform_pacing is None:
+            self.platform_pacing = PlatformPacing.for_platform(self.platform)
+        return self
 
     @field_validator(
         "target_reader",

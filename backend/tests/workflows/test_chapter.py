@@ -271,6 +271,7 @@ def test_chapter_pipeline_runs_planner_writer_independent_auditors_and_local_rev
                     content="计划",
                     context_intent={"keywords": ["旧句事实"]},
                     references=reference,
+                    chapter_end_hook="章末钩子",
                 )
             if agent == "DraftWriter" and calls.count("DraftWriter") == 1:
                 return ChapterDraft(

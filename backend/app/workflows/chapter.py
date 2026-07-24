@@ -8,6 +8,7 @@ from app.agents.schemas import (
     CommercialIssue,
     CommercialReport,
     ContinuityIssue,
+    DraftWriterResult,
     MemoryCandidate,
     MemoryCuration,
     RevisionProposal,
@@ -49,7 +50,7 @@ class ChapterService:
     ) -> Task:
         if self.runner is None:
             raise WorkflowGateError("chapter runner is required")
-        self._require_prerequisites(project_id, volume_id)
+        self._require_prerequisites(project_id, volume_id, full=True)
         service = TaskService(TasksRepository(DatabaseRepository(self.workspace), project_id))
         task = service.create(
             TaskKind.WRITE,
@@ -74,30 +75,348 @@ class ChapterService:
         chapter_id: str,
         instruction: str,
         volume_id: str = "1",
+        directive: dict[str, object] | None = None,
     ) -> Task:
         if self.runner is None:
             raise WorkflowGateError("chapter runner is required")
-        self._require_prerequisites(project_id, volume_id)
+        self._require_prerequisites(project_id, volume_id, full=True)
         service = TaskService(TasksRepository(DatabaseRepository(self.workspace), project_id))
         task = service.get(task_id)
         if task.status.value != "running":
             raise WorkflowGateError("chapter generation task must be running")
         if task.chapter_id != chapter_id or task.volume_id != volume_id:
             raise WorkflowGateError("chapter generation task metadata does not match")
+        plan = self._run_planning(project_id, chapter_id, volume_id, instruction, directive)
+        return self._run_draft_pipeline_and_store(
+            project_id, task_id, chapter_id, volume_id, plan
+        )
+
+    def run_plan_for_task(
+        self,
+        project_id: str,
+        task_id: str,
+        chapter_id: str,
+        instruction: str,
+        volume_id: str = "1",
+        directive: dict[str, object] | None = None,
+    ) -> Task:
+        """P0: 只跑章纲阶段，写 plan 草稿，等审批——人审章纲环节。"""
+        if self.runner is None:
+            raise WorkflowGateError("chapter runner is required")
+        self._require_prerequisites(project_id, volume_id, full=True)
+        service = TaskService(TasksRepository(DatabaseRepository(self.workspace), project_id))
+        task = service.get(task_id)
+        if task.status.value != "running":
+            raise WorkflowGateError("chapter generation task must be running")
+        if task.chapter_id != chapter_id or task.volume_id != volume_id:
+            raise WorkflowGateError("chapter generation task metadata does not match")
+        plan = self._run_planning(project_id, chapter_id, volume_id, instruction, directive)
+        drafts = DraftRepository(self.workspace)
+        drafts.write(project_id, task_id, "plan.md", plan.content)
+        drafts.write(project_id, task_id, "plan.json", plan.model_dump_json(indent=2))
+        drafts.write(
+            project_id,
+            task_id,
+            "stage.json",
+            json.dumps({"stage": "plan_awaiting_approval"}, ensure_ascii=False),
+        )
+        service.repository.append_log(
+            task_id,
+            TaskLogLevel.INFO,
+            "workflow",
+            "workflow.chapter_plan_written",
+            details={"artifact": "plan.md"},
+        )
+        return service.await_approval(task_id)
+
+    def approve_plan_and_continue(
+        self,
+        project_id: str,
+        task_id: str,
+        chapter_id: str,
+        volume_id: str = "1",
+    ) -> Task:
+        """P0: 人批准章纲后，跑后续正文流水线。
+
+        task 须已处于 running（由 worker 在 claim 时从 awaiting_approval 转入），
+        与其它继续型方法（revise_draft/locally_revise/run_for_task）保持一致。
+        """
+        if self.runner is None:
+            raise WorkflowGateError("chapter runner is required")
+        self._require_prerequisites(project_id, volume_id, full=True)
+        service = TaskService(TasksRepository(DatabaseRepository(self.workspace), project_id))
+        task = service.get(task_id)
+        if task.status.value != "running":
+            raise WorkflowGateError("chapter generation task must be running")
+        if task.chapter_id != chapter_id or task.volume_id != volume_id:
+            raise WorkflowGateError("chapter generation task metadata does not match")
+        drafts = DraftRepository(self.workspace)
+        plan = ChapterPlan.model_validate_json(drafts.read(project_id, task_id, "plan.json"))
+        try:
+            return self._run_draft_pipeline_and_store(
+                project_id, task_id, chapter_id, volume_id, plan
+            )
+        except Exception as error:
+            current = service.get(task_id)
+            if current.status.value == "running":
+                service.fail(task_id, type(error).__name__, "chapter draft failed")
+            raise
+
+    def revise_draft(
+        self,
+        project_id: str,
+        task_id: str,
+        chapter_id: str,
+        volume_id: str = "1",
+    ) -> Task:
+        """P1: 迭代修改——基于人编辑后的草稿重新审计+局部修订，不推倒重来。"""
+        if self.runner is None:
+            raise WorkflowGateError("chapter runner is required")
         commercial_profile = CommercialService(self.workspace).read(project_id)
         if commercial_profile is None:
             raise WorkflowGateError("approved commercial profile is required")
-        plan = self.runner.invoke(
-            "ChapterPlanner",
+        service = TaskService(TasksRepository(DatabaseRepository(self.workspace), project_id))
+        task = service.get(task_id)
+        if task.status.value != "running":
+            raise WorkflowGateError("chapter generation task must be running")
+        drafts = DraftRepository(self.workspace)
+        draft = drafts.read(project_id, task_id, "chapter.md")
+        plan = ChapterPlan.model_validate_json(drafts.read(project_id, task_id, "plan.json"))
+        audit_payload: dict[str, object] = {
+            "project_id": project_id,
+            "chapter_id": chapter_id,
+            "volume_id": volume_id,
+            "plan": plan.model_dump(),
+            "draft": draft,
+            "instruction": "re-audit the current user-edited chapter candidate",
+        }
+        continuity = self.runner.invoke("ContinuityAuditor", audit_payload)
+        style = self.runner.invoke("StyleCritic", audit_payload)
+        commercial = self.runner.invoke("RetentionAuditor", audit_payload)
+        if not isinstance(continuity, list) or not all(
+            isinstance(issue, ContinuityIssue) for issue in continuity
+        ):
+            raise WorkflowGateError("ContinuityAuditor returned an invalid issue report")
+        if not isinstance(style, list) or not all(isinstance(issue, StyleIssue) for issue in style):
+            raise WorkflowGateError("StyleCritic returned an invalid issue report")
+        if not isinstance(commercial, CommercialReport) or commercial.chapter_id != chapter_id:
+            raise WorkflowGateError("RetentionAuditor returned an invalid commercial report")
+        continuity = self.normalize_audit_citations(draft, continuity)
+        style = self.normalize_audit_citations(draft, style)
+        commercial = self.normalize_commercial_report(draft, commercial)
+        issues = self.validate_audit_issues(draft, continuity, style, commercial.issues)
+        revised = draft
+        if issues:
+            revisions = self.runner.invoke(
+                "DraftWriter",
+                {
+                    "project_id": project_id,
+                    "chapter_id": chapter_id,
+                    "volume_id": volume_id,
+                    "plan": plan.model_dump(),
+                    "draft": draft,
+                    "issues": [issue.model_dump() for issue in issues],
+                    "instruction": "revise only the cited passages for reported issue IDs",
+                },
+            )
+            if not isinstance(revisions, list) or not all(
+                isinstance(revision, RevisionProposal) for revision in revisions
+            ):
+                raise WorkflowGateError("DraftWriter returned an invalid revision report")
+            revised = self.apply_revisions(draft, issues, revisions)
+        gate_passed = self.commercial_gate_passed(
+            commercial, commercial_profile.minimum_commercial_score
+        )
+        drafts.write(project_id, task_id, "chapter.md", revised)
+        drafts.write(
+            project_id, task_id, "commercial-report.json", commercial.model_dump_json(indent=2)
+        )
+        drafts.write(
+            project_id,
+            task_id,
+            "audit-reports.json",
+            json.dumps(
+                {
+                    "continuity": [issue.model_dump(mode="json") for issue in continuity],
+                    "style": [issue.model_dump(mode="json") for issue in style],
+                    "commercial": commercial.model_dump(mode="json"),
+                },
+                ensure_ascii=False,
+                indent=2,
+            ),
+        )
+        manifest = json.loads(drafts.read(project_id, task_id, "run.json"))
+        manifest["commercial_gate_passed"] = gate_passed
+        drafts.write(project_id, task_id, "run.json", json.dumps(manifest, ensure_ascii=False))
+        service.repository.append_log(
+            task_id,
+            TaskLogLevel.INFO,
+            "workflow",
+            "workflow.chapter_revised",
+            details={"commercial_gate_passed": gate_passed},
+        )
+        return service.await_approval(task_id)
+
+    def locally_revise(
+        self,
+        project_id: str,
+        task_id: str,
+        chapter_id: str,
+        start: int,
+        end: int,
+        instruction: str,
+        volume_id: str = "1",
+    ) -> Task:
+        """P3: 局部重生成——人选中一段文字，AI 只重写该段。"""
+        if self.runner is None:
+            raise WorkflowGateError("chapter runner is required")
+        service = TaskService(TasksRepository(DatabaseRepository(self.workspace), project_id))
+        task = service.get(task_id)
+        if task.status.value != "running":
+            raise WorkflowGateError("chapter generation task must be running")
+        drafts = DraftRepository(self.workspace)
+        draft = drafts.read(project_id, task_id, "chapter.md")
+        if end > len(draft):
+            raise WorkflowGateError("local revision range exceeds draft length")
+        original_segment = draft[start:end]
+        if not original_segment.strip():
+            raise WorkflowGateError("local revision target is empty")
+        output = self.runner.invoke(
+            "DraftWriter",
             {
                 "project_id": project_id,
                 "chapter_id": chapter_id,
                 "volume_id": volume_id,
+                "draft": draft,
                 "instruction": instruction,
+                "local_revision": {
+                    "start": start,
+                    "end": end,
+                    "original": original_segment,
+                },
             },
         )
+        if not isinstance(output, DraftWriterResult) or output.markdown is None:
+            raise WorkflowGateError("DraftWriter returned an invalid local revision")
+        revised = draft[:start] + output.markdown + draft[end:]
+        drafts.write(project_id, task_id, "chapter.md", revised)
+        service.repository.append_log(
+            task_id,
+            TaskLogLevel.INFO,
+            "workflow",
+            "workflow.chapter_locally_revised",
+            details={
+                "start": start,
+                "end": end,
+                "bytes": len(output.markdown.encode("utf-8")),
+            },
+        )
+        return service.await_approval(task_id)
+
+    def read_stage(self, project_id: str, task_id: str) -> str:
+        """读取当前章节任务的阶段标记。"""
+        drafts = DraftRepository(self.workspace)
+        files = drafts.list_files(project_id, task_id)
+        if "stage.json" in files:
+            stage = json.loads(drafts.read(project_id, task_id, "stage.json")).get(
+                "stage", "unknown"
+            )
+            return str(stage)
+        if "chapter.md" in files:
+            return "draft_awaiting_approval"
+        if "plan.md" in files:
+            return "plan_awaiting_approval"
+        return "unknown"
+
+    def read_audit_reports(self, project_id: str, task_id: str) -> dict[str, object]:
+        """P1: 读取审计报告，对人可见。"""
+        drafts = DraftRepository(self.workspace)
+        files = drafts.list_files(project_id, task_id)
+        reports: dict[str, object] = {}
+        if "audit-reports.json" in files:
+            reports = json.loads(drafts.read(project_id, task_id, "audit-reports.json"))
+        if "commercial-report.json" in files:
+            reports["commercial"] = CommercialReport.model_validate_json(
+                drafts.read(project_id, task_id, "commercial-report.json")
+            ).model_dump(mode="json")
+        return reports
+
+    def update_memory_candidate(
+        self,
+        project_id: str,
+        task_id: str,
+        stable_id: str,
+        content: str,
+    ) -> list[MemoryCandidate]:
+        """P2: 人编辑 AI 提取的记忆候选内容。"""
+        drafts = DraftRepository(self.workspace)
+        candidates = self.read_memory_candidates(project_id, task_id)
+        updated: list[MemoryCandidate] = []
+        found = False
+        for candidate in candidates:
+            if candidate.stable_id == stable_id:
+                updated.append(candidate.model_copy(update={"content": content}))
+                found = True
+            else:
+                updated.append(candidate)
+        if not found:
+            raise WorkflowGateError("memory candidate not found")
+        chapter_text = drafts.read(project_id, task_id, "chapter.md")
+        self.validate_memory_candidates(chapter_text, updated)
+        raw = drafts.read(project_id, task_id, "memory-candidates.json")
+        curation = MemoryCuration.model_validate_json(raw)
+        curation = curation.model_copy(update={"updates": updated})
+        drafts.write(
+            project_id,
+            task_id,
+            "memory-candidates.json",
+            curation.model_dump_json(indent=2),
+        )
+        return updated
+
+    def _run_planning(
+        self,
+        project_id: str,
+        chapter_id: str,
+        volume_id: str,
+        instruction: str,
+        directive: dict[str, object] | None = None,
+    ) -> ChapterPlan:
+        if self.runner is None:
+            raise WorkflowGateError("chapter runner is required")
+        commercial_profile = CommercialService(self.workspace).read(project_id)
+        if commercial_profile is None:
+            raise WorkflowGateError("approved commercial profile is required")
+        planner_payload: dict[str, object] = {
+            "project_id": project_id,
+            "chapter_id": chapter_id,
+            "volume_id": volume_id,
+            "instruction": instruction,
+            "platform": commercial_profile.platform,
+            "platform_pacing": commercial_profile.platform_pacing.model_dump(mode="json")
+            if commercial_profile.platform_pacing
+            else None,
+        }
+        if directive is not None:
+            planner_payload["directive"] = directive
+        plan = self.runner.invoke("ChapterPlanner", planner_payload)
         if not isinstance(plan, ChapterPlan) or plan.chapter_id != chapter_id:
             raise WorkflowGateError("ChapterPlanner returned an invalid chapter plan")
+        return plan
+
+    def _run_draft_pipeline_and_store(
+        self,
+        project_id: str,
+        task_id: str,
+        chapter_id: str,
+        volume_id: str,
+        plan: ChapterPlan,
+    ) -> Task:
+        if self.runner is None:
+            raise WorkflowGateError("chapter runner is required")
+        commercial_profile = CommercialService(self.workspace).read(project_id)
+        if commercial_profile is None:
+            raise WorkflowGateError("approved commercial profile is required")
         draft = self.runner.invoke(
             "DraftWriter",
             {
@@ -109,6 +428,9 @@ class ChapterService:
         )
         if not isinstance(draft, ChapterDraft) or draft.chapter_id != chapter_id:
             raise WorkflowGateError("DraftWriter returned an invalid chapter draft")
+        DraftRepository(self.workspace).write(
+            project_id, task_id, "chapter.md", draft.markdown
+        )
         audit_payload: dict[str, object] = {
             "project_id": project_id,
             "chapter_id": chapter_id,
@@ -184,6 +506,14 @@ class ChapterService:
         if not isinstance(memory, MemoryCuration):
             raise WorkflowGateError("MemoryCurator returned an invalid candidate list")
         self.validate_memory_candidates(revised, memory.updates)
+        drafts = DraftRepository(self.workspace)
+        drafts.write(project_id, task_id, "plan.json", plan.model_dump_json(indent=2))
+        drafts.write(
+            project_id,
+            task_id,
+            "stage.json",
+            json.dumps({"stage": "draft_awaiting_approval"}, ensure_ascii=False),
+        )
         return self._store_candidate(
             project_id,
             task_id,
@@ -324,13 +654,25 @@ class ChapterService:
         )
         return service.await_approval(task_id)
 
-    def _require_prerequisites(self, project_id: str, volume_id: str) -> None:
+    def _require_prerequisites(
+        self, project_id: str, volume_id: str, *, full: bool = False
+    ) -> None:
         project = self.workspace.project_path(project_id)
-        if (
-            not (project / "canon/outline.md").is_file()
-            or not (project / "canon/volumes" / f"{volume_id}.md").is_file()
-        ):
-            raise WorkflowGateError("approved book outline and volume are required")
+        missing: list[str] = []
+        if not (project / "canon/outline.md").is_file():
+            missing.append("outline")
+        if not (project / "canon/volumes" / f"{volume_id}.md").is_file():
+            missing.append(f"volume {volume_id}")
+        if full:
+            if not (project / "canon/world/setting.md").is_file():
+                missing.append("setting")
+            if not (project / "canon/commercial.yaml").is_file():
+                missing.append("commercial")
+        if missing:
+            label = "setting, outline, volume and commercial" if full else "outline and volume"
+            raise WorkflowGateError(
+                f"approved {label} are required; missing: " + ", ".join(missing)
+            )
 
     def approve(
         self,

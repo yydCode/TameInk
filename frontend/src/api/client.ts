@@ -408,6 +408,49 @@ export function generateChapter(projectId: string, chapterId: string, instructio
   });
 }
 
+// P0 章纲人审：只生成章纲，等人审批后继续生成正文
+export function generateChapterPlan(projectId: string, chapterId: string, instruction: string, volumeId = "1"): Promise<Task> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/design/agent/chapters/${encodeURIComponent(chapterId)}/plan`, {
+    method: "POST",
+    body: JSON.stringify({ instruction, volume_id: volumeId }),
+  });
+}
+
+// P0 批准章纲后，跑后续正文流水线
+export function approveChapterPlan(projectId: string, chapterId: string, taskId: string): Promise<Task> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/design/agent/chapters/${encodeURIComponent(chapterId)}/${taskId}/approve-plan`, {
+    method: "POST",
+  });
+}
+
+// P0 查询当前章节阶段（plan_awaiting_approval / draft_awaiting_approval / 等）
+export interface ChapterStage {
+  stage: string;
+}
+export function getChapterStage(projectId: string, chapterId: string, taskId: string): Promise<ChapterStage> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/design/agent/chapters/${encodeURIComponent(chapterId)}/${taskId}/stage`);
+}
+
+// P1 整章修订：基于人编辑后的草稿重新审计+局部修订
+export function reviseChapter(projectId: string, chapterId: string, taskId: string): Promise<Task> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/design/agent/chapters/${encodeURIComponent(chapterId)}/${taskId}/revise`, {
+    method: "POST",
+  });
+}
+
+// P3 局部重写：人选中一段文字，AI 只重写该段
+export function localReviseChapter(
+  projectId: string,
+  chapterId: string,
+  taskId: string,
+  input: { start: number; end: number; instruction: string },
+): Promise<Task> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/design/agent/chapters/${encodeURIComponent(chapterId)}/${taskId}/local-revise`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
 export function startChapter(
   projectId: string,
   chapterId: string,

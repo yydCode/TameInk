@@ -9,25 +9,32 @@ import {
   LoaderCircle,
   RefreshCw,
   Sparkles,
+  Wand2,
   XCircle,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router";
 
 import {
   approveChapter,
+  approveChapterPlan,
   auditChapterCommercially,
   generateChapter,
+  generateChapterPlan,
+  getChapterStage,
   getCommercialAudit,
   getDocument,
   getDraft,
   getTaskRun,
   listMemoryCandidates,
+  localReviseChapter,
+  reviseChapter,
   saveDraft,
   transitionTask,
   type MemoryCandidate,
 } from "../api/client";
 import { queryKeys } from "../app/queryKeys";
 import { NovelEditor } from "../components/editor/NovelEditor";
+import { pushDecision } from "../features/decisions/decisionQueue";
 import { RunStatus } from "../features/runs/RunStatus";
 import { useProjectWorkspace } from "../features/workspace/useProjectWorkspace";
 import { useTaskStream } from "../hooks/useTaskStream";
@@ -90,6 +97,9 @@ export function ChapterPage() {
   const [evidenceTab, setEvidenceTab] = useState<EvidenceTab>("plan");
   const [acceptedMemory, setAcceptedMemory] = useState<Set<string>>(new Set());
   const [overrideReason, setOverrideReason] = useState("");
+  // P3 局部重写：作者贴入要重写的段落 + 指令
+  const [localSelection, setLocalSelection] = useState("");
+  const [localInstruction, setLocalInstruction] = useState("");
   const [error, setError] = useState<string | null>(null);
   const parentRef = useRef<HTMLDivElement>(null);
   const allTreeItems = useMemo(
@@ -151,6 +161,14 @@ export function ChapterPage() {
     queryFn: () => getTaskRun(projectId, activeTask!.id),
     enabled: Boolean(activeTask),
   });
+  // P0 章纲人审：查询当前阶段（plan_awaiting_approval / draft_awaiting_approval / 等）
+  const stage = useQuery({
+    queryKey: ["chapter-stage", projectId, activeTask?.id],
+    queryFn: () => getChapterStage(projectId, selectedId, activeTask!.id),
+    enabled: activeTask?.status === "awaiting_approval",
+    refetchInterval: 5_000,
+  });
+  const stageValue = stage.data?.stage ?? "";
   const stream = useTaskStream(
     projectId,
     activeTask && ["pending", "running"].includes(activeTask.status)
@@ -242,6 +260,83 @@ export function ChapterPage() {
     },
     onError: (cause) => setError(cause.message),
   });
+  // P0 章纲人审：只生成章纲，等人审批
+  const generatePlan = useMutation({
+    mutationFn: () =>
+      generateChapterPlan(
+        projectId,
+        selectedId,
+        instruction,
+        selectedChapter?.volume_id ?? snapshot.data?.volumes[0]?.id ?? "1",
+      ),
+    onSuccess: (task) => {
+      setError(null);
+      navigate(`/projects/${projectId}/chapters/${task.chapter_id}`);
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.tasks(projectId),
+      });
+    },
+    onError: (cause) => setError(cause.message),
+  });
+  // P0 批准章纲后，跑后续正文流水线
+  const approvePlan = useMutation({
+    mutationFn: () =>
+      approveChapterPlan(projectId, selectedId, activeTask!.id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.tasks(projectId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["chapter-stage", projectId, activeTask?.id],
+      });
+    },
+    onError: (cause) => setError(cause.message),
+  });
+  // P1 整章修订：基于人编辑后的草稿重新审计+局部修订
+  const revise = useMutation({
+    mutationFn: () => reviseChapter(projectId, selectedId, activeTask!.id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.tasks(projectId),
+      });
+    },
+    onError: (cause) => setError(cause.message),
+  });
+  // P3 局部重写：用 markdown.indexOf(selection) 算字符偏移
+  const localRevise = useMutation({
+    mutationFn: () => {
+      const start = content.indexOf(localSelection);
+      if (start < 0) {
+        throw new Error("选中的段落未在当前正文中找到，请检查是否已保存。");
+      }
+      return localReviseChapter(projectId, selectedId, activeTask!.id, {
+        start,
+        end: start + localSelection.length,
+        instruction: localInstruction,
+      });
+    },
+    onSuccess: () => {
+      setLocalSelection("");
+      setLocalInstruction("");
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.tasks(projectId),
+      });
+    },
+    onError: (cause) => setError(cause.message),
+  });
+  // 把审查问题 push 到决策队列
+  function pushAuditDecision(
+    item: { id: string; severity: string; description: string; citation: { quote: string } },
+    kind: "continuity" | "style",
+  ) {
+    pushDecision(projectId, {
+      id: `audit-${kind}-${item.id}`,
+      type: "audit",
+      title: `[${kind === "continuity" ? "连续性" : "文风"}] ${item.severity}`,
+      content: item.description,
+      reason: item.citation.quote,
+    });
+  }
   async function cancel() {
     if (!activeTask) return;
     await transitionTask(projectId, activeTask.id, "cancel");
@@ -413,6 +508,58 @@ export function ChapterPage() {
                 )}
                 Agent 生成章节
               </button>
+              {/* P0: 先生成章纲（人审），批准后再跑正文 */}
+              <button
+                className="button button-secondary"
+                type="button"
+                disabled={
+                  !prerequisitesReady ||
+                  generatePlan.isPending ||
+                  activeTask?.status === "pending" ||
+                  activeTask?.status === "running" ||
+                  activeTask?.status === "awaiting_approval"
+                }
+                onClick={() => generatePlan.mutate()}
+                title="只生成章纲，人审批后再跑正文"
+              >
+                {generatePlan.isPending ? (
+                  <LoaderCircle className="spin" size={15} />
+                ) : (
+                  <BookOpenCheck size={15} />
+                )}
+                先生成章纲
+              </button>
+              {/* P0 阶段：人审章纲后，批准继续生成正文 */}
+              {activeTask?.status === "awaiting_approval" &&
+                stageValue === "plan_awaiting_approval" && (
+                  <button
+                    className="button button-primary"
+                    type="button"
+                    disabled={approvePlan.isPending}
+                    onClick={() => approvePlan.mutate()}
+                  >
+                    <Sparkles size={15} />
+                    批准章纲，继续生成正文
+                  </button>
+                )}
+              {/* P1 整章修订：基于人编辑后的草稿重新审计+局部修订 */}
+              {activeTask?.status === "awaiting_approval" &&
+                stageValue !== "plan_awaiting_approval" && (
+                  <button
+                    className="button button-secondary"
+                    type="button"
+                    disabled={revise.isPending || content !== savedContent}
+                    onClick={() => revise.mutate()}
+                    title="基于你编辑后的正文重新审计+局部修订"
+                  >
+                    {revise.isPending ? (
+                      <LoaderCircle className="spin" size={15} />
+                    ) : (
+                      <Wand2 size={15} />
+                    )}
+                    重写整章
+                  </button>
+                )}
               {activeTask?.status === "awaiting_approval" && (
                 <button
                   className="button button-primary"
@@ -431,6 +578,48 @@ export function ChapterPage() {
               )}
             </div>
           </div>
+          {/* P3 局部重写区块：作者贴入要重写的段落 + 指令 */}
+          {activeTask?.status === "awaiting_approval" &&
+            stageValue !== "plan_awaiting_approval" && (
+              <details className="local-revise-block">
+                <summary>局部重写选中段落</summary>
+                <label>
+                  要重写的段落（从上方正文复制粘贴）
+                  <textarea
+                    value={localSelection}
+                    onChange={(event) => setLocalSelection(event.target.value)}
+                    rows={3}
+                    placeholder="从正文复制要重写的段落贴入这里"
+                  />
+                </label>
+                <label>
+                  修改指令
+                  <textarea
+                    value={localInstruction}
+                    onChange={(event) => setLocalInstruction(event.target.value)}
+                    rows={2}
+                    placeholder="例如：把这一段改为更紧张的氛围，加入主角的心理活动"
+                  />
+                </label>
+                <button
+                  className="button button-secondary"
+                  type="button"
+                  disabled={
+                    localRevise.isPending ||
+                    !localSelection.trim() ||
+                    !localInstruction.trim()
+                  }
+                  onClick={() => localRevise.mutate()}
+                >
+                  {localRevise.isPending ? (
+                    <LoaderCircle className="spin" size={15} />
+                  ) : (
+                    <Wand2 size={15} />
+                  )}
+                  局部重写该段
+                </button>
+              </details>
+            )}
           {content ? (
             <NovelEditor
               markdown={content}
@@ -481,6 +670,7 @@ export function ChapterPage() {
             setOverrideReason={setOverrideReason}
             onReaudit={() => reaudit.mutate()}
             reauditPending={reaudit.isPending}
+            onPushAudit={pushAuditDecision}
           />
         </aside>
       </div>
@@ -501,10 +691,12 @@ function AuditSection({
   title,
   items,
   emptyText,
+  onPush,
 }: {
   title: string;
   items: AuditIssue[];
   emptyText: string;
+  onPush?: (item: AuditIssue) => void;
 }) {
   return (
     <section className="audit-section">
@@ -520,6 +712,15 @@ function AuditSection({
             <strong>{item.severity}</strong>
             <p>{item.description}</p>
             <q>{item.citation.quote}</q>
+            {onPush && (
+              <button
+                className="button button-secondary"
+                type="button"
+                onClick={() => onPush(item)}
+              >
+                加入待办
+              </button>
+            )}
           </article>
         ))
       ) : (
@@ -542,6 +743,7 @@ function EvidenceContent({
   setOverrideReason,
   onReaudit,
   reauditPending,
+  onPushAudit,
 }: {
   tab: EvidenceTab;
   plan?: string;
@@ -555,6 +757,7 @@ function EvidenceContent({
   setOverrideReason: (value: string) => void;
   onReaudit: () => void;
   reauditPending: boolean;
+  onPushAudit?: (item: AuditIssue, kind: "continuity" | "style") => void;
 }) {
   if (tab === "plan")
     return (
@@ -571,11 +774,13 @@ function EvidenceContent({
           title="连续性问题"
           items={reports?.continuity ?? []}
           emptyText="没有报告问题。"
+          onPush={onPushAudit ? (item) => onPushAudit(item, "continuity") : undefined}
         />
         <AuditSection
           title="文风问题"
           items={reports?.style ?? []}
           emptyText="没有报告问题。"
+          onPush={onPushAudit ? (item) => onPushAudit(item, "style") : undefined}
         />
         <section className="audit-section">
           <div className="audit-section-title">

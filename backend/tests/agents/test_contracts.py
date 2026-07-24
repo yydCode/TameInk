@@ -43,6 +43,7 @@ REFERENCE = {"path": "canon/premise.md", "location": "paragraph 2", "quote": "�
                 "content": "内容",
                 "context_intent": {"keywords": ["已确认事实"]},
                 "references": [REFERENCE],
+                "chapter_end_hook": "章末钩子",
             },
         ),
         (
