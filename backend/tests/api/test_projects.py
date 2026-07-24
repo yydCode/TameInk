@@ -49,12 +49,18 @@ def test_workflow_status_only_reports_confirmed_content(tmp_path: Path) -> None:
         "outline_confirmed": False,
         "volume_one_confirmed": False,
         "commercial_confirmed": False,
+        "confirmed_volumes": [],
+        "ready_for_chapters": False,
+        "next_step": "confirm_setting",
     }
     assert after_setting.json() == {
         "setting_confirmed": True,
         "outline_confirmed": False,
         "volume_one_confirmed": False,
         "commercial_confirmed": False,
+        "confirmed_volumes": [],
+        "ready_for_chapters": False,
+        "next_step": "create_commercial",
     }
 
 

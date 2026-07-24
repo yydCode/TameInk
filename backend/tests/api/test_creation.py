@@ -106,6 +106,7 @@ def test_agent_chapter_route_runs_planner_writer_and_auditors(tmp_path: Path, mo
                     content="章节计划",
                     context_intent={"keywords": ["生成正文"]},
                     references=reference,
+                    chapter_end_hook="章末钩子",
                 )
             if agent == "DraftWriter" and "draft" not in payload:
                 return ChapterDraft(
