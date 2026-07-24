@@ -7,7 +7,7 @@ from huey import Huey  # type: ignore[import-untyped]
 from huey.contrib.sql_huey import SqlHuey  # type: ignore[import-untyped]
 from peewee import SqliteDatabase  # type: ignore[import-untyped]
 
-from app.agents.runtime import DeepAgentRunner
+from app.agents.runtime import AgentRunner
 from app.agents.schemas import CommercialReport, CommercialStrategy, Outline, StorySetting
 from app.domain.diagnostics import TaskLogLevel
 from app.domain.errors import TameInkError, WorkflowGateError
@@ -29,6 +29,10 @@ class AgentJobKind(StrEnum):
     BOOK_OUTLINE = "book_outline"
     VOLUME_OUTLINE = "volume_outline"
     CHAPTER = "chapter"
+    CHAPTER_PLAN = "chapter_plan"
+    CHAPTER_DRAFT = "chapter_draft"
+    CHAPTER_REVISE = "chapter_revise"
+    CHAPTER_LOCAL_REVISE = "chapter_local_revise"
     COMMERCIAL = "commercial"
     COMMERCIAL_AUDIT = "commercial_audit"
 
@@ -81,7 +85,6 @@ class DurableAgentQueue:
                 ensure_ascii=False,
                 separators=(",", ":"),
             ),
-            overwrite=False,
         )
         TasksRepository(DatabaseRepository(workspace), project_id).append_log(
             task_id,
@@ -126,7 +129,7 @@ def execute_agent_job(
     else:
         raise WorkflowGateError("agent job task is not ready")
 
-    holder: dict[str, DeepAgentRunner] = {}
+    holder: dict[str, AgentRunner] = {}
 
     def before(agent: str, diagnostics: dict[str, object] | None = None) -> None:
         if service.cancellation_requested(task_id):
@@ -240,8 +243,8 @@ def create_runner(
     secrets: ApiKeyStore,
     before_invoke: Any,
     after_invoke: Any,
-) -> DeepAgentRunner:
-    return DeepAgentRunner(
+) -> AgentRunner:
+    return AgentRunner(
         workspace,
         project_id,
         settings,
@@ -257,7 +260,7 @@ def _run_job(
     workspace: WorkspaceRepository,
     project_id: str,
     task_id: str,
-    runner: DeepAgentRunner,
+    runner: AgentRunner,
 ) -> Task:
     if kind is AgentJobKind.SETTING:
         output = runner.invoke("StoryArchitect", {"instruction": _text(payload, "instruction")})
@@ -290,6 +293,44 @@ def _run_job(
             project_id,
             task_id,
             _text(payload, "chapter_id"),
+            _text(payload, "instruction"),
+            _text(payload, "volume_id"),
+            directive=_directive_from(payload),
+        )
+    if kind is AgentJobKind.CHAPTER_PLAN:
+        return ChapterService(workspace, runner=runner).run_plan_for_task(
+            project_id,
+            task_id,
+            _text(payload, "chapter_id"),
+            _text(payload, "instruction"),
+            _text(payload, "volume_id"),
+            directive=_directive_from(payload),
+        )
+    if kind is AgentJobKind.CHAPTER_DRAFT:
+        return ChapterService(workspace, runner=runner).approve_plan_and_continue(
+            project_id,
+            task_id,
+            _text(payload, "chapter_id"),
+            _text(payload, "volume_id"),
+        )
+    if kind is AgentJobKind.CHAPTER_REVISE:
+        return ChapterService(workspace, runner=runner).revise_draft(
+            project_id,
+            task_id,
+            _text(payload, "chapter_id"),
+            _text(payload, "volume_id"),
+        )
+    if kind is AgentJobKind.CHAPTER_LOCAL_REVISE:
+        start = payload.get("start")
+        end = payload.get("end")
+        if not isinstance(start, int) or not isinstance(end, int):
+            raise WorkflowGateError("local revision requires integer start and end")
+        return ChapterService(workspace, runner=runner).locally_revise(
+            project_id,
+            task_id,
+            _text(payload, "chapter_id"),
+            start,
+            end,
             _text(payload, "instruction"),
             _text(payload, "volume_id"),
         )
@@ -377,3 +418,8 @@ def _text(payload: dict[str, Any], key: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise WorkflowGateError(f"{key} is required")
     return value
+
+
+def _directive_from(payload: dict[str, Any]) -> dict[str, object] | None:
+    directive = payload.get("directive")
+    return directive if isinstance(directive, dict) else None

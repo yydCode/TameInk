@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from app.api.bestseller import router as bestseller_router
 from app.api.commercial import router as commercial_router
 from app.api.creation import router as creation_router
+from app.api.dashboard import router as dashboard_router
 from app.api.diagnostics import router as diagnostics_router
 from app.api.events import router as events_router
 from app.api.health import router as health_router
@@ -65,6 +66,7 @@ def create_app(workspace_root: Path, *, queue_immediate: bool = True) -> FastAPI
     application.include_router(commercial_router, prefix="/api")
     application.include_router(diagnostics_router, prefix="/api")
     application.include_router(bestseller_router, prefix="/api")
+    application.include_router(dashboard_router, prefix="/api")
 
     @application.exception_handler(TameInkError)
     async def tame_ink_error(_: Request, error: TameInkError) -> JSONResponse:
