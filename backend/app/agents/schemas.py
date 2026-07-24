@@ -85,6 +85,10 @@ class ChapterPlan(ReferencedOutput):
     chapter_id: str
     content: str
     context_intent: ContextIntent
+    target_word_count: int = Field(default=2500, ge=1000, le=5000)
+    opening_hook_style: Literal["conflict", "scene", "dialogue"] = "conflict"
+    scenes_count: int = Field(default=1, ge=1, le=3)
+    chapter_end_hook: str = Field(min_length=1)
 
 
 class ChapterDraft(ReferencedOutput):
@@ -104,7 +108,29 @@ class StyleIssue(ReferencedOutput):
     citation: DraftCitation
 
 
+BASE_COMMERCIAL_DIMENSIONS: frozenset[str] = frozenset(
+    {
+        "opening_urgency",
+        "reader_promise",
+        "emotional_payoff",
+        "conflict_escalation",
+        "information_clarity",
+        "chapter_hook",
+        "differentiation",
+    }
+)
+
+FANQIE_COMMERCIAL_DIMENSIONS: frozenset[str] = frozenset(
+    {
+        "first_screen_hook",  # 前 7 行（手机一屏）钩子强度
+        "pacing_density",  # 节奏密度——无效铺垫占比
+        "chapter_end_cliffhanger",  # 断章质量——是否卡在关键节点
+        "character_contrast",  # 人设反差——主角/NPC 是否有立体反差
+    }
+)
+
 CommercialDimension = Literal[
+    # 通用 7 维度
     "opening_urgency",
     "reader_promise",
     "emotional_payoff",
@@ -112,6 +138,11 @@ CommercialDimension = Literal[
     "information_clarity",
     "chapter_hook",
     "differentiation",
+    # 番茄平台专属
+    "first_screen_hook",
+    "pacing_density",
+    "chapter_end_cliffhanger",
+    "character_contrast",
 ]
 
 
@@ -169,19 +200,20 @@ class CommercialReport(ReferencedOutput):
 
     @model_validator(mode="after")
     def validate_dimensions(self) -> Self:
-        expected = {
-            "opening_urgency",
-            "reader_promise",
-            "emotional_payoff",
-            "conflict_escalation",
-            "information_clarity",
-            "chapter_hook",
-            "differentiation",
-        }
         observed = {dimension.dimension for dimension in self.dimensions}
-        if observed != expected or len(self.dimensions) != len(expected):
+        # 必须包含全部 7 个基础维度
+        if not BASE_COMMERCIAL_DIMENSIONS.issubset(observed):
             raise ValueError("COMMERCIAL_DIMENSIONS_INVALID")
-        mean = round(sum(dimension.score for dimension in self.dimensions) / len(expected))
+        # 不得出现基础维度 + 番茄维度之外的维度
+        allowed = BASE_COMMERCIAL_DIMENSIONS | FANQIE_COMMERCIAL_DIMENSIONS
+        if not observed.issubset(allowed):
+            raise ValueError("COMMERCIAL_DIMENSIONS_INVALID")
+        # 不得有重复维度
+        if len(self.dimensions) != len(observed):
+            raise ValueError("COMMERCIAL_DIMENSIONS_INVALID")
+        mean = round(
+            sum(dimension.score for dimension in self.dimensions) / len(self.dimensions)
+        )
         if self.total_score != mean:
             raise ValueError("COMMERCIAL_SCORE_INVALID")
         return self
@@ -202,3 +234,53 @@ class MemoryCuration(ReferencedOutput):
 class ImportAnalysis(ReferencedOutput):
     summary: str
     content: str
+
+
+class ChapterDirective(StrictSchema):
+    """人给章节创作的结构化方向指令——人决策、AI 执行的核心载体。"""
+
+    required_characters: list[str] = Field(default_factory=list, max_length=20)
+    resolve_foreshadowing_ids: list[str] = Field(default_factory=list, max_length=10)
+    plant_foreshadowing: list[str] = Field(default_factory=list, max_length=10)
+    emotional_tone: str = ""
+    pacing: Literal["slow", "medium", "fast"] = "medium"
+    focus_entities: list[str] = Field(default_factory=list, max_length=20)
+    key_events: list[str] = Field(default_factory=list, max_length=10)
+    target_word_count: int | None = Field(default=None, ge=500, le=20_000)
+
+    def to_planner_payload(self) -> dict[str, object]:
+        return {
+            "required_characters": self.required_characters,
+            "resolve_foreshadowing_ids": self.resolve_foreshadowing_ids,
+            "plant_foreshadowing": self.plant_foreshadowing,
+            "emotional_tone": self.emotional_tone,
+            "pacing": self.pacing,
+            "focus_entities": self.focus_entities,
+            "key_events": self.key_events,
+            "target_word_count": self.target_word_count,
+        }
+
+    def fts_queries(self) -> list[str]:
+        return [*[c for c in self.required_characters if len(c) >= 2],
+                *[e for e in self.focus_entities if len(e) >= 2]]
+
+
+class LocalRevisionRequest(StrictSchema):
+    """局部重生成请求：人选中一段文字，给出修改指令，AI 只重写该段。"""
+
+    start: int = Field(ge=0)
+    end: int = Field(gt=0)
+    instruction: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_range(self) -> Self:
+        if self.start >= self.end:
+            raise ValueError("LOCAL_REVISION_RANGE_INVALID")
+        return self
+
+
+class AuditFeedback(StrictSchema):
+    """人对审计结果的反馈：决定哪些问题要改、添加自己的修改意见。"""
+
+    accepted_issue_ids: list[str] = Field(default_factory=list)
+    custom_revisions: list[dict[str, str]] = Field(default_factory=list)
