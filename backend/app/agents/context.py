@@ -225,9 +225,9 @@ class ContextBuilder:
         except WorkspacePathViolationError as error:
             raise RuntimeError("CONTEXT_SOURCE_INVALID") from error
         result = self.backend.read(f"/{path}", 0, 1_000_000)
-        if result.error is not None or result.file_data is None:
+        if result.error is not None or result.content is None:
             raise RuntimeError("CONTEXT_SOURCE_MISSING")
-        content = result.file_data["content"]
+        content = result.content
         remaining = budget.max_total_characters - total_characters
         excerpt_length = min(len(content), budget.max_source_characters, remaining)
         if excerpt_length <= 0:

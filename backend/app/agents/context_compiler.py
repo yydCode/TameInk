@@ -25,15 +25,51 @@ class ChapterContextCompiler:
         volume = self._existing(project, [f"canon/volumes/{volume_id}.md"])
         summaries = self._summary_paths(project, payload, volume_id)
         intent = self._intent(payload)
+        directive = payload.get("directive")
+        directive_queries: list[str] = []
+        entity_paths: list[str] = []
+        if isinstance(directive, dict):
+            directive_queries = self._directive_fts_queries(directive)
+            entity_paths = self._directive_entity_paths(directive, project)
+        all_queries: list[str] = []
+        if intent is not None:
+            all_queries.extend(intent.queries())
+        all_queries.extend(directive_queries)
+        all_queries = list(dict.fromkeys(all_queries))
         return ContextRequest(
             stage=agent,
             fixed_rules=fixed,
             volume=volume,
             summaries=summaries,
-            entities=[],
-            fts_queries=intent.queries() if intent is not None else [],
+            entities=entity_paths,
+            fts_queries=all_queries,
             budget=ContextBudget(),
         )
+
+    @staticmethod
+    def _directive_fts_queries(directive: dict[str, object]) -> list[str]:
+        queries: list[str] = []
+        for field in ("required_characters", "focus_entities"):
+            values = directive.get(field)
+            if isinstance(values, list):
+                for value in values:
+                    if isinstance(value, str) and len(value) >= 2:
+                        queries.append(value)
+        return queries
+
+    @staticmethod
+    def _directive_entity_paths(
+        directive: dict[str, object], project: Path
+    ) -> list[str]:
+        paths: list[str] = []
+        ids = directive.get("resolve_foreshadowing_ids")
+        if isinstance(ids, list):
+            for fid in ids:
+                if isinstance(fid, str) and fid:
+                    relative = f"memory/foreshadowing/{fid}.yaml"
+                    if (project / relative).is_file():
+                        paths.append(relative)
+        return paths
 
     @staticmethod
     def _existing(project: Path, candidates: list[str]) -> list[str]:
