@@ -58,6 +58,9 @@ class WorkflowStatus(BaseModel):
     outline_confirmed: bool
     volume_one_confirmed: bool
     commercial_confirmed: bool
+    confirmed_volumes: list[str]
+    ready_for_chapters: bool
+    next_step: str
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
@@ -187,18 +190,41 @@ def _document(
 @router.get("/{project_id}/workflow-status", response_model=WorkflowStatus)
 def get_workflow_status(project_id: str, request: Request) -> WorkflowStatus:
     workspace: WorkspaceRepository = request.app.state.workspace
-    # Resolve through the workspace repository so the endpoint keeps the same path checks as writes.
+    setting_confirmed = workspace.resolve_project_path(
+        project_id, "canon/world/setting.md"
+    ).is_file()
+    outline_confirmed = workspace.resolve_project_path(project_id, "canon/outline.md").is_file()
+    commercial_confirmed = workspace.resolve_project_path(
+        project_id, "canon/commercial.yaml"
+    ).is_file()
+    volumes_dir = workspace.resolve_project_path(project_id, "canon/volumes")
+    confirmed_volumes: list[str] = []
+    if volumes_dir.is_dir():
+        confirmed_volumes = sorted(
+            path.stem for path in volumes_dir.iterdir() if path.is_file() and path.suffix == ".md"
+        )
+    volume_one_confirmed = "1" in confirmed_volumes
+    ready_for_chapters = (
+        setting_confirmed and outline_confirmed and commercial_confirmed and bool(confirmed_volumes)
+    )
+    if not setting_confirmed:
+        next_step = "confirm_setting"
+    elif not commercial_confirmed:
+        next_step = "create_commercial"
+    elif not outline_confirmed:
+        next_step = "create_outline"
+    elif not confirmed_volumes:
+        next_step = "create_volume"
+    else:
+        next_step = "start_chapter"
     return WorkflowStatus(
-        setting_confirmed=workspace.resolve_project_path(
-            project_id, "canon/world/setting.md"
-        ).is_file(),
-        outline_confirmed=workspace.resolve_project_path(project_id, "canon/outline.md").is_file(),
-        volume_one_confirmed=workspace.resolve_project_path(
-            project_id, "canon/volumes/1.md"
-        ).is_file(),
-        commercial_confirmed=workspace.resolve_project_path(
-            project_id, "canon/commercial.yaml"
-        ).is_file(),
+        setting_confirmed=setting_confirmed,
+        outline_confirmed=outline_confirmed,
+        volume_one_confirmed=volume_one_confirmed,
+        commercial_confirmed=commercial_confirmed,
+        confirmed_volumes=confirmed_volumes,
+        ready_for_chapters=ready_for_chapters,
+        next_step=next_step,
     )
 
 

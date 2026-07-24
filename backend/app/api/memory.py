@@ -1,7 +1,7 @@
 from typing import Literal
 
 from fastapi import APIRouter, Request, status
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.agents.schemas import MemoryCandidate
 from app.domain.project import MemoryRecord
@@ -19,6 +19,30 @@ def list_memory_candidates(
     from app.workflows.chapter import ChapterService
 
     return ChapterService(request.app.state.workspace).read_memory_candidates(project_id, task_id)
+
+
+class MemoryCandidateUpdateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    content: str = Field(min_length=1)
+
+
+@router.put(
+    "/tasks/{task_id}/memory-candidates/{stable_id}",
+    response_model=list[MemoryCandidate],
+)
+def update_memory_candidate(
+    project_id: str,
+    task_id: str,
+    stable_id: str,
+    payload: MemoryCandidateUpdateRequest,
+    request: Request,
+) -> list[MemoryCandidate]:
+    """P2: 人编辑 AI 提取的记忆候选内容。"""
+    from app.workflows.chapter import ChapterService
+
+    return ChapterService(request.app.state.workspace).update_memory_candidate(
+        project_id, task_id, stable_id, payload.content
+    )
 
 
 class ProvenanceRequest(BaseModel):
