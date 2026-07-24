@@ -10,6 +10,15 @@ from langchain_openai import ChatOpenAI
 from app.infrastructure.model import TameInkChatOpenAI
 
 
+def _extract_tool_info(tool: Any) -> tuple[str, str]:
+    """从 BaseTool 或 dict 中提取 name 和 description。"""
+    if isinstance(tool, dict):
+        name = tool.get("title") or tool.get("name") or "schema"
+        description = tool.get("description", "")
+        return name, description
+    return tool.name, getattr(tool, "description", "")
+
+
 class ScriptedChatModel(BaseChatModel):
     responses: list[AIMessage]
     response_index: int = 0
@@ -21,8 +30,8 @@ class ScriptedChatModel(BaseChatModel):
         return "scripted-chat-model"
 
     def bind_tools(self, tools: Sequence[Any], **kwargs: Any) -> "ScriptedChatModel":
-        self.bound_tool_names = [tool.name for tool in tools]
-        self.bound_tool_descriptions = {tool.name: tool.description for tool in tools}
+        self.bound_tool_names = [_extract_tool_info(tool)[0] for tool in tools]
+        self.bound_tool_descriptions = dict(_extract_tool_info(tool) for tool in tools)
         return self
 
     def _generate(
@@ -44,8 +53,8 @@ class ScriptedOpenAIModel(ChatOpenAI):
     bound_tool_descriptions: dict[str, str] = {}
 
     def bind_tools(self, tools: Sequence[Any], **kwargs: Any) -> "ScriptedOpenAIModel":
-        self.bound_tool_names = [tool.name for tool in tools]
-        self.bound_tool_descriptions = {tool.name: tool.description for tool in tools}
+        self.bound_tool_names = [_extract_tool_info(tool)[0] for tool in tools]
+        self.bound_tool_descriptions = dict(_extract_tool_info(tool) for tool in tools)
         return self
 
     def _generate(
@@ -67,8 +76,8 @@ class ScriptedTameInkModel(TameInkChatOpenAI):
     bound_tool_descriptions: dict[str, str] = {}
 
     def bind_tools(self, tools: Sequence[Any], **kwargs: Any) -> "ScriptedTameInkModel":
-        self.bound_tool_names = [tool.name for tool in tools]
-        self.bound_tool_descriptions = {tool.name: tool.description for tool in tools}
+        self.bound_tool_names = [_extract_tool_info(tool)[0] for tool in tools]
+        self.bound_tool_descriptions = dict(_extract_tool_info(tool) for tool in tools)
         return self
 
     def _generate(
