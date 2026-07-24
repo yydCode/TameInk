@@ -23,5 +23,10 @@ dist/
 workspace/*
 !workspace/.gitkeep
 .tame-ink-workspace/
+.tame-ink-workspace.lock
 .playwright-cli/
 output/
+
+# Trae IDE and prototypes
+.trae/
+tame-ink-layout-prototype/

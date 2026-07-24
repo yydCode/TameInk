@@ -20,12 +20,25 @@ class PlatformPacing(CommercialModel):
     """平台商业节奏配置——番茄/起点等平台的开篇钩子和章节节奏铁律。"""
 
     chapter_word_count: int = Field(default=2500, ge=1000, le=5000)
+    # 最小字数：作者可在 RulesPage 调整，AI 审查按此判断是否字数不足
+    min_chapter_word_count: int = Field(default=2000, ge=500, le=5000)
     opening_hook_lines: int = Field(default=7, ge=3, le=20)
     scenes_per_chapter: int = Field(default=1, ge=1, le=3)
     small_climax_every: int = Field(default=3, ge=1, le=10)
     big_climax_every: int = Field(default=10, ge=5, le=30)
     opening_hook_style: Literal["conflict", "scene", "dialogue"] = "conflict"
     chapter_end_cliffhanger: bool = True
+    # 三项权重：连续性 / 文风 / 商业，建议总和为 100（作者在 RulesPage 调整）
+    weight_continuity: int = Field(default=30, ge=0, le=100)
+    weight_style: int = Field(default=30, ge=0, le=100)
+    weight_commercial: int = Field(default=40, ge=0, le=100)
+
+    @model_validator(mode="after")
+    def validate_word_count_range(self) -> Self:
+        """最小字数不得大于最大字数。"""
+        if self.min_chapter_word_count > self.chapter_word_count:
+            raise ValueError("MIN_WORD_COUNT_EXCEEDS_MAX")
+        return self
 
     @classmethod
     def for_platform(cls, platform: str) -> "PlatformPacing":

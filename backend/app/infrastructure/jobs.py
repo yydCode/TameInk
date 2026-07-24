@@ -216,11 +216,16 @@ def execute_agent_job(
     except Exception as error:
         if isinstance(error, TameInkError):
             code = error.code
+            # 业务可控错误（如 gate 检查）消息安全，可透传给前端
+            message = str(error)
         elif isinstance(error, (SettingsError, SecretStoreError)):
             code = str(error)
+            message = str(error)
         else:
             candidate = str(error)
             code = candidate if candidate.startswith("MODEL_") else type(error).__name__
+            # 外部异常（如 provider 错误）可能含敏感信息，用通用消息
+            message = "agent job failed"
         service.repository.append_log(
             task_id,
             TaskLogLevel.ERROR,
@@ -230,10 +235,11 @@ def execute_agent_job(
                 "job_kind": kind.value,
                 "error_code": code,
                 "error_type": type(error).__name__,
+                "error_detail": str(error),
             },
         )
         if service.get(task_id).status is TaskStatus.RUNNING:
-            service.fail(task_id, code, "agent job failed")
+            service.fail(task_id, code, message)
 
 
 def create_runner(

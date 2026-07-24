@@ -46,6 +46,7 @@ const emptyProfile: CommercialProfile = {
     follow_rate: null,
     revenue_per_thousand_opens_yuan: null,
   },
+  platform_pacing: null,
 };
 const emptyObservation = (): CommercialObservationInput => ({
   observed_at: new Date().toISOString(),
@@ -447,8 +448,25 @@ export function CommercialPage() {
           </div>
         </section>
       )}
-      {/* 书名简介生成器（Task B3） */}
-      <BookTitleGenerator projectId={projectId} />
+      {/* 书名简介生成器（Task B3）
+          传入 profile 和 task，让作者能选中 AI 候选书名回写到商业定位候选 */}
+      <BookTitleGenerator
+        projectId={projectId}
+        profile={profile}
+        canAdopt={task?.status === "awaiting_approval"}
+        onAdoptTitle={(title) => {
+          // 把选中的书名置顶到 title_candidates[0]，保持其他候选去重
+          const others = profile.title_candidates.filter((c) => c !== title);
+          change("title_candidates", [title, ...others]);
+          // 自动触发保存，作者无需再点「保存候选」
+          setTimeout(() => save.mutate(), 0);
+        }}
+        onAdoptSynopsis={(synopsis) => {
+          // 作者采纳 AI 简介时同步到 profile（也自动保存）
+          change("synopsis", synopsis);
+          setTimeout(() => save.mutate(), 0);
+        }}
+      />
       {/* 首测管理（Task B8） */}
       <FirstTestManager
         projectId={projectId}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Check, History, Plus, RefreshCw, X } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
@@ -14,6 +14,11 @@ import {
 } from "../api/client";
 import { queryKeys } from "../app/queryKeys";
 import { useLocalStorage } from "../hooks/useLocalStorage";
+import {
+  type DecisionItem,
+  pushDecision,
+  updateDecisionStatus,
+} from "../features/decisions/decisionQueue";
 import { useProjectWorkspace } from "../features/workspace/useProjectWorkspace";
 
 // 作者自定义数据类型
@@ -34,10 +39,8 @@ interface Stockpile {
   dailyUpdateChapters: number; // 每日更新章节数
 }
 
-// AI 决策状态：作者对每条 AI 候选条目的"采纳/忽略"决策
-type AiDecisionState = "adopted" | "ignored";
-// AI 决策记录：key 为诊断/建议的稳定哈希，value 为决策状态
-type AiDecisionMap = Record<string, AiDecisionState>;
+// AI 决策统一进入决策队列（features/decisions/decisionQueue.ts）
+// 旧的 tame-ink:ai-decisions:${projectId} localStorage 已废弃，首次加载时自动迁移
 
 // 写作统计：每日字数记录 + 今日写作时长
 interface WritingStats {
@@ -171,10 +174,10 @@ export function TodayWorkspacePage() {
     `tame-ink:writing-stats:${projectId}`,
     { dailyWords: {}, todayMinutes: 60 },
   );
-  // AI 决策记录：作者对每条 AI 候选条目的"采纳/忽略"决策
-  const [aiDecisions, setAiDecisions] = useLocalStorage<AiDecisionMap>(
-    `tame-ink:ai-decisions:${projectId}`,
-    {},
+  // AI 决策统一进入决策队列（与 DecisionQueuePage 共用同一份数据）
+  const [decisions, setDecisions] = useLocalStorage<DecisionItem[]>(
+    `tame-ink:decisions:${projectId}`,
+    [],
   );
 
   // 如果日期变了，重置今日已写
@@ -268,17 +271,84 @@ export function TodayWorkspacePage() {
     ? Math.floor(stockpile.chapters / stockpile.dailyUpdateChapters)
     : 0;
 
-  // 更新 AI 决策：state 为 undefined 时表示撤销决策
-  function handleAiDecide(key: string, state: AiDecisionState | undefined) {
-    setAiDecisions((prev) => {
-      const next = { ...prev };
-      if (state === undefined) {
-        delete next[key];
-      } else {
-        next[key] = state;
-      }
-      return next;
-    });
+  // 从 localStorage 重新读取决策队列（pushDecision 直接写入了 localStorage）
+  // 用 useCallback 包裹以保证 useEffect 依赖稳定
+  const refreshDecisions = useCallback(() => {
+    try {
+      const raw = window.localStorage.getItem(`tame-ink:decisions:${projectId}`);
+      setDecisions(raw ? (JSON.parse(raw) as DecisionItem[]) : []);
+    } catch {
+      // 静默失败
+    }
+  }, [projectId, setDecisions]);
+
+  // 把诊断/建议候选项推送到决策队列（幂等：相同 id 不会重复推送）
+  // 数据加载后调用，让作者可以在 DecisionQueuePage 或本页就地决策
+  useEffect(() => {
+    if (!diagnostics.data) return;
+    for (const item of diagnostics.data) {
+      const id = diagnosticKey(item);
+      pushDecision(projectId, {
+        id,
+        type: "suggestion",
+        title: `[诊断] ${diagnosticTypeLabel(item.diagnostic_type)}：${item.target}`,
+        context: item.conclusion,
+        candidates: [
+          {
+            id: `${id}-c1`,
+            content: item.possible_causes.length > 0
+              ? `可能原因：${item.possible_causes.join("、")}`
+              : "采纳此诊断结论",
+            pros: [],
+            cons: [],
+            source: `严重度：${item.severity}`,
+          },
+        ],
+        pagePath: `/projects/${projectId}/today`,
+      });
+    }
+    // 触发本地 state 刷新（pushDecision 直接写入了 localStorage）
+    refreshDecisions();
+  }, [diagnostics.data, projectId, refreshDecisions]);
+
+  useEffect(() => {
+    if (!suggestions.data) return;
+    for (const item of suggestions.data) {
+      const id = suggestionKey(item);
+      pushDecision(projectId, {
+        id,
+        type: "suggestion",
+        title: `[建议] ${suggestionTypeLabel(item.type)}：${item.content.slice(0, 30)}`,
+        context: item.content,
+        candidates: [
+          {
+            id: `${id}-c1`,
+            content: item.content,
+            pros: [`优先级：${priorityLabel(item.priority)}`],
+            cons: [],
+            source: item.reason,
+          },
+        ],
+        pagePath: `/projects/${projectId}/today`,
+      });
+    }
+    refreshDecisions();
+  }, [suggestions.data, projectId, refreshDecisions]);
+
+  // 作者对某条 AI 候选做决策：state 为 undefined 时表示撤销决策
+  function handleAiDecide(key: string, state: "accepted" | "ignored" | undefined) {
+    if (state === undefined) {
+      updateDecisionStatus(projectId, key, "pending");
+    } else {
+      updateDecisionStatus(projectId, key, state, `${key}-c1`);
+    }
+    refreshDecisions();
+  }
+
+  // 查询某条候选项的决策状态
+  function getDecisionState(key: string): "pending" | "accepted" | "ignored" | "modified" | undefined {
+    const item = decisions.find((d) => d.id === key);
+    return item?.status;
   }
 
   // 平均时速（字/小时）= 今日字数 / 今日写作小时数
@@ -627,14 +697,14 @@ export function TodayWorkspacePage() {
           data={diagnostics.data}
           isFetching={diagnostics.isFetching}
           isError={diagnostics.isError}
-          decisions={aiDecisions}
+          getState={getDecisionState}
           onDecide={handleAiDecide}
         />
         <AiSuggestionsSection
           data={suggestions.data}
           isFetching={suggestions.isFetching}
           isError={suggestions.isError}
-          decisions={aiDecisions}
+          getState={getDecisionState}
           onDecide={handleAiDecide}
         />
       </section>
@@ -722,20 +792,21 @@ function TodoList({ todos, setTodos }: { todos: TodoItem[]; setTodos: (todos: To
 /**
  * AI 诊断候选区
  * 显示 runDiagnostics 返回的诊断列表，每项可采纳/忽略
+ * 决策状态从统一决策队列查询（features/decisions/decisionQueue.ts）
  * 失败时显示"诊断服务暂不可用"，不报错
  */
 function AiDiagnosticsSection({
   data,
   isFetching,
   isError,
-  decisions,
+  getState,
   onDecide,
 }: {
   data: DiagnosticResult[] | undefined;
   isFetching: boolean;
   isError: boolean;
-  decisions: AiDecisionMap;
-  onDecide: (key: string, state: AiDecisionState | undefined) => void;
+  getState: (key: string) => "pending" | "accepted" | "ignored" | "modified" | undefined;
+  onDecide: (key: string, state: "accepted" | "ignored" | undefined) => void;
 }) {
   if (isFetching) {
     return <p className="muted">正在运行诊断...</p>;
@@ -752,7 +823,7 @@ function AiDiagnosticsSection({
       <ul className="ai-list">
         {data.map((item, index) => {
           const key = diagnosticKey(item);
-          const state = decisions[key];
+          const state = getState(key);
           return (
             <li
               key={`${key}-${index}`}
@@ -765,7 +836,7 @@ function AiDiagnosticsSection({
                 <strong className="ai-target">{item.target}</strong>
                 {state && (
                   <span className={`ai-state ai-state--${state}`}>
-                    {state === "adopted" ? "已采纳" : "已忽略"}
+                    {state === "accepted" ? "已采纳" : state === "modified" ? "已修改" : "已忽略"}
                   </span>
                 )}
               </div>
@@ -786,7 +857,7 @@ function AiDiagnosticsSection({
                     <button
                       className="button button-primary"
                       type="button"
-                      onClick={() => onDecide(key, "adopted")}
+                      onClick={() => onDecide(key, "accepted")}
                     >
                       采纳
                     </button>
@@ -820,20 +891,21 @@ function AiDiagnosticsSection({
 /**
  * AI 建议候选区
  * 显示 listSuggestions 返回的建议列表，每项可采纳/忽略
+ * 决策状态从统一决策队列查询
  * 失败时显示"建议服务暂不可用"，不报错
  */
 function AiSuggestionsSection({
   data,
   isFetching,
   isError,
-  decisions,
+  getState,
   onDecide,
 }: {
   data: Suggestion[] | undefined;
   isFetching: boolean;
   isError: boolean;
-  decisions: AiDecisionMap;
-  onDecide: (key: string, state: AiDecisionState | undefined) => void;
+  getState: (key: string) => "pending" | "accepted" | "ignored" | "modified" | undefined;
+  onDecide: (key: string, state: "accepted" | "ignored" | undefined) => void;
 }) {
   if (isFetching) {
     return <p className="muted">正在加载建议...</p>;
@@ -850,7 +922,7 @@ function AiSuggestionsSection({
       <ul className="ai-list">
         {data.map((item, index) => {
           const key = suggestionKey(item);
-          const state = decisions[key];
+          const state = getState(key);
           return (
             <li
               key={`${key}-${index}`}
@@ -865,7 +937,7 @@ function AiSuggestionsSection({
                 </span>
                 {state && (
                   <span className={`ai-state ai-state--${state}`}>
-                    {state === "adopted" ? "已采纳" : "已忽略"}
+                    {state === "accepted" ? "已采纳" : state === "modified" ? "已修改" : "已忽略"}
                   </span>
                 )}
               </div>
@@ -880,7 +952,7 @@ function AiSuggestionsSection({
                     <button
                       className="button button-primary"
                       type="button"
-                      onClick={() => onDecide(key, "adopted")}
+                      onClick={() => onDecide(key, "accepted")}
                     >
                       采纳
                     </button>

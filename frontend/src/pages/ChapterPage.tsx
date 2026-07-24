@@ -324,17 +324,33 @@ export function ChapterPage() {
     },
     onError: (cause) => setError(cause.message),
   });
-  // 把审查问题 push 到决策队列
+  // 把审查问题 push 到决策队列（升级为新版多候选结构）
   function pushAuditDecision(
     item: { id: string; severity: string; description: string; citation: { quote: string } },
     kind: "continuity" | "style",
   ) {
+    const decisionId = `audit-${kind}-${item.id}`;
     pushDecision(projectId, {
-      id: `audit-${kind}-${item.id}`,
+      id: decisionId,
       type: "audit",
       title: `[${kind === "continuity" ? "连续性" : "文风"}] ${item.severity}`,
-      content: item.description,
-      reason: item.citation.quote,
+      context: item.description,
+      candidates: [
+        {
+          id: `${decisionId}-fix`,
+          content: "按审查建议修正此处问题",
+          pros: ["保证连续性/文风一致性"],
+          cons: ["需要重新检查改动影响范围"],
+          source: `原文引用：${item.citation.quote}`,
+        },
+        {
+          id: `${decisionId}-skip`,
+          content: "暂不修改，标记为已知问题",
+          pros: ["不打断当前写作节奏"],
+          cons: ["问题可能累积，影响后续章节质量"],
+        },
+      ],
+      pagePath: `/projects/${projectId}/chapters`,
     });
   }
   async function cancel() {
@@ -489,47 +505,50 @@ export function ChapterPage() {
                     <XCircle size={16} />
                   </button>
                 )}
-              <button
-                className="button button-secondary"
-                type="button"
-                disabled={
-                  !prerequisitesReady ||
-                  generate.isPending ||
-                  activeTask?.status === "pending" ||
-                  activeTask?.status === "running" ||
-                  activeTask?.status === "awaiting_approval"
-                }
-                onClick={() => generate.mutate()}
-              >
-                {generate.isPending || activeTask?.status === "running" ? (
-                  <LoaderCircle className="spin" size={15} />
-                ) : (
-                  <Sparkles size={15} />
-                )}
-                Agent 生成章节
-              </button>
-              {/* P0: 先生成章纲（人审），批准后再跑正文 */}
-              <button
-                className="button button-secondary"
-                type="button"
-                disabled={
-                  !prerequisitesReady ||
-                  generatePlan.isPending ||
-                  activeTask?.status === "pending" ||
-                  activeTask?.status === "running" ||
-                  activeTask?.status === "awaiting_approval"
-                }
-                onClick={() => generatePlan.mutate()}
-                title="只生成章纲，人审批后再跑正文"
-              >
-                {generatePlan.isPending ? (
-                  <LoaderCircle className="spin" size={15} />
-                ) : (
-                  <BookOpenCheck size={15} />
-                )}
-                先生成章纲
-              </button>
-              {/* P0 阶段：人审章纲后，批准继续生成正文 */}
+
+              {/* 状态1：无活动任务 - 显示AI规划按钮 */}
+              {(!activeTask ||
+                !["pending", "running", "awaiting_approval"].includes(
+                  activeTask.status,
+                )) && (
+                <>
+                  <button
+                    className="button button-primary"
+                    type="button"
+                    disabled={
+                      !prerequisitesReady ||
+                      generatePlan.isPending ||
+                      activeTask?.status === "pending" ||
+                      activeTask?.status === "running"
+                    }
+                    onClick={() => generatePlan.mutate()}
+                    title="AI先生成章纲，你确认后再生成正文"
+                  >
+                    {generatePlan.isPending ? (
+                      <LoaderCircle className="spin" size={15} />
+                    ) : (
+                      <Sparkles size={15} />
+                    )}
+                    AI 规划本章
+                  </button>
+                  <button
+                    className="button button-ghost"
+                    type="button"
+                    disabled={
+                      !prerequisitesReady ||
+                      generate.isPending ||
+                      activeTask?.status === "pending" ||
+                      activeTask?.status === "running"
+                    }
+                    onClick={() => generate.mutate()}
+                    title="跳过章纲审批，直接生成正文（不推荐）"
+                  >
+                    直接生成
+                  </button>
+                </>
+              )}
+
+              {/* 状态2：章纲待审批 - 批准后继续 */}
               {activeTask?.status === "awaiting_approval" &&
                 stageValue === "plan_awaiting_approval" && (
                   <button
@@ -539,43 +558,44 @@ export function ChapterPage() {
                     onClick={() => approvePlan.mutate()}
                   >
                     <Sparkles size={15} />
-                    批准章纲，继续生成正文
+                    批准章纲，开始写作
                   </button>
                 )}
-              {/* P1 整章修订：基于人编辑后的草稿重新审计+局部修订 */}
+
+              {/* 状态3：正文待审批 - 确认/重写 */}
               {activeTask?.status === "awaiting_approval" &&
                 stageValue !== "plan_awaiting_approval" && (
-                  <button
-                    className="button button-secondary"
-                    type="button"
-                    disabled={revise.isPending || content !== savedContent}
-                    onClick={() => revise.mutate()}
-                    title="基于你编辑后的正文重新审计+局部修订"
-                  >
-                    {revise.isPending ? (
-                      <LoaderCircle className="spin" size={15} />
-                    ) : (
-                      <Wand2 size={15} />
-                    )}
-                    重写整章
-                  </button>
+                  <>
+                    <button
+                      className="button button-secondary"
+                      type="button"
+                      disabled={revise.isPending || content !== savedContent}
+                      onClick={() => revise.mutate()}
+                      title="基于你编辑后的正文重新审计+局部修订"
+                    >
+                      {revise.isPending ? (
+                        <LoaderCircle className="spin" size={15} />
+                      ) : (
+                        <RefreshCw size={15} />
+                      )}
+                      重写本章
+                    </button>
+                    <button
+                      className="button button-primary"
+                      type="button"
+                      disabled={
+                        approve.isPending ||
+                        content !== savedContent ||
+                        (!audit.data?.commercial_gate_passed &&
+                          !overrideReason.trim())
+                      }
+                      onClick={() => approve.mutate()}
+                    >
+                      <Check size={15} />
+                      确认本章
+                    </button>
+                  </>
                 )}
-              {activeTask?.status === "awaiting_approval" && (
-                <button
-                  className="button button-primary"
-                  type="button"
-                  disabled={
-                    approve.isPending ||
-                    content !== savedContent ||
-                    (!audit.data?.commercial_gate_passed &&
-                      !overrideReason.trim())
-                  }
-                  onClick={() => approve.mutate()}
-                >
-                  <Check size={15} />
-                  确认章节
-                </button>
-              )}
             </div>
           </div>
           {/* P3 局部重写区块：作者贴入要重写的段落 + 指令 */}
@@ -760,12 +780,7 @@ function EvidenceContent({
   onPushAudit?: (item: AuditIssue, kind: "continuity" | "style") => void;
 }) {
   if (tab === "plan")
-    return (
-      <div className="evidence-content">
-        <h3>章节计划</h3>
-        <pre>{plan ?? "任务完成后显示计划。"}</pre>
-      </div>
-    );
+    return <PlanView plan={plan} />;
   if (tab === "audit")
     return (
       <div className="evidence-content" role="region" aria-label="统一审查">
@@ -877,6 +892,103 @@ function EvidenceContent({
         <RefreshCw size={14} />
         刷新状态
       </button>
+    </div>
+  );
+}
+
+interface PlanSection {
+  title: string;
+  body: string;
+  priority: "high" | "normal";
+}
+
+function parsePlanMarkdown(markdown: string): PlanSection[] {
+  const sections: PlanSection[] = [];
+  const lines = markdown.split("\n");
+  let currentTitle = "";
+  let currentBody: string[] = [];
+
+  const highPriorityTitles = ["章节目标", "开篇", "章末钩子", "情绪回报"];
+
+  function pushSection() {
+    if (currentTitle.trim()) {
+      const body = currentBody.join("\n").trim();
+      const isHigh = highPriorityTitles.some((k) => currentTitle.includes(k));
+      sections.push({
+        title: currentTitle.replace(/^#+\s*/, "").trim(),
+        body,
+        priority: isHigh ? "high" : "normal",
+      });
+    }
+  }
+
+  for (const line of lines) {
+    if (line.startsWith("## ")) {
+      pushSection();
+      currentTitle = line.slice(3);
+      currentBody = [];
+    } else {
+      currentBody.push(line);
+    }
+  }
+  pushSection();
+  return sections;
+}
+
+function PlanView({ plan }: { plan?: string }) {
+  const sections = useMemo(
+    () => (plan ? parsePlanMarkdown(plan) : []),
+    [plan],
+  );
+
+  if (!plan) {
+    return (
+      <div className="evidence-content">
+        <h3>章节计划</h3>
+        <p className="muted">点击「先生成章纲」让AI规划本章结构。</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="evidence-content plan-view">
+      <h3>章节计划</h3>
+      {sections.map((section, index) => (
+        <section
+          key={index}
+          className={`plan-section ${section.priority === "high" ? "is-highlight" : ""}`}
+        >
+          <h4>{section.title}</h4>
+          <div className="plan-body">
+            {section.body.split("\n").map((line, i) => {
+              const trimmed = line.trim();
+              if (!trimmed) return <br key={i} />;
+              if (trimmed.startsWith("### ")) {
+                return (
+                  <h5 key={i}>{trimmed.slice(4)}</h5>
+                );
+              }
+              if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+                return <li key={i}>{trimmed.slice(2)}</li>;
+              }
+              if (trimmed.startsWith("|")) {
+                return null;
+              }
+              if (trimmed.match(/^\d+\.\s/)) {
+                return <li key={i}>{trimmed.replace(/^\d+\.\s*/, "")}</li>;
+              }
+              if (trimmed.startsWith("**") && trimmed.endsWith("**")) {
+                return <p key={i} className="plan-strong">{trimmed.slice(2, -2)}</p>;
+              }
+              return <p key={i}>{trimmed}</p>;
+            })}
+          </div>
+        </section>
+      ))}
+      <details className="plan-raw">
+        <summary>查看原始 Markdown</summary>
+        <pre>{plan}</pre>
+      </details>
     </div>
   );
 }

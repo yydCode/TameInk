@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
-import { Plus, Sparkles, Star, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Check, Plus, Sparkles, Star, Trash2 } from "lucide-react";
 
+import type { CommercialProfile } from "../../api/client";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 
-// 书名候选条目
+// 书名候选条目（作者手动添加的本地候选）
 interface TitleCandidate {
   id: string;
   title: string;
@@ -40,19 +41,39 @@ function makeId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+interface BookTitleGeneratorProps {
+  projectId: string;
+  // 商业定位（含 AI 生成的 title_candidates 和 synopsis）
+  profile: CommercialProfile | null;
+  // 当前是否有商业定位任务处于 awaiting_approval（决定是否能"选中回写"）
+  canAdopt: boolean;
+  // 作者选中某 AI 候选书名时触发（由 CommercialPage 写入 profile 并保存）
+  onAdoptTitle: (title: string) => void;
+  // 作者采纳 AI 简介时触发（拆分为三段式后写入本地）
+  onAdoptSynopsis: (synopsis: string) => void;
+}
+
 /**
- * 书名简介生成器（Task B3）
- * - 题材模板选择 + 手动添加书名候选
- * - 三段式简介拼接
- * - 标签关键词优化建议
- * - 数据持久化到 localStorage
+ * 书名简介生成器
  *
- * 后端目前无书名生成 API，故不引入 Mock 数据，由作者手动添加候选
+ * 数据来源：
+ * 1. AI 候选（来自 CommercialProfile.title_candidates / synopsis）—— 由 MarketStrategist 生成
+ * 2. 作者手动添加的候选 —— 存 localStorage
+ *
+ * 人决策、AI 执行：
+ * - AI 候选只读展示，作者点「选中」通过 onAdoptTitle 回写到 profile（仅 task awaiting_approval 时可用）
+ * - 作者手动添加的候选独立 localStorage，与 AI 候选互不干扰
  */
-export function BookTitleGenerator({ projectId }: { projectId: string }) {
+export function BookTitleGenerator({
+  projectId,
+  profile,
+  canAdopt,
+  onAdoptTitle,
+  onAdoptSynopsis,
+}: BookTitleGeneratorProps) {
   const storageKey = `tame-ink:book-title:${projectId}`;
 
-  // 持久化状态结构
+  // 作者手动添加的候选 + 三段式简介 + 标签
   const [state, setState] = useLocalStorage<{
     template: string;
     candidates: TitleCandidate[];
@@ -71,6 +92,16 @@ export function BookTitleGenerator({ projectId }: { projectId: string }) {
 
   // 新书名输入框（非持久化，仅当前会话）
   const [newTitle, setNewTitle] = useState("");
+  // 当前已采纳的 AI 候选书名（用于 UI 高亮）
+  const [adoptedAiTitle, setAdoptedAiTitle] = useState<string | null>(null);
+
+  // 当 profile 的 title_candidates 首项变化时，同步"已采纳"状态
+  // 约定：title_candidates[0] 是作者最终选中的书名
+  useEffect(() => {
+    if (profile?.title_candidates?.length) {
+      setAdoptedAiTitle(profile.title_candidates[0]);
+    }
+  }, [profile?.title_candidates]);
 
   // 当前模板的命名结构提示
   const currentPattern = useMemo(
@@ -83,7 +114,7 @@ export function BookTitleGenerator({ projectId }: { projectId: string }) {
     setState((prev) => ({ ...prev, template: value }));
   }
 
-  // 添加书名候选（基于当前模板）
+  // 添加书名候选（作者手动添加）
   function addCandidate() {
     const title = newTitle.trim();
     if (!title) return;
@@ -100,7 +131,7 @@ export function BookTitleGenerator({ projectId }: { projectId: string }) {
     setNewTitle("");
   }
 
-  // 删除指定书名候选
+  // 删除指定书名候选（仅作者手动添加的）
   function removeCandidate(id: string) {
     setState((prev) => ({
       ...prev,
@@ -108,7 +139,7 @@ export function BookTitleGenerator({ projectId }: { projectId: string }) {
     }));
   }
 
-  // 设置书名评分（1-5 星点击）
+  // 设置书名评分（1-5 星点击，仅作者手动添加的）
   function scoreCandidate(id: string, score: number) {
     setState((prev) => ({
       ...prev,
@@ -118,7 +149,7 @@ export function BookTitleGenerator({ projectId }: { projectId: string }) {
     }));
   }
 
-  // 切换书名选中状态（仅允许单选作为最终书名）
+  // 切换书名选中状态（仅作者手动添加的；AI 候选用 onAdoptTitle）
   function toggleCandidate(id: string) {
     setState((prev) => ({
       ...prev,
@@ -147,6 +178,22 @@ export function BookTitleGenerator({ projectId }: { projectId: string }) {
       ...prev,
       synopsis: segments.join("\n\n"),
     }));
+  }
+
+  // 采纳 AI 简介：把 profile.synopsis 整体写入本地 synopsis，并尝试拆分为三段
+  function adoptAiSynopsis() {
+    if (!profile?.synopsis) return;
+    // 简单拆分：按双换行分段，前 1 段为 hook，第 2 段为 setting，剩余合并为 promise
+    const segments = profile.synopsis.split(/\n\s*\n/).map((s) => s.trim()).filter(Boolean);
+    const hook = segments[0] ?? "";
+    const setting = segments[1] ?? "";
+    const promise = segments.slice(2).join("\n\n");
+    setState((prev) => ({
+      ...prev,
+      parts: { hook, setting, promise },
+      synopsis: profile.synopsis,
+    }));
+    onAdoptSynopsis(profile.synopsis);
   }
 
   // 添加自定义标签
@@ -181,12 +228,63 @@ export function BookTitleGenerator({ projectId }: { projectId: string }) {
     }));
   }
 
+  // AI 候选书名（来自 profile.title_candidates）
+  const aiCandidates = profile?.title_candidates ?? [];
+  const aiSynopsis = profile?.synopsis ?? "";
+
   return (
     <section className="book-title-section">
       <div className="section-title">
         <h2>书名简介生成器</h2>
-        <span>题材模板 · 候选评分 · 三段式简介</span>
+        <span>AI 候选 · 题材模板 · 三段式简介</span>
       </div>
+
+      {/* AI 候选书名（来自 MarketStrategist） */}
+      {aiCandidates.length > 0 && (
+        <div className="ai-title-block">
+          <h3 className="ai-block-title">AI 候选书名</h3>
+          <p className="muted ai-block-hint">
+            来自商业定位 AI 生成。点「选中」可置顶为最终书名（写入商业定位候选）。
+            {!canAdopt && " 当前无候选定位任务，仅展示不能选中。"}
+          </p>
+          <div className="title-candidate-list">
+            {aiCandidates.map((title, index) => {
+              const isAdopted = adoptedAiTitle === title || index === 0 && adoptedAiTitle === null;
+              return (
+                <div
+                  key={`ai-${index}-${title}`}
+                  className={`title-candidate-item${isAdopted ? " is-selected" : ""}`}
+                >
+                  <button
+                    type="button"
+                    className={`title-select-button${isAdopted ? " is-active" : ""}`}
+                    onClick={() => {
+                      if (!canAdopt) return;
+                      onAdoptTitle(title);
+                      setAdoptedAiTitle(title);
+                    }}
+                    disabled={!canAdopt}
+                    title={
+                      canAdopt
+                        ? isAdopted
+                          ? "已选为最终书名"
+                          : "设为最终书名"
+                        : "需要候选定位任务处于待审批状态"
+                    }
+                    aria-label={isAdopted ? "已选中" : "设为最终书名"}
+                  >
+                    {isAdopted ? <Check size={14} /> : "○"}
+                  </button>
+                  <div className="title-candidate-main">
+                    <strong className="title-text">{title}</strong>
+                    <span className="title-template-tag">AI 候选 {index + 1}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* 题材模板选择 + 手动添加候选 */}
       <div className="book-title-form">
@@ -231,11 +329,11 @@ export function BookTitleGenerator({ projectId }: { projectId: string }) {
         </label>
       </div>
 
-      {/* 书名候选列表 */}
+      {/* 作者手动添加的书名候选列表 */}
       <div className="title-candidate-list">
         {state.candidates.length === 0 ? (
           <p className="muted empty-hint">
-            暂无书名候选。后端未提供 AI 生成接口，请作者手动添加候选书名，并按当前题材模板命名结构构思。
+            暂无作者添加的候选。可基于题材模板手动起名，或参考上方 AI 候选。
           </p>
         ) : (
           state.candidates.map((c) => (
@@ -283,7 +381,26 @@ export function BookTitleGenerator({ projectId }: { projectId: string }) {
         )}
       </div>
 
-      {/* 三段式简介 */}
+      {/* AI 简介（来自 MarketStrategist） */}
+      {aiSynopsis && (
+        <div className="ai-synopsis-block">
+          <div className="ai-synopsis-header">
+            <h3 className="ai-block-title">AI 简介</h3>
+            <button
+              type="button"
+              className="button button-secondary"
+              onClick={adoptAiSynopsis}
+              title="把 AI 简介拆分到三段式并采纳"
+            >
+              <Check size={14} />
+              采纳 AI 简介
+            </button>
+          </div>
+          <pre className="ai-synopsis-preview">{aiSynopsis}</pre>
+        </div>
+      )}
+
+      {/* 三段式简介（作者编辑区） */}
       <div className="synopsis-grid">
         <label>
           钩子（一句话抓住读者）

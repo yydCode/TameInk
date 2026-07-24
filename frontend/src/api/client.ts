@@ -145,6 +145,21 @@ export interface CommercialTargets {
   revenue_per_thousand_opens_yuan: number | null;
 }
 
+// 平台商业节奏配置——对应后端 PlatformPacing
+export interface PlatformPacing {
+  chapter_word_count: number;
+  min_chapter_word_count: number;
+  opening_hook_lines: number;
+  scenes_per_chapter: number;
+  small_climax_every: number;
+  big_climax_every: number;
+  opening_hook_style: "conflict" | "scene" | "dialogue";
+  chapter_end_cliffhanger: boolean;
+  weight_continuity: number;
+  weight_style: number;
+  weight_commercial: number;
+}
+
 export interface CommercialProfile {
   schema_version: 1;
   platform: "fanqie" | "qidian" | "jinjiang" | "custom";
@@ -162,6 +177,7 @@ export interface CommercialProfile {
   comparable_titles: string[];
   minimum_commercial_score: number;
   targets: CommercialTargets;
+  platform_pacing: PlatformPacing | null;
 }
 
 export type CommercialDimension =

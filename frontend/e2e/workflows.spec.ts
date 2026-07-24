@@ -128,6 +128,7 @@ const commercialProfile = {
     follow_rate: null,
     revenue_per_thousand_opens_yuan: null,
   },
+  platform_pacing: null,
 };
 const metrics = {
   observations: 1,

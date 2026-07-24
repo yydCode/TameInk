@@ -62,6 +62,8 @@ code { font-family: "SFMono-Regular", Consolas, monospace; }
 .button-primary:hover { background: var(--green-dark); }
 .button-secondary { color: #405047; background: #fff; }
 .button-secondary:hover, .icon-button:hover { background: #edf1ed; }
+.button-ghost { color: var(--muted); background: transparent; border: none; padding: 6px 10px; }
+.button-ghost:hover { color: var(--ink); background: #f3f5f3; }
 .spin { animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
@@ -686,6 +688,75 @@ label { display: grid; gap: 6px; color: #59645c; font-size: 10px; font-weight: 7
   color: var(--muted);
 }
 
+/* ===== 章节计划结构化展示 ===== */
+.plan-view h3 { margin-bottom: 16px; }
+.plan-section {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.plan-section.is-highlight {
+  border-left: 3px solid var(--rust);
+  background: #faf8f5;
+}
+.plan-section h4 {
+  margin: 0 0 8px 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.plan-section.is-highlight h4 {
+  color: var(--rust);
+}
+.plan-body {
+  font-size: 11px;
+  line-height: 1.7;
+  color: #3d4a3f;
+}
+.plan-body h5 {
+  margin: 10px 0 4px 0;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.plan-body p {
+  margin: 4px 0;
+}
+.plan-body li {
+  margin: 3px 0;
+  padding-left: 12px;
+  list-style: none;
+  position: relative;
+}
+.plan-body li::before {
+  content: "·";
+  position: absolute;
+  left: 2px;
+  color: var(--muted);
+}
+.plan-body .plan-strong {
+  font-weight: 600;
+  color: var(--ink);
+}
+.plan-raw {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.plan-raw summary {
+  font-size: 10px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.plan-raw pre {
+  margin-top: 8px;
+  font-size: 10px;
+  white-space: pre-wrap;
+  color: var(--muted);
+}
+
 /* ===== 规则设置页面 ===== */
 .rules-page { max-width: 1180px; margin: 0 auto; }
 .rules-card {
@@ -829,6 +900,213 @@ label { display: grid; gap: 6px; color: #59645c; font-size: 10px; font-weight: 7
   }
   .decision-actions .button { flex: 1; min-width: 80px; }
 }
+
+/* ===== AiDecisionCard：通用多候选决策卡片 ===== */
+.ai-decision-card {
+  padding: 12px;
+  background: var(--panel);
+  border-left: 3px solid var(--line);
+  border-radius: 3px;
+}
+.ai-decision-card.is-pending { border-left-color: var(--rust); }
+.ai-decision-card.is-accepted { border-left-color: var(--green); }
+.ai-decision-card.is-ignored { border-left-color: var(--muted); opacity: 0.7; }
+.ai-decision-card.is-modified { border-left-color: var(--blue); }
+
+.ai-decision-header {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.ai-decision-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.ai-decision-title-row strong {
+  font-size: 12px;
+  color: var(--ink);
+}
+.ai-decision-status {
+  flex-shrink: 0;
+  padding: 2px 7px;
+  border-radius: 9px;
+  font-size: 9px;
+  font-weight: 700;
+}
+.ai-decision-status.is-pending {
+  color: #7c4431;
+  background: var(--rust-soft);
+}
+.ai-decision-status.is-accepted {
+  color: var(--green-dark);
+  background: var(--green-soft);
+}
+.ai-decision-status.is-ignored {
+  color: var(--muted);
+  background: #eef0ed;
+}
+.ai-decision-status.is-modified {
+  color: var(--blue);
+  background: #e6edf0;
+}
+.ai-decision-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  font-size: 10px;
+  color: var(--muted);
+}
+.ai-decision-type {
+  padding: 1px 6px;
+  background: #eef0ed;
+  border-radius: 2px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.ai-decision-source {
+  color: var(--blue);
+  text-decoration: underline;
+  font-size: 10px;
+}
+.ai-decision-source:hover { color: var(--green-dark); }
+.ai-decision-time {
+  margin-left: auto;
+  font-size: 9px;
+}
+.ai-decision-context {
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+/* 候选列表 */
+.ai-candidates {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.ai-candidate {
+  display: block;
+  padding: 8px 10px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.ai-candidate.is-selected {
+  border-color: var(--green);
+  background: var(--green-soft);
+}
+.ai-candidate.is-accepted {
+  border-color: var(--green);
+  background: var(--green-soft);
+}
+.ai-candidate:hover { border-color: var(--muted); }
+.ai-candidate-radio-row {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  gap: 8px;
+  align-items: start;
+}
+.ai-candidate-radio-row input[type="radio"] {
+  margin-top: 2px;
+  cursor: pointer;
+}
+.ai-candidate-main {
+  min-width: 0;
+}
+.ai-candidate-content-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.ai-candidate-content {
+  font-size: 12px;
+  color: var(--ink);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.ai-candidate-badge {
+  padding: 1px 5px;
+  background: var(--rust);
+  color: #fff;
+  border-radius: 2px;
+  font: 700 9px "SFMono-Regular", Consolas, monospace;
+}
+.ai-candidate-pros-cons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 6px;
+}
+.ai-pros small,
+.ai-cons small {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+}
+.ai-pros ul,
+.ai-cons ul {
+  margin: 2px 0 0;
+  padding-left: 14px;
+  font-size: 10px;
+  line-height: 1.5;
+}
+.ai-pros li { color: var(--green-dark); }
+.ai-cons li { color: var(--rust); }
+.ai-candidate-source {
+  margin: 4px 0 0;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+/* 编辑器 */
+.ai-decision-edit {
+  margin-bottom: 8px;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+}
+.ai-decision-textarea {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  font-size: 12px;
+  line-height: 1.5;
+  resize: vertical;
+}
+.ai-decision-edit-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+/* 操作按钮区 */
+.ai-decision-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.ai-decision-actions .button {
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 10px;
+}
+
+/* 响应式：小屏卡片优化 */
+@media (max-width: 720px) {
+  .ai-candidate-pros-cons { grid-template-columns: 1fr; }
+  .ai-decision-actions .button { flex: 1; min-width: 80px; }
+}
+
 
 /* ===== 通用页面样式 ===== */
 
@@ -1141,6 +1419,42 @@ label { display: grid; gap: 6px; color: #59645c; font-size: 10px; font-weight: 7
 .batch-status-planned { background: #e5e7eb; color: #4b5563; }
 .batch-status-writing { background: var(--rust-soft); color: var(--rust); }
 .batch-status-done { background: var(--green-soft); color: var(--green-dark); }
+/* AI 任务状态：与作者编辑状态区分 */
+.batch-status-running { background: #fef3c7; color: #92400e; }
+.batch-status-failed { background: #fee2e2; color: #991b1b; }
+.batch-status-idle { background: #f3f4f6; color: #6b7280; }
+
+/* AI 章纲预览（来自 plan.md，作者只读参考） */
+.batch-ai-plan {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0 12px;
+  padding: 10px;
+  background: var(--panel);
+  border-left: 3px solid var(--blue);
+  border-radius: 3px;
+}
+.batch-ai-toggle {
+  align-self: flex-start;
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 10px;
+}
+.batch-ai-plan-content {
+  margin: 0;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 320px;
+  overflow: auto;
+}
 .batch-chapter-fields {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1752,6 +2066,48 @@ label { display: grid; gap: 6px; color: #59645c; font-size: 10px; font-weight: 7
 .title-candidate-item.is-selected {
   background: var(--green-soft);
   border-color: var(--green);
+}
+
+/* AI 候选书名 / AI 简介区块（来自 MarketStrategist） */
+.ai-title-block,
+.ai-synopsis-block {
+  margin-bottom: 16px;
+  padding: 12px;
+  background: var(--panel);
+  border-left: 3px solid var(--blue);
+  border-radius: 3px;
+}
+.ai-block-title {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--blue);
+}
+.ai-block-hint {
+  margin: 0 0 10px;
+  font-size: 10px;
+  line-height: 1.6;
+}
+.ai-synopsis-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.ai-synopsis-preview {
+  margin: 0;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 280px;
+  overflow: auto;
 }
 .title-select-button {
   display: grid;

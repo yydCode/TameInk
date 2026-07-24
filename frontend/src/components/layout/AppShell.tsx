@@ -2,21 +2,13 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BookOpen,
-  Bookmark,
-  CalendarRange,
-  ChartNoAxesCombined,
   ChevronDown,
   CirclePlus,
-  ClipboardCheck,
   FileText,
-  GitBranch,
   Library,
+  PenLine,
   Settings,
-  Sliders,
   Sparkles,
-  Target,
-  TrendingUp,
-  Upload,
   Zap,
 } from "lucide-react";
 import { NavLink, Outlet, useNavigate, useParams } from "react-router";
@@ -30,7 +22,6 @@ import {
   type CreateProjectInput,
 } from "../common/CreateProjectDialog";
 
-// 导航项类型
 interface NavItem {
   path: string;
   label: string;
@@ -43,11 +34,10 @@ interface NavGroup {
   items: NavItem[];
 }
 
-// 按创作阶段分组的导航结构
 const navGroups: NavGroup[] = [
   {
-    id: "today",
-    label: "今日工作台",
+    id: "workspace",
+    label: "工作台",
     icon: Zap,
     items: [
       { path: "today", label: "今日工作台", icon: Zap },
@@ -55,46 +45,37 @@ const navGroups: NavGroup[] = [
   },
   {
     id: "planning",
-    label: "新书策划",
+    label: "策划",
     icon: Sparkles,
     items: [
       { path: "story", label: "故事设计", icon: Sparkles },
-      { path: "market", label: "市场调研", icon: TrendingUp },
-      { path: "opening", label: "黄金三章", icon: Sparkles },
-      { path: "commercial", label: "商业定位", icon: ChartNoAxesCombined },
-      { path: "bestseller", label: "爆款拆解", icon: TrendingUp },
-      { path: "patterns", label: "套路模板", icon: Sparkles },
+      { path: "commercial", label: "商业定位", icon: BookOpen },
     ],
   },
   {
-    id: "creation",
-    label: "章节创作",
-    icon: FileText,
+    id: "writing",
+    label: "写作",
+    icon: PenLine,
     items: [
-      { path: "chapters", label: "章节工作台", icon: FileText },
+      { path: "chapters", label: "章节写作", icon: FileText },
     ],
   },
   {
-    id: "maintenance",
-    label: "长篇维护",
+    id: "knowledge",
+    label: "知识库",
     icon: Library,
     items: [
       { path: "memory", label: "记忆中心", icon: Library },
-      { path: "batch-plan", label: "批量规划", icon: CalendarRange },
-      { path: "materials", label: "素材库", icon: Bookmark },
-      { path: "completion", label: "完本规划", icon: Target },
-      { path: "imports", label: "作品导入", icon: Upload },
+      { path: "materials", label: "素材库", icon: BookOpen },
     ],
   },
   {
-    id: "system",
-    label: "系统",
-    icon: GitBranch,
+    id: "settings",
+    label: "设置",
+    icon: Settings,
     items: [
-      { path: "overview", label: "作品概览", icon: BookOpen },
-      { path: "rules", label: "规则设置", icon: Sliders },
-      { path: "decisions", label: "决策队列", icon: ClipboardCheck },
-      { path: "runs", label: "运行记录", icon: GitBranch },
+      { path: "rules", label: "规则设置", icon: Settings },
+      { path: "decisions", label: "决策队列", icon: BookOpen },
     ],
   },
 ];
@@ -109,8 +90,7 @@ export function AppShell() {
     queryFn: listProjects,
   });
   const [showCreate, setShowCreate] = useState(false);
-  // 默认展开"今日工作台"组
-  const [expandedGroup, setExpandedGroup] = useState<string>("today");
+  const [expandedGroup, setExpandedGroup] = useState<string>("workspace");
 
   useEffect(() => {
     const open = () => setShowCreate(true);
